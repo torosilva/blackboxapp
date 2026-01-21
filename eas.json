@@ -1,0 +1,25 @@
+{
+    "cli": {
+        "appVersionSource": "remote"
+    },
+    "build": {
+        "development": {
+            "developmentClient": true,
+            "distribution": "internal"
+        },
+        "preview": {
+            "node": "20.10.0",
+            "distribution": "internal",
+            "env": {
+                "EAS_SKIP_AUTO_FINGERPRINT": "1"
+            },
+            "android": {
+                "buildType": "apk"
+            }
+        },
+        "production": {}
+    },
+    "submit": {
+        "production": {}
+    }
+}
