@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Platform,
@@ -12,6 +11,7 @@ import {
   ActivityIndicator,
   StatusBar
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Mic, X, Camera, Image as ImageIcon } from 'lucide-react-native';
@@ -20,15 +20,26 @@ import { voiceService } from '../services/voice';
 import { SupabaseService } from '../services/SupabaseService';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList } from '../navigation/types';
+import VoiceVisualizer from '../components/VoiceVisualizer';
 
 const NewEntryScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
+
+  const SAV = SafeAreaView as any;
+  const TO = TouchableOpacity as any;
+  const TI = TextInput as any;
+  const Mi = Mic as any;
+  const Xi = X as any;
+  const Ca = Camera as any;
+  const II = ImageIcon as any;
+
   const [content, setContent] = useState('');
   const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [lastRecordingUri, setLastRecordingUri] = useState<string | null>(null);
+  const [metering, setMetering] = useState(-160);
 
   // Buffer for Android status bar
   const androidPadding = (StatusBar.currentHeight || 0) + 40;
@@ -89,6 +100,7 @@ const NewEntryScreen = () => {
       const uri = await voiceService.stopRecording();
       setLastRecordingUri(uri);
       setIsRecording(false);
+      setMetering(-160);
       if (uri) {
         setLoading(true);
         const trans = await voiceService.transcribeAudio(uri);
@@ -96,20 +108,24 @@ const NewEntryScreen = () => {
         setLoading(false);
       }
     } else {
-      await voiceService.startRecording();
+      await voiceService.startRecording((status) => {
+        if (status.metering !== undefined) {
+          setMetering(status.metering);
+        }
+      });
       setIsRecording(true);
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SAV style={styles.container}>
       <StatusBar barStyle="light-content" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <X color="white" size={24} />
-        </TouchableOpacity>
+        <TO onPress={() => navigation.goBack()}>
+          <Xi color="white" size={24} />
+        </TO>
         <Text style={styles.headerTitle}>NUEVO REGISTRO</Text>
-        <TouchableOpacity
+        <TO
           onPress={handleSave}
           disabled={loading}
           style={[styles.publishBtn, loading && { opacity: 0.5 }]}
@@ -119,11 +135,11 @@ const NewEntryScreen = () => {
           ) : (
             <Text style={styles.publishBtnText}>PUBLICAR</Text>
           )}
-        </TouchableOpacity>
+        </TO>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
-        <TextInput
+        <TI
           style={styles.titleInput}
           placeholder="Título de la sesión..."
           placeholderTextColor="#475569"
@@ -131,7 +147,7 @@ const NewEntryScreen = () => {
           onChangeText={setTitle}
         />
 
-        <TextInput
+        <TI
           multiline
           style={styles.contentInput}
           placeholder="¿Qué tienes en mente?"
@@ -141,23 +157,27 @@ const NewEntryScreen = () => {
         />
       </ScrollView>
 
-      <View style={styles.toolbar}>
-        <TouchableOpacity style={styles.toolBtn}>
-          <Camera size={24} color="#94a3b8" />
-        </TouchableOpacity>
+      <View style={styles.visualizerContainer}>
+        <VoiceVisualizer isActive={isRecording} metering={metering} />
+      </View>
 
-        <TouchableOpacity
+      <View style={styles.toolbar}>
+        <TO style={styles.toolBtn}>
+          <Ca size={24} color="#94a3b8" />
+        </TO>
+
+        <TO
           onPress={toggleRecording}
           style={[styles.recordBtn, isRecording && styles.recordBtnActive]}
         >
           <View style={[styles.innerRecord, isRecording && styles.innerRecordActive]}>
-            {isRecording ? <View style={styles.stopIcon} /> : <Mic size={28} color="white" />}
+            {isRecording ? <View style={styles.stopIcon} /> : <Mi size={28} color="white" />}
           </View>
-        </TouchableOpacity>
+        </TO>
 
-        <TouchableOpacity style={styles.toolBtn}>
-          <ImageIcon size={24} color="#94a3b8" />
-        </TouchableOpacity>
+        <TO style={styles.toolBtn}>
+          <II size={24} color="#94a3b8" />
+        </TO>
       </View>
 
       {loading && (
@@ -166,7 +186,7 @@ const NewEntryScreen = () => {
           <Text style={styles.overlayText}>Procesando Insights...</Text>
         </View>
       )}
-    </SafeAreaView>
+    </SAV>
   );
 };
 
@@ -177,7 +197,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 60 : 10,
+    paddingTop: Platform.OS === 'ios' ? 10 : 15,
     paddingBottom: 15,
     borderBottomWidth: 1,
     borderColor: '#1e293b'
@@ -189,6 +209,12 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 24 },
   titleInput: { color: 'white', fontSize: 28, fontWeight: 'bold', marginBottom: 20 },
   contentInput: { color: '#cbd5e1', fontSize: 18, lineHeight: 28, minHeight: 300, textAlignVertical: 'top' },
+  visualizerContainer: {
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
   toolbar: {
     flexDirection: 'row',
     justifyContent: 'space-around',

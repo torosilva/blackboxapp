@@ -7,9 +7,9 @@ import {
     Dimensions,
     StyleSheet,
     Image,
-    SafeAreaView,
     StatusBar
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
@@ -28,43 +28,24 @@ const { width, height } = Dimensions.get('window');
 const SLIDES = [
     {
         id: '1',
-        title: 'Tu Bóveda Estratégica',
-        description: 'Tus pensamientos, grabaciones y datos están seguros bajo llave en la BLACKBOX.',
-        icon: 'shield-checkmark-outline',
-        color: '#6366f1',
-        isLucide: false
+        title: 'Tu Bóveda Digital',
+        description: 'Tus pensamientos y grabaciones procesados con privacidad de grado militar. Tu mente, bajo tu control.',
+        icon: <Shield size={120} color="#6366f1" />,
+        color: '#6366f1'
     },
     {
         id: '2',
-        title: 'Procesamiento IA',
-        description: 'Gemini analiza cada palabra para extraer insights y patrones estratégicos ocultos.',
-        icon: 'brain',
-        color: '#c084fc',
-        isLucide: true
+        title: 'Consultoría con IA',
+        description: 'Blackbox analiza tus patrones cognitivos para extraer insights estratégicos que te ayudan a crecer.',
+        icon: <Brain size={120} color="#c084fc" />,
+        color: '#c084fc'
     },
     {
         id: '3',
-        title: 'Línea de Tiempo Mental',
-        description: 'Visualiza tu progreso emocional y trayectoria cognitiva a través de visualizaciones inteligentes.',
-        icon: 'trending-up',
-        color: '#22d3ee',
-        isLucide: true
-    },
-    {
-        id: '4',
-        title: 'Hábitos de Rendimiento',
-        description: 'Convertimos tus reflexiones en acciones concretas para tu crecimiento y enfoque constante.',
-        icon: 'zap',
-        color: '#facc15',
-        isLucide: true
-    },
-    {
-        id: '5',
-        title: 'Active Loops',
-        description: 'Transforma ideas en planes. Tip: Sé específico ("Debo", "Tengo que") para que la IA extraiga tareas con precisión.',
-        icon: 'zap',
-        color: '#38bdf8',
-        isLucide: true
+        title: 'Bajos de Rendimiento',
+        description: 'Transformamos cada reflexión en "Active Loops": tareas concretas y accionables para tu éxito diario.',
+        icon: <Zap size={120} color="#38bdf8" />,
+        color: '#38bdf8'
     },
 ];
 
@@ -73,6 +54,14 @@ const ONBOARDING_KEY = 'HAS_SEEN_ONBOARDING';
 export default function OnboardingScreen() {
     const navigation = useNavigation<any>();
     const { user } = useAuth();
+
+    const SAV = SafeAreaView as any;
+    const TO = TouchableOpacity as any;
+    const B = Brain as any;
+    const TU = TrendingUp as any;
+    const Sh = Shield as any;
+    const Z = Zap as any;
+
     const [currentIndex, setCurrentIndex] = useState(0);
     const flatListRef = useRef<FlatList>(null);
     const scrollX = useSharedValue(0);
@@ -105,20 +94,12 @@ export default function OnboardingScreen() {
         }
     };
 
-    const renderItem = ({ item, index }: { item: typeof SLIDES[0], index: number }) => {
+    const renderItem = ({ item }: { item: typeof SLIDES[0] }) => {
         return (
             <View style={styles.slide}>
-                <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
-                    {item.isLucide ? (
-                        <View>
-                            {index === 1 && <Brain size={100} color={item.color} />}
-                            {index === 2 && <TrendingUp size={100} color={item.color} />}
-                            {index === 3 && <Zap size={100} color={item.color} />}
-                            {index === 4 && <Zap size={100} color={item.color} />}
-                        </View>
-                    ) : (
-                        <Ionicons name={item.icon as any} size={100} color={item.color} />
-                    )}
+                <View style={[styles.iconContainer, { backgroundColor: item.color + '15', borderColor: item.color + '30' }]}>
+                    <View style={[styles.glow, { backgroundColor: item.color, shadowColor: item.color }]} />
+                    {item.icon}
                 </View>
 
                 <Text style={styles.title}>{item.title}</Text>
@@ -128,13 +109,13 @@ export default function OnboardingScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SAV style={styles.container}>
             <StatusBar barStyle="light-content" />
 
             <View style={styles.skipContainer}>
-                <TouchableOpacity onPress={handleComplete}>
+                <TO onPress={handleComplete}>
                     <Text style={styles.skipText}>Saltar</Text>
-                </TouchableOpacity>
+                </TO>
             </View>
 
             <FlatList
@@ -179,16 +160,16 @@ export default function OnboardingScreen() {
                 </View>
 
                 {/* BUTTON */}
-                <TouchableOpacity
+                <TO
                     onPress={handleNext}
                     style={[styles.button, { backgroundColor: SLIDES[currentIndex]?.color || '#6366f1' }]}
                 >
                     <Text style={styles.buttonText}>
                         {currentIndex === SLIDES.length - 1 ? 'Empezar' : 'Siguiente'}
                     </Text>
-                </TouchableOpacity>
+                </TO>
             </View>
-        </SafeAreaView>
+        </SAV>
     );
 }
 
@@ -209,6 +190,17 @@ const styles = StyleSheet.create({
         marginBottom: 40,
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.1)',
+    },
+    glow: {
+        position: 'absolute',
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        opacity: 0.2,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 40,
+        elevation: 10,
     },
     title: {
         fontSize: 32,

@@ -5,9 +5,8 @@
     "scheme": "blackbox",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logo.png",
+    "icon": "./assets/logo_square.png",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": false,
     "splash": {
       "image": "./assets/logo.png",
       "resizeMode": "contain",
@@ -20,7 +19,7 @@
     "android": {
       "package": "com.blackboxmind.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo.png",
+        "foregroundImage": "./assets/logo_square.png",
         "backgroundColor": "#020617"
       },
       "edgeToEdgeEnabled": true,
@@ -32,7 +31,11 @@
     "plugins": [
       "expo-localization",
       "expo-font",
-      "expo-notifications"
+      "expo-notifications",
+      "expo-av",
+      "expo-camera",
+      "expo-image-picker",
+      "expo-local-authentication"
     ],
     "extra": {
       "eas": {

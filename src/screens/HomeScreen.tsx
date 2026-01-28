@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   StyleSheet,
   TextInput,
   ActivityIndicator,
@@ -14,6 +13,7 @@ import {
   Alert,
   Image
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -115,16 +115,26 @@ const HomeScreen = () => {
     const size = 24;
     const color = getMoodColor(score).replace('0.2', '1'); // More solid color for icons
 
+    const F = Flame as any;
+    const L = Lightbulb as any;
+    const B = BatteryLow as any;
+    const La = Layers as any;
+    const Zp = ZapOff as any;
+    const A = Activity as any;
+    const W = Wind as any;
+    const SP = SmilePlus as any;
+    const Sm = Smile as any;
+
     switch (label) {
-      case 'En Flow': return <Flame size={size} color="#22c55e" />;
-      case 'Inspirado': return <Lightbulb size={size} color="#eab308" />;
-      case 'Agotado': return <BatteryLow size={size} color="#ef4444" />;
-      case 'Disperso': return <Layers size={size} color="#94a3b8" />;
-      case 'Frustrado': return <ZapOff size={size} color="#f97316" />;
-      case 'Determinado': return <Activity size={size} color="#818cf8" />;
-      case 'Ansioso': return <Wind size={size} color="#3b82f6" />;
-      case 'Satisfecho': return <SmilePlus size={size} color="#10b981" />;
-      default: return <Smile size={size} color={color} />;
+      case 'En Flow': return <F size={size} color="#22c55e" />;
+      case 'Inspirado': return <L size={size} color="#eab308" />;
+      case 'Agotado': return <B size={size} color="#ef4444" />;
+      case 'Disperso': return <La size={size} color="#94a3b8" />;
+      case 'Frustrado': return <Zp size={size} color="#f97316" />;
+      case 'Determinado': return <A size={size} color="#818cf8" />;
+      case 'Ansioso': return <W size={size} color="#3b82f6" />;
+      case 'Satisfecho': return <SP size={size} color="#10b981" />;
+      default: return <Sm size={size} color={color} />;
     }
   };
 
@@ -315,30 +325,48 @@ const HomeScreen = () => {
     }
   });
 
+  const TO = TouchableOpacity as any;
+  const B = Brain as any;
+  const D = Diamond as any;
+  const S = Settings as any;
+  const SR = Search as any;
+  const F = Filter as any;
+  const T = Target as any;
+  const AT = AlertTriangle as any;
+  const L = Laugh as any;
+  const FR = Frown as any;
+  const SP = Sparkles as any;
+  const Xi = X as any;
+  const Z = Zap as any;
+  const P = Plus as any;
+  const Bo = Bot as any;
+  const SAV = SafeAreaView as any;
+  const Overlay = AILoadingOverlay as any;
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SAV style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* Premium AI Loading Overlay */}
-      <AILoadingOverlay
+      <Overlay
         visible={summaryLoading}
         message="Consultando a tu Coach de Rendimiento..."
       />
 
       <View style={styles.header}>
-        <TouchableOpacity
+        <TO
           style={styles.iconButton}
           onPress={() => setIsMinimized(!isMinimized)}
         >
           <Animated.View style={[styles.brainIconContainer, animatedBrainStyle]}>
-            <Brain size={24} color={!isMinimized ? "#6366f1" : "#94a3b8"} />
+            <B size={24} color={!isMinimized ? "#6366f1" : "#94a3b8"} />
             <View style={styles.gemOverlay}>
-              <Diamond size={10} color="#00f2ff" fill="#38bdf8" />
+              <D size={10} color="#00f2ff" fill="#38bdf8" />
             </View>
           </Animated.View>
           {isMinimized && <View style={styles.notificationDot} />}
-        </TouchableOpacity>
-        <TouchableOpacity
+        </TO>
+        <TO
           style={styles.logoCenterContainer}
           onPress={() => setShowSearch(!showSearch)}
           activeOpacity={0.7}
@@ -349,26 +377,26 @@ const HomeScreen = () => {
             resizeMode="contain"
           />
           {showSearch && <View style={styles.searchIndicator} />}
-        </TouchableOpacity>
-        <TouchableOpacity
+        </TO>
+        <TO
           style={styles.iconButton}
           onPress={() => navigation.navigate('Settings', { initialViewMode: 'hub' })}
         >
-          <Settings size={22} color="#94a3b8" />
-        </TouchableOpacity>
+          <S size={22} color="#94a3b8" />
+        </TO>
       </View>
 
       {/* Tactical Control Overlay (Search & Filters) - Now tied to CENTRAL LOGO */}
       {showSearch && (
         <View style={styles.searchContainer}>
           <View style={styles.searchBar}>
-            <TouchableOpacity
+            <TO
               onPress={() => searchInputRef.current?.focus()}
               hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
               style={{ padding: 4 }}
             >
-              <Search size={20} color="#94a3b8" />
-            </TouchableOpacity>
+              <SR size={20} color="#94a3b8" />
+            </TO>
 
             <TextInput
               ref={searchInputRef}
@@ -376,19 +404,17 @@ const HomeScreen = () => {
               placeholder="Explorar memorias..."
               placeholderTextColor="#94a3b8"
               value={searchQuery}
-              onChangeText={(text) => {
+              onChangeText={(text: any) => {
                 setSearchQuery(text);
-                // We don't auto-minimize on search anymore if it's tied to the brain?
-                // Actually, if they are typing, they are in "Tactical Mode".
               }}
             />
 
-            <TouchableOpacity
+            <TO
               style={[styles.miniFilterBtn, (activeFilter !== 'all' || showFilters) && styles.miniFilterBtnActive]}
               onPress={() => setShowFilters(!showFilters)}
             >
-              <Filter size={20} color={activeFilter !== 'all' || showFilters ? 'white' : '#94a3b8'} />
-            </TouchableOpacity>
+              <F size={20} color={activeFilter !== 'all' || showFilters ? 'white' : '#94a3b8'} />
+            </TO>
           </View>
 
           {showFilters && (
@@ -400,12 +426,12 @@ const HomeScreen = () => {
             >
               {[
                 { id: 'all', label: 'Todo' },
-                { id: 'loops', label: 'Loops Activos', icon: <Target size={14} color="currentColor" /> },
-                { id: 'biases', label: 'Sesgos', icon: <AlertTriangle size={14} color="currentColor" /> },
-                { id: 'positive', label: 'Mente Positiva', icon: <Laugh size={14} color="currentColor" /> },
-                { id: 'negative', label: 'Mente Negativa', icon: <Frown size={14} color="currentColor" /> },
+                { id: 'loops', label: 'Loops Activos', icon: <T size={14} color="currentColor" /> },
+                { id: 'biases', label: 'Sesgos', icon: <AT size={14} color="currentColor" /> },
+                { id: 'positive', label: 'Mente Positiva', icon: <L size={14} color="currentColor" /> },
+                { id: 'negative', label: 'Mente Negativa', icon: <FR size={14} color="currentColor" /> },
               ].map(filter => (
-                <TouchableOpacity
+                <TO
                   key={filter.id}
                   onPress={() => {
                     setActiveFilter(filter.id);
@@ -422,7 +448,7 @@ const HomeScreen = () => {
                   ]}>
                     {filter.label} ({filterCounts[filter.id as keyof typeof filterCounts]})
                   </Text>
-                </TouchableOpacity>
+                </TO>
               ))}
             </ScrollView>
           )}
@@ -566,22 +592,22 @@ const HomeScreen = () => {
 
       {/* Floating Action Buttons */}
       <View style={styles.fabContainer}>
-        <TouchableOpacity
+        <TO
           onPress={() => navigation.navigate('NewEntry', {})}
           style={styles.fabMain}
         >
-          <Plus size={24} color="white" style={{ marginRight: 8 }} />
+          <P size={24} color="white" style={{ marginRight: 8 }} />
           <Text style={styles.fabText}>Nueva Entrada</Text>
-        </TouchableOpacity>
+        </TO>
 
-        <TouchableOpacity
+        <TO
           onPress={() => navigation.navigate('Chat')}
           style={styles.fabSecondary}
         >
-          <Bot size={24} color="white" />
-        </TouchableOpacity>
+          <Bo size={24} color="white" />
+        </TO>
       </View>
-    </SafeAreaView>
+    </SAV>
   );
 };
 
@@ -590,11 +616,11 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 24,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 15 : 20,
-    paddingBottom: 20
+    paddingTop: Platform.OS === 'ios' ? 10 : 15,
+    paddingBottom: 15
   },
   dateText: { color: '#6366f1', fontSize: 12, fontWeight: '800', letterSpacing: 1.5, marginBottom: 4 },
-  logoCenterContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 10, position: 'relative' },
+  logoCenterContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   headerLogo: { width: 280, height: 100 },
   searchIndicator: {
     position: 'absolute',

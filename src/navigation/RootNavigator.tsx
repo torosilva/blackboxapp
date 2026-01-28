@@ -50,6 +50,7 @@ function AppNavigator() {
     }, []);
 
     if (isLoading) {
+        console.log('NAVIGATOR: Loading state active');
         // Pantalla de carga (Splash) mientras revisa si hay usuario
         return (
             <View style={{ flex: 1, backgroundColor: '#0B1021', justifyContent: 'center', alignItems: 'center' }}>
@@ -57,66 +58,71 @@ function AppNavigator() {
             </View>
         );
     }
+    console.log('NAVIGATOR: Loading complete, User:', user?.id);
 
     // Show Biometric Lock only if user is logged in and screen is locked
     if (user && isLocked) {
-        return <LockScreen onUnlock={() => setIsLocked(false)} />;
+        const Lock = LockScreen as any;
+        return <Lock onUnlock={() => setIsLocked(false)} />;
     }
 
     // Force Terms acceptance
     if (user && !profile?.accepted_terms_at) {
+        const Nav = Stack.Navigator as any;
         return (
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Nav screenOptions={{ headerShown: false }}>
                 <Stack.Screen
                     name="Terms"
-                    component={TermsScreen}
+                    component={TermsScreen as any}
                     initialParams={{ isMandatory: true }}
                 />
-            </Stack.Navigator>
+            </Nav>
         );
     }
 
     // Force Privacy acceptance
     if (user && !profile?.accepted_privacy_at) {
+        const Nav = Stack.Navigator as any;
         return (
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Nav screenOptions={{ headerShown: false }}>
                 <Stack.Screen
                     name="Privacy"
-                    component={PrivacyScreen}
+                    component={PrivacyScreen as any}
                     initialParams={{ isMandatory: true }}
                 />
-            </Stack.Navigator>
+            </Nav>
         );
     }
 
+    const Nav = Stack.Navigator as any;
     return (
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Nav screenOptions={{ headerShown: false }}>
             {user ? (
                 // === RUTAS PRIVADAS (Si está logueado) ===
-                <>
-                    <Stack.Screen name="Home" component={HomeScreen} />
-                    <Stack.Screen name="Settings" component={SettingsScreen} />
+                <React.Fragment>
+                    <Stack.Screen name="Home" component={HomeScreen as any} />
+                    <Stack.Screen name="Settings" component={SettingsScreen as any} />
                     <Stack.Screen
                         name="NewEntry"
-                        component={NewEntryScreen}
+                        component={NewEntryScreen as any}
                         options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
                     />
-                    <Stack.Screen name="EntryDetail" component={EntryDetailScreen} />
-                    <Stack.Screen name="WeeklyReport" component={WeeklyReportScreen} />
-                    <Stack.Screen name="Chat" component={ChatScreen} />
-                    <Stack.Screen name="Terms" component={TermsScreen} />
-                    <Stack.Screen name="Privacy" component={PrivacyScreen} />
-                    <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-                </>
+                    <Stack.Screen name="EntryDetail" component={EntryDetailScreen as any} />
+                    <Stack.Screen name="WeeklyReport" component={WeeklyReportScreen as any} />
+                    <Stack.Screen name="Chat" component={ChatScreen as any} />
+                    <Stack.Screen name="Terms" component={TermsScreen as any} />
+                    <Stack.Screen name="Privacy" component={PrivacyScreen as any} />
+                    <Stack.Screen name="Onboarding" component={OnboardingScreen as any} />
+                </React.Fragment>
             ) : (
                 // === RUTAS PÚBLICAS (Si NO está logueado) ===
-                <>
-                    <Stack.Screen name="Login" component={LoginScreen} />
-                    <Stack.Screen name="SignUp" component={SignUpScreen} />
-                    <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-                </>
+                <React.Fragment>
+                    <Stack.Screen name="Login" component={LoginScreen as any} />
+                    <Stack.Screen name="SignUp" component={SignUpScreen as any} />
+                    <Stack.Screen name="Onboarding" component={OnboardingScreen as any} />
+                </React.Fragment>
             )}
-        </Stack.Navigator>
+        </Nav>
     );
 }
 

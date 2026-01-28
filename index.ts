@@ -12,7 +12,7 @@ import RootNavigator from './src/navigation/RootNavigator';
  * FINAL STABLE ENTRY: Including CSS and Navigator.
  */
 function App() {
-    console.log('FINAL_BOOT: System fully operational');
+    console.log('BOOT: App component rendering');
     return React.createElement(RootNavigator);
 }
 

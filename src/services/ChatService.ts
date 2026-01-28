@@ -12,7 +12,7 @@ export const ChatService = {
     /**
      * Main function to send a message to the Strategic Consultant
      */
-    async sendMessage(userId: string, userMessage: string, chatHistory: ChatMessage[] = []) {
+    async sendMessage(userId: string, userMessage: string, chatHistory: ChatMessage[] = [], userName?: string) {
         if (!GEMINI_API_KEY) throw new Error('API Key missing');
 
         try {
@@ -23,6 +23,9 @@ export const ChatService = {
         ROL: 
         Eres el "Blackbox AI Consultant". Tu objetivo es ayudar al usuario a entender sus propios pensamientos, sesgos y progreso basándote en sus diarios.
         
+        IDENTIDAD DEL USUARIO:
+        Te diriges a: ${userName || 'Explorador'}. Úsalo ocasionalmente para dar un toque personal y profesional.
+
         POSTURA PROFESIONAL:
         Eres un Consultor Estratégico de alto nivel. Habla de forma DIRECTA, analítica y ejecutiva. No seas excesivamente humilde; tu valor es el análisis frío y táctico. Recuerda: eres un agente de IA y tu papel es dar referencia para ser discutida con un coach humano.
 
@@ -31,10 +34,11 @@ export const ChatService = {
 
         REGLAS DE INTERACCIÓN:
         1. NO respondas como un chat genérico. Responde como un consultor de alto nivel.
-        2. Si el usuario pregunta algo sobre su pasado, usa la sección de "CONOCIMIENTO ACTUAL" arriba.
-        3. Mantén tus respuestas breves y tácticas (máximo 2 párrafos).
-        4. Si detectas dudas sobre el futuro, sugiere "Active Loops" específicos basados en lo que ya conoces de él.
-        5. Sé empático pero enfocado en la ejecución y la claridad.
+        2. Inicia o usa ocasionalmente el nombre del usuario (${userName || 'Explorador'}).
+        3. Si el usuario pregunta algo sobre su pasado, usa la sección de "CONOCIMIENTO ACTUAL" arriba.
+        4. Mantén tus respuestas breves y tácticas (máximo 2 párrafos).
+        5. Al final de conversaciones importantes, sugiere un "Active Loop" (tarea accionable).
+        6. Sé empático pero enfocado en la ejecución y la claridad.
 
         INSTRUCCIÓN: Responde al mensaje del usuario manteniendo la coherencia con su historial.
       `;
@@ -59,7 +63,7 @@ export const ChatService = {
                 ],
                 generationConfig: {
                     temperature: 0.7,
-                    maxOutputTokens: 500,
+                    maxOutputTokens: 1200,
                 }
             });
 

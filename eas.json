@@ -8,10 +8,11 @@
             "distribution": "internal"
         },
         "preview": {
-            "node": "20.10.0",
+            "node": "22.13.0",
             "distribution": "internal",
             "env": {
-                "EAS_SKIP_AUTO_FINGERPRINT": "1"
+                "EAS_SKIP_AUTO_FINGERPRINT": "1",
+                "NPM_CONFIG_LEGACY_PEER_DEPS": "1"
             },
             "android": {
                 "buildType": "apk"

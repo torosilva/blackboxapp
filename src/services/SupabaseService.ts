@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -320,10 +320,13 @@ export const SupabaseService = {
      */
     async acceptTerms(userId: string) {
         try {
+            console.log('SUPABASE_SERVICE: Accepting terms for:', userId);
             const { error } = await supabase
                 .from('profiles')
-                .update({ accepted_terms_at: new Date().toISOString() })
-                .eq('id', userId);
+                .upsert({
+                    id: userId,
+                    accepted_terms_at: new Date().toISOString()
+                }, { onConflict: 'id' });
 
             if (error) throw error;
             return true;
@@ -338,10 +341,13 @@ export const SupabaseService = {
      */
     async acceptPrivacy(userId: string) {
         try {
+            console.log('SUPABASE_SERVICE: Accepting privacy for:', userId);
             const { error } = await supabase
                 .from('profiles')
-                .update({ accepted_privacy_at: new Date().toISOString() })
-                .eq('id', userId);
+                .upsert({
+                    id: userId,
+                    accepted_privacy_at: new Date().toISOString()
+                }, { onConflict: 'id' });
 
             if (error) throw error;
             return true;
@@ -354,7 +360,7 @@ export const SupabaseService = {
     /**
      * 5. Ensure Profile Exists (Automatic Registration)
      */
-    async upsertProfile(userId: string, email: string, fullName?: string) {
+    async upsertProfile(userId: string, email: string, fullName?: string, avatarUrl?: string) {
         try {
             console.log('SUPABASE_SERVICE: Syncing profile for:', userId);
 
@@ -363,6 +369,7 @@ export const SupabaseService = {
                 id: userId,
                 email: email,
                 full_name: fullName || email.split('@')[0],
+                avatar_url: avatarUrl,
                 updated_at: new Date().toISOString()
             };
 
@@ -433,16 +440,17 @@ export const SupabaseService = {
     async signInWithGoogle() {
         try {
             const redirectUrl = AuthSession.makeRedirectUri({
-                scheme: 'blackbox'
+                scheme: 'blackbox',
+                path: 'auth/callback'
             });
-            console.log('SUPABASE_SERVICE: Generated Redirect URI:', redirectUrl);
+            console.log('SUPABASE_SERVICE: Generated Google Redirect URI:', redirectUrl);
             console.log('SUPABASE_SERVICE: Starting Google OAuth...');
 
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
                     redirectTo: redirectUrl,
-                    skipBrowserRedirect: false,
+                    skipBrowserRedirect: true,
                 },
             });
 
@@ -484,12 +492,17 @@ export const SupabaseService = {
     async signInWithApple() {
         try {
             const redirectUrl = AuthSession.makeRedirectUri({
-                scheme: 'blackbox'
+                scheme: 'blackbox',
+                path: 'auth/callback'
             });
+            console.log('SUPABASE_SERVICE: Generated Apple Redirect URI:', redirectUrl);
+            console.log('SUPABASE_SERVICE: Starting Apple OAuth...');
+
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider: 'apple',
                 options: {
                     redirectTo: redirectUrl,
+                    skipBrowserRedirect: true,
                 },
             });
 

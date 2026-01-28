@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, SafeAreaView, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Platform, StatusBar, Share, Alert, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Platform, StatusBar, Share, Alert, TextInput } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ChevronLeft, Share2, Edit3, Trash2, Calendar, Clock, Sparkles, Zap, Check, X, Laugh, SmilePlus, Meh, Angry, UserRoundCheck, Frown, Smile, CloudRain } from 'lucide-react-native';
 import { SupabaseService, supabase } from '../services/SupabaseService';
@@ -12,6 +13,28 @@ const EntryDetailScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { entryId } = route.params as { entryId: string };
+
+  const SAV = SafeAreaView as any;
+  const TO = TouchableOpacity as any;
+  const TI = TextInput as any;
+  const CL = ChevronLeft as any;
+  const S2 = Share2 as any;
+  const E3 = Edit3 as any;
+  const T2 = Trash2 as any;
+  const Cal = Calendar as any;
+  const Clo = Clock as any;
+  const Sp = Sparkles as any;
+  const Zp = Zap as any;
+  const Ch = Check as any;
+  const Xi = X as any;
+  const L = Laugh as any;
+  const SP = SmilePlus as any;
+  const M = Meh as any;
+  const A = Angry as any;
+  const URC = UserRoundCheck as any;
+  const FR = Frown as any;
+  const S = Smile as any;
+  const CR = CloudRain as any;
 
   const [entry, setEntry] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -152,49 +175,49 @@ const EntryDetailScreen = () => {
     const color = '#6366f1'; // Premium Blue for detail view
 
     switch (label) {
-      case 'En Flow': return <Laugh size={size} color={color} />;
-      case 'Inspirado': return <SmilePlus size={size} color={color} />;
-      case 'Agotado': return <Frown size={size} color={color} />;
-      case 'Disperso': return <Meh size={size} color={color} />;
-      case 'Frustrado': return <Angry size={size} color={color} />;
-      case 'Determinado': return <UserRoundCheck size={size} color={color} />;
-      case 'Ansioso': return <CloudRain size={size} color={color} />;
-      case 'Satisfecho': return <SmilePlus size={size} color={color} />;
-      default: return <Smile size={size} color={color} />;
+      case 'En Flow': return <L size={size} color={color} />;
+      case 'Inspirado': return <SP size={size} color={color} />;
+      case 'Agotado': return <FR size={size} color={color} />;
+      case 'Disperso': return <M size={size} color={color} />;
+      case 'Frustrado': return <A size={size} color={color} />;
+      case 'Determinado': return <URC size={size} color={color} />;
+      case 'Ansioso': return <CR size={size} color={color} />;
+      case 'Satisfecho': return <SP size={size} color={color} />;
+      default: return <S size={size} color={color} />;
     }
   };
 
   const dateObject = new Date(entry.created_at);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SAV style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => isEditing ? setIsEditing(false) : navigation.goBack()} style={styles.backButton}>
-          {isEditing ? <X size={28} color="#ffffff" /> : <ChevronLeft size={28} color="#ffffff" />}
-        </TouchableOpacity>
+        <TO onPress={() => isEditing ? setIsEditing(false) : navigation.goBack()} style={styles.backButton}>
+          {isEditing ? <Xi size={28} color="#ffffff" /> : <CL size={28} color="#ffffff" />}
+        </TO>
 
         <View style={styles.headerActions}>
           {!isEditing ? (
             <>
-              <TouchableOpacity style={styles.actionCircle} onPress={handleShare}>
-                <Share2 size={20} color="#ffffff" />
-              </TouchableOpacity>
-              <TouchableOpacity
+              <TO style={styles.actionCircle} onPress={handleShare}>
+                <S2 size={20} color="#ffffff" />
+              </TO>
+              <TO
                 style={[styles.actionCircle, { backgroundColor: '#6366f1' }]}
                 onPress={() => setIsEditing(true)}
               >
-                <Edit3 size={20} color="#ffffff" />
-              </TouchableOpacity>
+                <E3 size={20} color="#ffffff" />
+              </TO>
             </>
           ) : (
-            <TouchableOpacity
+            <TO
               style={[styles.actionCircle, { backgroundColor: '#22c55e' }]}
               onPress={handleSave}
               disabled={isSaving}
             >
-              {isSaving ? <ActivityIndicator size="small" color="white" /> : <Check size={20} color="#ffffff" />}
-            </TouchableOpacity>
+              {isSaving ? <ActivityIndicator size="small" color="white" /> : <Ch size={20} color="#ffffff" />}
+            </TO>
           )}
         </View>
       </View>
@@ -207,11 +230,11 @@ const EntryDetailScreen = () => {
         {/* Metadata */}
         <View style={styles.metaRow}>
           <View style={styles.metaBadge}>
-            <Calendar size={14} color="#6366f1" style={{ marginRight: 6 }} />
+            <Cal size={14} color="#6366f1" style={{ marginRight: 6 }} />
             <Text style={styles.metaText}>{dateObject.toLocaleDateString()}</Text>
           </View>
           <View style={styles.metaBadge}>
-            <Clock size={14} color="#6366f1" style={{ marginRight: 6 }} />
+            <Clo size={14} color="#6366f1" style={{ marginRight: 6 }} />
             <Text style={styles.metaText}>{dateObject.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
           </View>
           <View style={styles.moodBadgeDetail}>
@@ -221,7 +244,7 @@ const EntryDetailScreen = () => {
 
         {/* Title */}
         {isEditing ? (
-          <TextInput
+          <TI
             style={[styles.title, styles.titleInput]}
             value={editedTitle}
             onChangeText={setEditedTitle}
@@ -237,7 +260,7 @@ const EntryDetailScreen = () => {
 
         {/* Content */}
         {isEditing ? (
-          <TextInput
+          <TI
             style={[styles.bodyText, styles.contentInput]}
             value={editedContent}
             onChangeText={setEditedContent}
@@ -273,12 +296,12 @@ const EntryDetailScreen = () => {
         )}
 
         {/* Delete Action */}
-        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-          <Trash2 size={18} color="#ef4444" style={{ marginRight: 8 }} />
+        <TO style={styles.deleteButton} onPress={handleDelete}>
+          <T2 size={18} color="#ef4444" style={{ marginRight: 8 }} />
           <Text style={styles.deleteText}>Delete memory</Text>
-        </TouchableOpacity>
+        </TO>
       </ScrollView>
-    </SafeAreaView>
+    </SAV>
   );
 };
 
@@ -292,7 +315,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 15 : 10,
+    paddingTop: Platform.OS === 'ios' ? 10 : 15,
     paddingBottom: 10
   },
   backButton: {

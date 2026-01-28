@@ -1,9 +1,6 @@
 const { getDefaultConfig } = require("expo/metro-config");
-const { withNativeWind } = require("nativewind/metro-config");
+const { withNativeWind } = require("nativewind/metro");
 
-// Fix para Windows: Convertimos la ruta absoluta a un formato compatible (forward slashes)
-// y nos aseguramos de que no haya caracteres que confundan al loader de ESM.
-const projectRoot = __dirname.replace(/\\/g, '/');
-const config = getDefaultConfig(projectRoot);
+const config = getDefaultConfig(__dirname);
 
 module.exports = withNativeWind(config, { input: "./src/styles/global.css" });

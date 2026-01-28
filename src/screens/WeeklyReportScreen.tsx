@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, ActivityIndicator, Share, Platform, StatusBar, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Share, Platform, StatusBar, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Share2, ClipboardList, Stethoscope, Activity, TrendingUp } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { aiService } from '../services/ai';
@@ -62,6 +63,16 @@ const SimpleMarkdown = ({ content }: { content: string }) => {
 const WeeklyReportScreen = ({ route }: any) => {
     const navigation = useNavigation<any>();
     const { user } = useAuth();
+
+    const SAV = SafeAreaView as any;
+    const TO = TouchableOpacity as any;
+    const CL = ChevronLeft as any;
+    const S2 = Share2 as any;
+    const CPL = ClipboardList as any;
+    const Ste = Stethoscope as any;
+    const Act = Activity as any;
+    const Tr = TrendingUp as any;
+
     const [loading, setLoading] = useState(true);
     const [report, setReport] = useState('');
     const [metrics, setMetrics] = useState({ avgSentiment: 0, totalEntries: 0 });
@@ -183,13 +194,13 @@ const WeeklyReportScreen = ({ route }: any) => {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SAV style={styles.container}>
             <StatusBar barStyle="light-content" />
 
             <View style={styles.headerNav}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
-                    <ChevronLeft color="white" size={24} />
-                </TouchableOpacity>
+                <TO onPress={() => navigation.goBack()} style={styles.iconButton}>
+                    <CL color="white" size={24} />
+                </TO>
                 <Text style={styles.headerNavTitle}>Strategic Analytics</Text>
                 <View style={{ width: 40 }} />
             </View>
@@ -203,23 +214,23 @@ const WeeklyReportScreen = ({ route }: any) => {
 
                 {/* VISUAL DASHBOARD */}
                 <View style={styles.dashboardRow}>
-                    <TouchableOpacity
+                    <TO
                         style={styles.metricsCard}
                         onPress={showStabilityInfo}
                         activeOpacity={0.7}
                     >
                         <View style={styles.cardHeaderSmall}>
-                            <Activity size={14} color="#94a3b8" />
+                            <Act size={14} color="#94a3b8" />
                             <Text style={styles.cardLabelSmall}>ESTABILIDAD</Text>
                         </View>
                         <Text style={[styles.metricsValue, { color: getScoreColor(metrics.avgSentiment) }]}>
                             {metrics.avgSentiment > 0 ? '+' : ''}{metrics.avgSentiment.toFixed(1)}
                         </Text>
-                    </TouchableOpacity>
+                    </TO>
 
                     <View style={styles.metricsCard}>
                         <View style={styles.cardHeaderSmall}>
-                            <ClipboardList size={14} color="#94a3b8" />
+                            <CPL size={14} color="#94a3b8" />
                             <Text style={styles.cardLabelSmall}>ENTRADAS</Text>
                         </View>
                         <Text style={styles.metricsValue}>{metrics.totalEntries}</Text>
@@ -230,7 +241,7 @@ const WeeklyReportScreen = ({ route }: any) => {
                 <View style={styles.reportCard}>
                     <View style={styles.reportHeader}>
                         <View style={styles.medicalIconContainer}>
-                            <Stethoscope size={20} color="#818cf8" />
+                            <Ste size={20} color="#818cf8" />
                         </View>
                         <Text style={styles.reportCategory}>REPORTE ESTRATÉGICO</Text>
                     </View>
@@ -243,12 +254,12 @@ const WeeklyReportScreen = ({ route }: any) => {
 
             {/* FLOATING ACTION BUTTON */}
             <View style={styles.footer}>
-                <TouchableOpacity style={styles.exportButton} onPress={handleShare}>
-                    <Share2 size={20} color="white" style={{ marginRight: 10 }} />
+                <TO style={styles.exportButton} onPress={handleShare}>
+                    <S2 size={20} color="white" style={{ marginRight: 10 }} />
                     <Text style={styles.exportButtonText}>Exportar Reporte</Text>
-                </TouchableOpacity>
+                </TO>
             </View>
-        </SafeAreaView>
+        </SAV>
     );
 };
 
@@ -266,7 +277,14 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#0B1021' },
     loadingContainer: { flex: 1, backgroundColor: '#0B1021', justifyContent: 'center', alignItems: 'center' },
     loadingText: { color: '#94a3b8', marginTop: 16, fontWeight: '500' },
-    headerNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10 },
+    headerNav: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingTop: Platform.OS === 'ios' ? 10 : 15,
+        paddingBottom: 10
+    },
     headerNavTitle: { color: '#64748b', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 2 },
     iconButton: { padding: 8, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12 },
     scrollContent: { padding: 20 },

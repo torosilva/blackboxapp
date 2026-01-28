@@ -5,12 +5,12 @@ import {
     StyleSheet,
     ScrollView,
     TouchableOpacity,
-    SafeAreaView,
     ActivityIndicator,
     Alert,
     StatusBar,
     Platform
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Shield, ChevronLeft, Lock } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { SupabaseService } from '../services/SupabaseService';
@@ -20,6 +20,13 @@ const PrivacyScreen = () => {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const { user, refreshProfile } = useAuth();
+
+    const SAV = SafeAreaView as any;
+    const TO = TouchableOpacity as any;
+    const Sh = Shield as any;
+    const CL = ChevronLeft as any;
+    const L = Lock as any;
+
     const [loading, setLoading] = useState(false);
 
     // If this screen is shown via the mandatory flow
@@ -45,17 +52,17 @@ const PrivacyScreen = () => {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SAV style={styles.container}>
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
             <View style={styles.header}>
                 {!isMandatory && (
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                        <ChevronLeft color="white" size={28} />
-                    </TouchableOpacity>
+                    <TO onPress={() => navigation.goBack()} style={styles.backBtn}>
+                        <CL color="white" size={28} />
+                    </TO>
                 )}
                 <View style={styles.titleContainer}>
-                    <Lock size={20} color="#6366f1" />
+                    <L size={20} color="#6366f1" />
                     <Text style={styles.headerTitle}>AVISO DE PRIVACIDAD</Text>
                 </View>
                 {!isMandatory && <View style={{ width: 44 }} />}
@@ -123,7 +130,7 @@ const PrivacyScreen = () => {
             {isMandatory && (
                 <View style={styles.footer}>
                     <Text style={styles.footerNote}>Debes aceptar el Aviso de Privacidad para continuar.</Text>
-                    <TouchableOpacity
+                    <TO
                         style={[styles.acceptBtn, loading && styles.disabledBtn]}
                         onPress={handleAccept}
                         disabled={loading}
@@ -133,10 +140,10 @@ const PrivacyScreen = () => {
                         ) : (
                             <Text style={styles.acceptBtnText}>ACEPTO EL AVISO DE PRIVACIDAD</Text>
                         )}
-                    </TouchableOpacity>
+                    </TO>
                 </View>
             )}
-        </SafeAreaView>
+        </SAV>
     );
 };
 
@@ -147,7 +154,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 15,
-        paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 15 : 15,
+        paddingTop: Platform.OS === 'ios' ? 10 : 15,
         paddingBottom: 15,
         borderBottomWidth: 1,
         borderColor: '#1e293b'

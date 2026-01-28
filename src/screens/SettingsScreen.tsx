@@ -7,10 +7,11 @@ import {
 } from 'lucide-react-native';
 import * as WebBrowser from 'expo-web-browser';
 import {
-    View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
+    View, Text, StyleSheet, TouchableOpacity,
     ScrollView, StatusBar, Platform, Modal, TextInput,
     ActivityIndicator, Alert, LayoutAnimation, UIManager
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { SupabaseService } from '../services/SupabaseService';
 import { useAuth } from '../context/AuthContext';
@@ -24,7 +25,32 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 const SettingsScreen = () => {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
-    const { user, signOut } = useAuth();
+    const { user, profile, signOut, refreshProfile } = useAuth();
+
+    const SAV = SafeAreaView as any;
+    const TO = TouchableOpacity as any;
+    const TI = TextInput as any;
+    const CL = ChevronLeft as any;
+    const SC = ShieldCheck as any;
+    const Clo = Clock as any;
+    const Db = Database as any;
+    const AC = AlertCircle as any;
+    const B = Brain as any;
+    const Z = Zap as any;
+    const Ste = Stethoscope as any;
+    const Cal = Calendar as any;
+    const Tar = Target as any;
+    const AT = AlertTriangle as any;
+    const AR = ArrowRight as any;
+    const LO = LogOut as any;
+    const T2 = Trash2 as any;
+    const MST = MessageSquareText as any;
+    const Sen = Send as any;
+    const Xi = X as any;
+    const CD = ChevronDown as any;
+    const CU = ChevronUp as any;
+    const U = User as any;
+
     const [entries, setEntries] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [appointmentDate, setAppointmentDate] = useState(new Date());
@@ -43,7 +69,7 @@ const SettingsScreen = () => {
         guide: false,
         privacy: false,
         account: false,
-        profile: false,
+        profile: true, // Show by default to show off the polish
     });
     const [fullName, setFullName] = useState('');
     const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -170,10 +196,11 @@ const SettingsScreen = () => {
     };
 
     const handleUpdateProfile = async () => {
-        if (!fullName.trim()) return;
+        if (!fullName.trim() || !user) return;
         setIsSavingProfile(true);
         try {
-            await SupabaseService.upsertProfile(user!.id, user!.email!, fullName);
+            await SupabaseService.upsertProfile(user.id, user.email!, fullName);
+            await refreshProfile();
             Alert.alert("Perfil Actualizado", "Tu nombre ha sido guardado.");
         } catch (error) {
             Alert.alert("Error", "No se pudo actualizar el perfil.");
@@ -183,23 +210,30 @@ const SettingsScreen = () => {
     };
 
     useEffect(() => {
-        if (user?.email) {
+        if (profile?.full_name) {
+            setFullName(profile.full_name);
+        } else if (user?.email) {
             setFullName(user.email.split('@')[0]);
         }
-    }, [user]);
+    }, [user, profile]);
+
+    const getInitials = () => {
+        if (fullName) return fullName.substring(0, 2).toUpperCase();
+        return "BX";
+    };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SAV style={styles.container}>
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
             {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity
+                <TO
                     onPress={() => viewMode === 'hub' ? navigation.goBack() : setViewMode('hub')}
                     style={styles.backButton}
                 >
-                    <ChevronLeft size={28} color="#ffffff" />
-                </TouchableOpacity>
+                    <CL size={28} color="#ffffff" />
+                </TO>
                 <Text style={styles.headerTitle}>
                     {viewMode === 'hub' ? 'Centro Estratégico' :
                         viewMode === 'pending' ? 'Pendientes de Ejecución' :
@@ -211,63 +245,75 @@ const SettingsScreen = () => {
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
                 {viewMode === 'hub' ? (
                     <>
-                        {/* 0. PROFILE SECTION */}
+                        {/* 0. PROFILE & IDENTITY SECTION */}
                         <View style={styles.section}>
-                            <TouchableOpacity
+                            <TO
                                 style={styles.sectionHeader}
                                 onPress={() => toggleSection('profile')}
                                 activeOpacity={0.7}
                             >
-                                <User size={20} color="#6366f1" />
-                                <Text style={styles.sectionTitle}>Mi Perfil</Text>
+                                <U size={20} color="#6366f1" />
+                                <Text style={styles.sectionTitle}>Identidad Estratégica</Text>
                                 {expandedSections.profile ? (
-                                    <ChevronUp size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
                                 ) : (
-                                    <ChevronDown size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
                                 )}
-                            </TouchableOpacity>
+                            </TO>
 
                             {expandedSections.profile && (
                                 <View style={styles.clinicalCard}>
-                                    <Text style={styles.clinicalDesc}>¿Cómo quieres que BLACKBOX te llame?</Text>
-                                    <View style={[styles.dateSelector, { paddingHorizontal: 0, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' }]}>
-                                        <TextInput
-                                            style={{ color: 'white', flex: 1, fontSize: 16, paddingVertical: 10, paddingHorizontal: 15 }}
-                                            value={fullName}
-                                            onChangeText={setFullName}
-                                            placeholder="Tu nombre"
-                                            placeholderTextColor="#64748b"
-                                        />
+                                    <View style={styles.profileSummary}>
+                                        <View style={styles.avatarLarge}>
+                                            <Text style={styles.avatarText}>{getInitials()}</Text>
+                                        </View>
+                                        <View style={{ marginLeft: 16, flex: 1 }}>
+                                            <Text style={styles.profileName}>{fullName || 'Explorador'}</Text>
+                                            <Text style={styles.profileEmail}>{user?.email}</Text>
+                                        </View>
                                     </View>
-                                    <TouchableOpacity
-                                        style={[styles.generateButton, { marginTop: 15 }]}
-                                        onPress={handleUpdateProfile}
-                                        disabled={isSavingProfile}
-                                    >
-                                        {isSavingProfile ? <ActivityIndicator color="white" /> : <Text style={styles.generateButtonText}>Guardar Cambios</Text>}
-                                    </TouchableOpacity>
+
+                                    <View style={styles.editSection}>
+                                        <Text style={styles.clinicalDesc}>¿Cómo quieres que BLACKBOX te llame?</Text>
+                                        <View style={styles.inputContainer}>
+                                            <TI
+                                                style={styles.profileInput}
+                                                value={fullName}
+                                                onChangeText={setFullName}
+                                                placeholder="Tu nombre o alias"
+                                                placeholderTextColor="#64748b"
+                                            />
+                                        </View>
+                                        <TO
+                                            style={[styles.generateButton, { marginTop: 15 }]}
+                                            onPress={handleUpdateProfile}
+                                            disabled={isSavingProfile}
+                                        >
+                                            {isSavingProfile ? <ActivityIndicator color="white" /> : <Text style={styles.generateButtonText}>Actualizar Perfil</Text>}
+                                        </TO>
+                                    </View>
                                 </View>
                             )}
                         </View>
 
                         {/* 1. ACTIVE LOOPS (PENDIENTES) */}
                         <View style={styles.section}>
-                            <TouchableOpacity
+                            <TO
                                 style={styles.sectionHeader}
                                 onPress={() => toggleSection('pending')}
                                 activeOpacity={0.7}
                             >
-                                <Target size={20} color="#818cf8" />
+                                <Tar size={20} color="#818cf8" />
                                 <Text style={styles.sectionTitle}>Active Loops Pendientes</Text>
                                 {expandedSections.pending ? (
-                                    <ChevronUp size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
                                 ) : (
-                                    <ChevronDown size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
                                 )}
-                            </TouchableOpacity>
+                            </TO>
 
                             {expandedSections.pending && (
-                                <TouchableOpacity style={styles.hubCard} onPress={() => setViewMode('pending')}>
+                                <TO style={styles.hubCard} onPress={() => setViewMode('pending')}>
                                     {pendingTasks.length === 0 ? (
                                         <Text style={styles.emptyHubText}>Sin tareas pendientes. ¡Excelente ejecución!</Text>
                                     ) : (
@@ -284,35 +330,35 @@ const SettingsScreen = () => {
                                     {pendingTasks.length > 3 && (
                                         <Text style={styles.moreHubText}>Ver {pendingTasks.length} tareas más...</Text>
                                     )}
-                                </TouchableOpacity>
+                                </TO>
                             )}
                         </View>
 
                         {/* 1.5. ACTIVE LOOPS (REALIZADOS) */}
                         {completedTasks.length > 0 && (
                             <View style={styles.section}>
-                                <TouchableOpacity
+                                <TO
                                     style={styles.sectionHeader}
                                     onPress={() => toggleSection('completed')}
                                     activeOpacity={0.7}
                                 >
-                                    <ShieldCheck size={20} color="#10b981" />
+                                    <SC size={20} color="#10b981" />
                                     <Text style={styles.sectionTitle}>Active Loops Realizados</Text>
                                     {expandedSections.completed ? (
-                                        <ChevronUp size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                        <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
                                     ) : (
-                                        <ChevronDown size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                        <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
                                     )}
-                                </TouchableOpacity>
+                                </TO>
 
                                 {expandedSections.completed && (
-                                    <TouchableOpacity
+                                    <TO
                                         style={[styles.hubCard, { backgroundColor: 'rgba(16, 185, 129, 0.05)' }]}
                                         onPress={() => setViewMode('completed')}
                                     >
                                         {completedTasks.slice(0, 3).map((task, idx) => (
                                             <View key={idx} style={styles.hubTaskItem}>
-                                                <ShieldCheck size={16} color="#10b981" style={{ marginRight: 12 }} />
+                                                <SC size={16} color="#10b981" style={{ marginRight: 12 }} />
                                                 <View style={{ flex: 1 }}>
                                                     <Text style={[styles.hubTaskDesc, { textDecorationLine: 'line-through', color: '#64748b' }]} numberOfLines={1}>
                                                         {task.description}
@@ -323,29 +369,29 @@ const SettingsScreen = () => {
                                         {completedTasks.length > 3 && (
                                             <Text style={styles.moreHubText}>Ver {completedTasks.length} tareas completadas...</Text>
                                         )}
-                                    </TouchableOpacity>
+                                    </TO>
                                 )}
                             </View>
                         )}
 
                         {/* 2. BIAS HISTORY */}
                         <View style={styles.section}>
-                            <TouchableOpacity
+                            <TO
                                 style={styles.sectionHeader}
                                 onPress={() => toggleSection('biases')}
                                 activeOpacity={0.7}
                             >
-                                <AlertTriangle size={20} color="#f59e0b" />
+                                <AT size={20} color="#f59e0b" />
                                 <Text style={styles.sectionTitle}>Historial de Sesgos</Text>
                                 {expandedSections.biases ? (
-                                    <ChevronUp size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
                                 ) : (
-                                    <ChevronDown size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
                                 )}
-                            </TouchableOpacity>
+                            </TO>
 
                             {expandedSections.biases && (
-                                <TouchableOpacity style={styles.hubCard} onPress={() => setViewMode('biases')}>
+                                <TO style={styles.hubCard} onPress={() => setViewMode('biases')}>
                                     {biasHistory.length === 0 ? (
                                         <Text style={styles.emptyHubText}>No se han detectado sesgos recurrentes.</Text>
                                     ) : (
@@ -361,35 +407,35 @@ const SettingsScreen = () => {
                                     {biasHistory.length > 2 && (
                                         <Text style={styles.moreHubText}>Ver historial completo...</Text>
                                     )}
-                                </TouchableOpacity>
+                                </TO>
                             )}
                         </View>
 
                         {/* 3. STRATEGIC ANALYSIS */}
                         <View style={styles.section}>
-                            <TouchableOpacity
+                            <TO
                                 style={styles.sectionHeader}
                                 onPress={() => toggleSection('analysis')}
                                 activeOpacity={0.7}
                             >
-                                <Stethoscope size={20} color="#a855f7" />
+                                <Ste size={20} color="#a855f7" />
                                 <Text style={styles.sectionTitle}>Análisis Estratégico</Text>
                                 {expandedSections.analysis ? (
-                                    <ChevronUp size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
                                 ) : (
-                                    <ChevronDown size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
                                 )}
-                            </TouchableOpacity>
+                            </TO>
 
                             {expandedSections.analysis && (
                                 <View style={styles.clinicalCard}>
                                     <Text style={styles.clinicalDesc}>
                                         Genera un reporte estratégico de los 7 días previos a tu sesión de rendimiento.
                                     </Text>
-                                    <TouchableOpacity style={styles.dateSelector} onPress={() => setShowDatePicker(true)}>
-                                        <Calendar size={18} color="#94a3b8" />
+                                    <TO style={styles.dateSelector} onPress={() => setShowDatePicker(true)}>
+                                        <Cal size={18} color="#94a3b8" />
                                         <Text style={styles.dateText}>Fin del reporte: {appointmentDate.toLocaleDateString()}</Text>
-                                    </TouchableOpacity>
+                                    </TO>
                                     {!!showDatePicker && (
                                         <DateTimePicker
                                             value={appointmentDate}
@@ -399,123 +445,123 @@ const SettingsScreen = () => {
                                             maximumDate={new Date()}
                                         />
                                     )}
-                                    <TouchableOpacity
+                                    <TO
                                         style={styles.generateButton}
                                         onPress={() => navigation.navigate('WeeklyReport', { reportEndDate: appointmentDate.toISOString() })}
                                     >
                                         <Text style={styles.generateButtonText}>Generar Reporte Estratégico</Text>
-                                    </TouchableOpacity>
+                                    </TO>
                                 </View>
                             )}
                         </View>
 
                         {/* 4. FEEDBACK (FRIENDS & FAMILY) */}
                         <View style={styles.section}>
-                            <TouchableOpacity
+                            <TO
                                 style={styles.sectionHeader}
                                 onPress={() => toggleSection('feedback')}
                                 activeOpacity={0.7}
                             >
-                                <MessageSquareText size={20} color="#38bdf8" />
+                                <MST size={20} color="#38bdf8" />
                                 <Text style={styles.sectionTitle}>Feedback Friends & Family</Text>
                                 {expandedSections.feedback ? (
-                                    <ChevronUp size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
                                 ) : (
-                                    <ChevronDown size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
                                 )}
-                            </TouchableOpacity>
+                            </TO>
 
                             {expandedSections.feedback && (
-                                <TouchableOpacity
+                                <TO
                                     style={[styles.tutorialButton, { borderColor: 'rgba(56, 189, 248, 0.2)' }]}
                                     onPress={() => setShowFeedbackModal(true)}
                                 >
                                     <View style={[styles.iconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.1)', width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }]}>
-                                        <MessageSquareText size={18} color="#38bdf8" />
+                                        <MST size={18} color="#38bdf8" />
                                     </View>
                                     <View style={styles.policyTextContainer}>
                                         <Text style={[styles.policyLabel, { color: '#38bdf8' }]}>Ayúdanos a mejorar</Text>
                                         <Text style={styles.policyValue}>Reportar fallas o sugerir mejoras</Text>
                                     </View>
-                                    <ArrowRight size={20} color="#38bdf8" />
-                                </TouchableOpacity>
+                                    <AR size={20} color="#38bdf8" />
+                                </TO>
                             )}
                         </View>
 
                         {/* 5. QUICK GUIDE */}
                         <View style={styles.section}>
-                            <TouchableOpacity
+                            <TO
                                 style={styles.sectionHeader}
                                 onPress={() => toggleSection('guide')}
                                 activeOpacity={0.7}
                             >
-                                <Zap size={20} color="#facc15" />
+                                <Z size={20} color="#facc15" />
                                 <Text style={styles.sectionTitle}>Guía Rápida</Text>
                                 {expandedSections.guide ? (
-                                    <ChevronUp size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
                                 ) : (
-                                    <ChevronDown size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
                                 )}
-                            </TouchableOpacity>
+                            </TO>
 
                             {expandedSections.guide && (
-                                <TouchableOpacity
+                                <TO
                                     style={styles.tutorialButton}
                                     onPress={() => navigation.navigate('Onboarding')}
                                 >
                                     <View style={styles.iconCircleYellow}>
-                                        <Brain size={18} color="#facc15" />
+                                        <B size={18} color="#facc15" />
                                     </View>
                                     <View style={styles.policyTextContainer}>
                                         <Text style={styles.policyLabel}>Tutorial Interactivo</Text>
                                         <Text style={styles.policyValue}>Ver explicación de BLACKBOX</Text>
                                     </View>
-                                    <ChevronLeft size={20} color="#475569" style={{ transform: [{ rotate: '180deg' }] }} />
-                                </TouchableOpacity>
+                                    <CL size={20} color="#475569" style={{ transform: [{ rotate: '180deg' }] }} />
+                                </TO>
                             )}
                         </View>
 
                         {/* 6. TERMS & CONDITIONS (SUMMARY) */}
                         <View style={styles.section}>
-                            <TouchableOpacity
+                            <TO
                                 style={styles.sectionHeader}
                                 onPress={() => toggleSection('privacy')}
                                 activeOpacity={0.7}
                             >
-                                <ShieldCheck size={20} color="#6366f1" />
+                                <SC size={20} color="#6366f1" />
                                 <Text style={styles.sectionTitle}>Privacidad y Datos</Text>
                                 {expandedSections.privacy ? (
-                                    <ChevronUp size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
                                 ) : (
-                                    <ChevronDown size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
                                 )}
-                            </TouchableOpacity>
+                            </TO>
 
                             {expandedSections.privacy && (
                                 <View style={styles.legalCard}>
                                     <Text style={styles.legalIntro}>
                                         En BLACKBOX, la privacidad y el control de tus datos son pilares fundamentales.
                                     </Text>
-                                    <TouchableOpacity style={styles.policyRow} onPress={() => WebBrowser.openBrowserAsync('https://blackbox.ai/privacy')}>
+                                    <TO style={styles.policyRow} onPress={() => WebBrowser.openBrowserAsync('https://blackbox.ai/privacy')}>
                                         <View style={styles.iconCircle}>
-                                            <ShieldCheck size={18} color="#6366f1" />
+                                            <SC size={18} color="#6366f1" />
                                         </View>
                                         <View style={styles.policyTextContainer}>
                                             <Text style={styles.policyLabel}>Aviso de Privacidad</Text>
                                             <Text style={styles.policyValue}>Lee cómo protegemos tu información.</Text>
                                         </View>
-                                        <ArrowRight size={20} color="#475569" />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={styles.policyRow} onPress={() => WebBrowser.openBrowserAsync('https://blackbox.ai/terms')}>
+                                        <AR size={20} color="#475569" />
+                                    </TO>
+                                    <TO style={styles.policyRow} onPress={() => WebBrowser.openBrowserAsync('https://blackbox.ai/terms')}>
                                         <View style={[styles.iconCircle, { backgroundColor: 'rgba(99, 102, 241, 0.1)' }]}>
-                                            <Database size={18} color="#6366f1" />
+                                            <Db size={18} color="#6366f1" />
                                         </View>
                                         <View style={styles.policyTextContainer}>
                                             <Text style={styles.policyLabel}>Términos de Servicio</Text>
                                             <Text style={styles.policyValue}>Reglas de uso de la plataforma.</Text>
                                         </View>
-                                        <ArrowRight size={20} color="#475569" />
-                                    </TouchableOpacity>
+                                        <AR size={20} color="#475569" />
+                                    </TO>
                                 </View>
                             )}
                         </View>
@@ -525,13 +571,13 @@ const SettingsScreen = () => {
                     <View style={{ paddingBottom: 40 }}>
                         {(viewMode === 'pending' ? pendingTasks :
                             viewMode === 'completed' ? completedTasks : biasHistory).map((item, idx) => (
-                                <TouchableOpacity
+                                <TO
                                     key={idx}
                                     style={styles.hubTaskItem}
                                     onPress={() => navigation.navigate('EntryDetail', { entryId: item.entryId })}
                                 >
                                     {viewMode === 'pending' && <View style={styles.hubTaskDot} />}
-                                    {viewMode === 'completed' && <ShieldCheck size={16} color="#10b981" style={{ marginRight: 12 }} />}
+                                    {viewMode === 'completed' && <SC size={16} color="#10b981" style={{ marginRight: 12 }} />}
                                     {viewMode === 'biases' && (
                                         <View style={styles.biasTag}>
                                             <Text style={styles.biasTagText}>{item.bias}</Text>
@@ -548,48 +594,48 @@ const SettingsScreen = () => {
                                             {viewMode === 'biases' ? item.entryTitle : `En: ${item.entryTitle}`}
                                         </Text>
                                     </View>
-                                    <ArrowRight size={14} color="#475569" />
-                                </TouchableOpacity>
+                                    <AR size={14} color="#475569" />
+                                </TO>
                             ))}
-                        <TouchableOpacity
+                        <TO
                             style={[styles.generateButton, { marginTop: 30, backgroundColor: '#334155' }]}
                             onPress={() => setViewMode('hub')}
                         >
                             <Text style={styles.generateButtonText}>Volver al Hub</Text>
-                        </TouchableOpacity>
+                        </TO>
                     </View>
                 )}
 
                 {/* ACCOUNT SECTION */}
                 <View style={[styles.section, { marginBottom: 60 }]}>
-                    <TouchableOpacity
+                    <TO
                         style={styles.sectionHeader}
                         onPress={() => toggleSection('account')}
                         activeOpacity={0.7}
                     >
-                        <ShieldCheck size={20} color="#ef4444" />
+                        <SC size={20} color="#ef4444" />
                         <Text style={styles.sectionTitle}>Cuenta</Text>
                         {expandedSections.account ? (
-                            <ChevronUp size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                            <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
                         ) : (
-                            <ChevronDown size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                            <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
                         )}
-                    </TouchableOpacity>
+                    </TO>
 
                     {expandedSections.account && (
                         <View style={{ gap: 12 }}>
-                            <TouchableOpacity style={styles.logoutBtn} onPress={signOut}>
-                                <LogOut size={20} color="#ef4444" />
+                            <TO style={styles.logoutBtn} onPress={signOut}>
+                                <LO size={20} color="#ef4444" />
                                 <Text style={styles.logoutBtnText}>Cerrar Sesión</Text>
-                            </TouchableOpacity>
+                            </TO>
 
-                            <TouchableOpacity
+                            <TO
                                 style={[styles.logoutBtn, { backgroundColor: 'rgba(239, 68, 68, 0.05)', borderColor: 'rgba(239, 68, 68, 0.1)' }]}
                                 onPress={handleDeleteAccount}
                             >
-                                <AlertTriangle size={20} color="#ef4444" />
+                                <AT size={20} color="#ef4444" />
                                 <Text style={[styles.logoutBtnText, { fontSize: 14, opacity: 0.8 }]}>Eliminar Cuenta y Datos</Text>
-                            </TouchableOpacity>
+                            </TO>
                         </View>
                     )}
                 </View>
@@ -611,16 +657,16 @@ const SettingsScreen = () => {
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Enviar Feedback</Text>
-                            <TouchableOpacity onPress={() => setShowFeedbackModal(false)}>
-                                <X size={24} color="#94a3b8" />
-                            </TouchableOpacity>
+                            <TO onPress={() => setShowFeedbackModal(false)}>
+                                <Xi size={24} color="#94a3b8" />
+                            </TO>
                         </View>
 
                         <Text style={styles.modalSubtitle}>¿Qué te gustaría reportar hoy?</Text>
 
                         <View style={styles.typeSelector}>
                             {(['improvement', 'bug', 'other'] as const).map((type) => (
-                                <TouchableOpacity
+                                <TO
                                     key={type}
                                     style={[
                                         styles.typeButton,
@@ -634,11 +680,11 @@ const SettingsScreen = () => {
                                     ]}>
                                         {type === 'improvement' ? 'Mejora' : type === 'bug' ? 'Falla' : 'Otro'}
                                     </Text>
-                                </TouchableOpacity>
+                                </TO>
                             ))}
                         </View>
 
-                        <TextInput
+                        <TI
                             style={styles.feedbackInput}
                             placeholder="Cuéntanos más detalles..."
                             placeholderTextColor="#64748b"
@@ -649,7 +695,7 @@ const SettingsScreen = () => {
                             textAlignVertical="top"
                         />
 
-                        <TouchableOpacity
+                        <TO
                             style={[styles.sendButton, isSubmittingFeedback && styles.sendButtonDisabled]}
                             onPress={handleSendFeedback}
                             disabled={isSubmittingFeedback}
@@ -659,14 +705,14 @@ const SettingsScreen = () => {
                             ) : (
                                 <>
                                     <Text style={styles.sendButtonText}>Enviar Feedback</Text>
-                                    <Send size={18} color="#ffffff" style={{ marginLeft: 8 }} />
+                                    <Sen size={18} color="#ffffff" style={{ marginLeft: 8 }} />
                                 </>
                             )}
-                        </TouchableOpacity>
+                        </TO>
                     </View>
                 </View>
             </Modal>
-        </SafeAreaView>
+        </SAV>
     );
 };
 
@@ -677,8 +723,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 24,
-        paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 15 : 20,
-        paddingBottom: 20,
+        paddingTop: Platform.OS === 'ios' ? 10 : 15,
+        paddingBottom: 15,
     },
     backButton: {
         padding: 4,
@@ -852,6 +898,56 @@ const styles = StyleSheet.create({
     },
     biasTagText: { color: '#f59e0b', fontSize: 11, fontWeight: 'bold' },
     hubBiasTitle: { color: '#ffffff', fontSize: 14, flex: 1 },
+    // NEW PROFILE STYLES
+    profileSummary: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 24,
+        paddingBottom: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255,255,255,0.05)',
+    },
+    avatarLarge: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: '#6366f1',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 3,
+        borderColor: 'rgba(99, 102, 241, 0.3)',
+    },
+    avatarText: {
+        color: 'white',
+        fontSize: 28,
+        fontWeight: 'bold',
+    },
+    profileName: {
+        color: 'white',
+        fontSize: 22,
+        fontWeight: 'bold',
+        marginBottom: 4,
+    },
+    profileEmail: {
+        color: '#94a3b8',
+        fontSize: 14,
+    },
+    editSection: {
+        marginTop: 0,
+    },
+    inputContainer: {
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
+        marginBottom: 8,
+    },
+    profileInput: {
+        color: 'white',
+        fontSize: 16,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+    },
     logoutBtn: {
         flexDirection: 'row',
         alignItems: 'center',

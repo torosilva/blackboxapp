@@ -5,10 +5,11 @@ import {
     StyleSheet,
     ScrollView,
     TouchableOpacity,
-    SafeAreaView,
     ActivityIndicator,
-    Alert
+    Alert,
+    Platform
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Shield, ChevronLeft } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { SupabaseService } from '../services/SupabaseService';
@@ -18,6 +19,12 @@ const TermsScreen = () => {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const { user, refreshProfile } = useAuth();
+
+    const SAV = SafeAreaView as any;
+    const TO = TouchableOpacity as any;
+    const Sh = Shield as any;
+    const CL = ChevronLeft as any;
+
     const [loading, setLoading] = useState(false);
 
     // If this screen is shown via the mandatory flow
@@ -44,15 +51,15 @@ const TermsScreen = () => {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SAV style={styles.container}>
             <View style={styles.header}>
                 {!isMandatory && (
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                        <ChevronLeft color="white" size={28} />
-                    </TouchableOpacity>
+                    <TO onPress={() => navigation.goBack()} style={styles.backBtn}>
+                        <CL color="white" size={28} />
+                    </TO>
                 )}
                 <View style={styles.titleContainer}>
-                    <Shield size={20} color="#6366f1" />
+                    <Sh size={20} color="#6366f1" />
                     <Text style={styles.headerTitle}>TÉRMINOS Y CONDICIONES</Text>
                 </View>
                 {!isMandatory && <View style={{ width: 44 }} />}
@@ -138,7 +145,7 @@ const TermsScreen = () => {
             {isMandatory && (
                 <View style={styles.footer}>
                     <Text style={styles.footerNote}>Debes aceptar los términos para continuar.</Text>
-                    <TouchableOpacity
+                    <TO
                         style={[styles.acceptBtn, loading && styles.disabledBtn]}
                         onPress={handleAccept}
                         disabled={loading}
@@ -148,10 +155,10 @@ const TermsScreen = () => {
                         ) : (
                             <Text style={styles.acceptBtnText}>ACEPTO LOS TÉRMINOS Y CONDICIONES</Text>
                         )}
-                    </TouchableOpacity>
+                    </TO>
                 </View>
             )}
-        </SafeAreaView>
+        </SAV>
     );
 };
 
@@ -162,7 +169,8 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 15,
-        paddingVertical: 15,
+        paddingTop: Platform.OS === 'ios' ? 10 : 15,
+        paddingBottom: 15,
         borderBottomWidth: 1,
         borderColor: '#1e293b'
     },

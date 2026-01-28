@@ -85,6 +85,9 @@ export default function SignUpScreen() {
         }
     };
 
+    const TO = TouchableOpacity as any;
+    const Icon = Ionicons as any;
+
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View className="flex-1 bg-[#0B1021]">
@@ -98,13 +101,13 @@ export default function SignUpScreen() {
                         showsVerticalScrollIndicator={false}
                         keyboardShouldPersistTaps="handled"
                     >
-                        <TouchableOpacity
+                        <TO
                             onPress={() => navigation.goBack()}
                             style={{ position: 'absolute', top: 50, left: 24, zIndex: 10 }}
                             className="w-10 h-10 bg-white/5 rounded-full items-center justify-center"
                         >
-                            <Ionicons name="arrow-back" size={24} color="white" />
-                        </TouchableOpacity>
+                            <Icon name="arrow-back" size={24} color="white" />
+                        </TO>
 
                         <View className="items-center mb-10 pt-16">
                             <Animated.View style={[animatedLogoStyle, animatedLogoSizeStyle]}>
@@ -119,7 +122,7 @@ export default function SignUpScreen() {
                         {/* INPUTS */}
                         <View className="space-y-4">
                             <View className="bg-[#151B33] rounded-xl border border-white/10 px-4 py-3 flex-row items-center">
-                                <Ionicons name="mail-outline" size={20} color="#64748b" />
+                                <Icon name="mail-outline" size={20} color="#64748b" />
                                 <TextInput
                                     placeholder="Email"
                                     placeholderTextColor="#64748b"
@@ -131,7 +134,7 @@ export default function SignUpScreen() {
                             </View>
 
                             <View className="bg-[#151B33] rounded-xl border border-white/10 px-4 py-3 flex-row items-center">
-                                <Ionicons name="lock-closed-outline" size={20} color="#64748b" />
+                                <Icon name="lock-closed-outline" size={20} color="#64748b" />
                                 <TextInput
                                     placeholder="Contraseña segura"
                                     placeholderTextColor="#64748b"
@@ -145,37 +148,37 @@ export default function SignUpScreen() {
 
                         {/* PRIVACY CONSENT */}
                         <View className="mt-6 flex-row items-center px-2">
-                            <TouchableOpacity
+                            <TO
                                 onPress={() => setPrivacyAccepted(!privacyAccepted)}
                                 className={`w-6 h-6 rounded-md border items-center justify-center ${privacyAccepted ? 'bg-indigo-600 border-indigo-600' : 'bg-white/5 border-white/20'}`}
                             >
-                                {privacyAccepted && <Ionicons name="checkmark" size={16} color="white" />}
-                            </TouchableOpacity>
-                            <TouchableOpacity
+                                {privacyAccepted && <Icon name="checkmark" size={16} color="white" />}
+                            </TO>
+                            <TO
                                 onPress={() => navigation.navigate('Privacy')}
                                 className="ml-3 flex-1"
                             >
                                 <Text className="text-gray-400 text-xs leading-5">
                                     He leído y acepto el <Text className="text-indigo-400 underline">Aviso de Privacidad Integral</Text> y el tratamiento de mis datos sensibles.
                                 </Text>
-                            </TouchableOpacity>
+                            </TO>
                         </View>
 
                         {/* ACTION BUTTON */}
-                        <TouchableOpacity
+                        <TO
                             onPress={handleSignUp}
                             disabled={loading || !privacyAccepted}
                             className={`mt-8 py-4 rounded-xl items-center ${loading || !privacyAccepted ? 'bg-white/20' : 'bg-white'}`}
                         >
                             {loading ? <ActivityIndicator color="black" /> : <Text className={`font-bold text-lg ${loading || !privacyAccepted ? 'text-gray-500' : 'text-black'}`}>Registrarme</Text>}
-                        </TouchableOpacity>
+                        </TO>
                         {/* FOOTER */}
-                        <TouchableOpacity onPress={() => navigation.navigate('Terms')} className="mt-8 opacity-60">
+                        <TO onPress={() => navigation.navigate('Terms')} className="mt-8 opacity-60">
                             <Text style={{ color: '#94a3b8', fontSize: 12, textAlign: 'center', paddingHorizontal: 24 }}>
                                 Al registrarte, reconoces haber leído y aceptado nuestros{"\n"}
                                 <Text className="text-indigo-400 underline">Términos y Condiciones</Text>
                             </Text>
-                        </TouchableOpacity>
+                        </TO>
                     </ScrollView>
                 </KeyboardAvoidingView>
             </View>

@@ -1,10 +1,10 @@
 import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 
 export class VoiceService {
     private recording: Audio.Recording | null = null;
 
-    async startRecording() {
+    async startRecording(onStatusUpdate?: (status: Audio.RecordingStatus) => void) {
         try {
             const permission = await Audio.requestPermissionsAsync();
             if (permission.status !== 'granted') return;
@@ -15,7 +15,9 @@ export class VoiceService {
             });
 
             const { recording } = await Audio.Recording.createAsync(
-                Audio.RecordingOptionsPresets.HIGH_QUALITY
+                Audio.RecordingOptionsPresets.HIGH_QUALITY,
+                onStatusUpdate,
+                100 // Update every 100ms for smooth visuals
             );
             this.recording = recording;
         } catch (err) {

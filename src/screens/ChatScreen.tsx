@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-    View, Text, StyleSheet, SafeAreaView, TextInput,
+    View, Text, StyleSheet, TextInput,
     TouchableOpacity, ScrollView, KeyboardAvoidingView,
     Platform, ActivityIndicator, StatusBar
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Send, ChevronLeft, Bot, User, Sparkles, Brain } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { ChatService, ChatMessage } from '../services/ChatService';
@@ -11,11 +12,24 @@ import { useAuth } from '../context/AuthContext';
 
 const ChatScreen = () => {
     const navigation = useNavigation<any>();
-    const { user } = useAuth();
+    const { user, profile } = useAuth();
+
+    const SAV = SafeAreaView as any;
+    const TO = TouchableOpacity as any;
+    const TI = TextInput as any;
+    const Sn = Send as any;
+    const CL = ChevronLeft as any;
+    const Bo = Bot as any;
+    const Us = User as any;
+    const Sp = Sparkles as any;
+    const Br = Brain as any;
+
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputText, setInputText] = useState('');
     const [loading, setLoading] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
+
+    const fullName = profile?.full_name || user?.email?.split('@')[0] || 'Explorador';
 
     const predefinedQuestions = [
         "¿Qué sesgos he tenido esta semana?",
@@ -32,7 +46,7 @@ const ChatScreen = () => {
         setLoading(true);
 
         try {
-            const response = await ChatService.sendMessage(user.id, text, messages);
+            const response = await ChatService.sendMessage(user.id, text, messages, fullName);
             const aiMsg: ChatMessage = {
                 role: 'model',
                 parts: [{ text: response.parts[0].text }]
@@ -55,23 +69,23 @@ const ChatScreen = () => {
             setMessages([
                 {
                     role: 'model',
-                    parts: [{ text: "Hola soy tu Blackbox AI Consultant. Recuerda que soy un agente de IA y que puedo cometer errores. Siempre es importante que mi información se tome como referencia para ser discutida con tu coach de confianza. ¿En qué podemos profundizar hoy basándonos en tus registros?" }]
+                    parts: [{ text: `Hola ${fullName}, soy tu Blackbox AI Consultant. Estoy al tanto de tus registros recientes. ¿En qué podemos profundizar hoy para optimizar tu rendimiento?` }]
                 }
             ]);
         }
-    }, []);
+    }, [fullName]);
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SAV style={styles.container}>
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
             {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <ChevronLeft color="white" size={28} />
-                </TouchableOpacity>
+                <TO onPress={() => navigation.goBack()} style={styles.backBtn}>
+                    <CL color="white" size={28} />
+                </TO>
                 <View style={styles.headerTitleContainer}>
-                    <Bot size={20} color="#818cf8" />
+                    <Bo size={20} color="#818cf8" />
                     <Text style={styles.headerTitle}>BLACKBOX AI CONSULTANT</Text>
                 </View>
                 <View style={{ width: 40 }} />
@@ -85,7 +99,7 @@ const ChatScreen = () => {
                 <ScrollView
                     ref={scrollViewRef}
                     style={styles.chatContainer}
-                    contentContainerStyle={[styles.chatContent, { flexGrow: 1 }]}
+                    contentContainerStyle={styles.chatContent}
                     keyboardShouldPersistTaps="handled"
                     onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
                 >
@@ -124,13 +138,13 @@ const ChatScreen = () => {
                     <View style={styles.suggestions}>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20 }}>
                             {predefinedQuestions.map((q, i) => (
-                                <TouchableOpacity
+                                <TO
                                     key={i}
                                     style={styles.suggestionBtn}
                                     onPress={() => handleSend(q)}
                                 >
                                     <Text style={styles.suggestionText}>{q}</Text>
-                                </TouchableOpacity>
+                                </TO>
                             ))}
                         </ScrollView>
                     </View>
@@ -138,7 +152,7 @@ const ChatScreen = () => {
 
                 {/* Input */}
                 <View style={styles.inputArea}>
-                    <TextInput
+                    <TI
                         style={styles.input}
                         placeholder="Pregunta sobre tus registros..."
                         placeholderTextColor="#64748b"
@@ -146,16 +160,16 @@ const ChatScreen = () => {
                         onChangeText={setInputText}
                         multiline
                     />
-                    <TouchableOpacity
+                    <TO
                         style={[styles.sendBtn, !inputText.trim() && { opacity: 0.5 }]}
                         onPress={() => handleSend()}
                         disabled={!inputText.trim() || loading}
                     >
-                        <Send size={20} color="white" />
-                    </TouchableOpacity>
+                        <Sn size={20} color="white" />
+                    </TO>
                 </View>
             </KeyboardAvoidingView>
-        </SafeAreaView>
+        </SAV>
     );
 };
 
@@ -166,7 +180,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 15,
-        paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 20 : 20,
+        paddingTop: Platform.OS === 'ios' ? 10 : 15,
         paddingBottom: 15,
         borderBottomWidth: 1,
         borderColor: '#1e293b'
@@ -175,14 +189,14 @@ const styles = StyleSheet.create({
     headerTitle: { color: 'white', fontWeight: 'bold', letterSpacing: 2, marginLeft: 8 },
     backBtn: { padding: 10, minWidth: 44, minHeight: 44, justifyContent: 'center' },
     chatContainer: { flex: 1 },
-    chatContent: { padding: 20, paddingBottom: 120 }, // Extra space to scroll past the input
-    messageWrapper: { marginBottom: 24, width: '100%' },
-    userWrapper: { alignItems: 'flex-end' },
-    aiWrapper: { alignItems: 'flex-start' },
-    messageBubble: { padding: 16, borderRadius: 20, maxWidth: '85%' },
+    chatContent: { padding: 20, paddingBottom: 150 },
+    messageWrapper: { marginBottom: 24, width: '100%', flexDirection: 'row' },
+    userWrapper: { justifyContent: 'flex-end' },
+    aiWrapper: { justifyContent: 'flex-start' },
+    messageBubble: { padding: 16, borderRadius: 20, maxWidth: '85%', flexShrink: 1 },
     userBubble: { backgroundColor: '#6366f1', borderBottomRightRadius: 4 },
     aiBubble: { backgroundColor: '#1e293b', borderBottomLeftRadius: 4, borderWidth: 1, borderColor: '#334155' },
-    messageText: { fontSize: 15, lineHeight: 22 },
+    messageText: { fontSize: 15, lineHeight: 22, flexShrink: 1 },
     userText: { color: 'white' },
     aiText: { color: '#cbd5e1' },
     suggestions: { paddingVertical: 15 },
@@ -213,7 +227,7 @@ const styles = StyleSheet.create({
         paddingTop: 10,
         paddingBottom: 10,
         color: 'white',
-        maxHeight: 100,
+        maxHeight: 200,
         borderWidth: 1,
         borderColor: '#334155'
     },

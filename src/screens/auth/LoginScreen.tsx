@@ -70,10 +70,22 @@ export default function LoginScreen() {
         if (!email || !password) return Alert.alert("Error", "Por favor ingresa email y contraseña.");
 
         setLoading(true);
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        setLoading(false);
+        console.log('LOGIN_DEBUG: Attempting login for:', email);
+        try {
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            console.log('LOGIN_DEBUG: Response received. User:', data?.user?.id, 'Error:', error?.message);
 
-        if (error) Alert.alert("Error de acceso", error.message);
+            if (error) {
+                Alert.alert("Error de acceso", error.message);
+            } else {
+                console.log('LOGIN_DEBUG: Login successful! Navigating should happen via AuthContext listener...');
+            }
+        } catch (err: any) {
+            console.error('LOGIN_DEBUG: Fatal error during login:', err);
+            Alert.alert("Error Fatal", err.message || "Ocurrió un error inesperado");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleGoogleLogin = async () => {
@@ -97,6 +109,10 @@ export default function LoginScreen() {
             setLoading(false);
         }
     };
+
+    const TO = TouchableOpacity as any;
+    const Icon = Ionicons as any;
+    const FA = FontAwesome5 as any;
 
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -125,7 +141,7 @@ export default function LoginScreen() {
                         {/* INPUTS */}
                         <View className="space-y-4">
                             <View className="bg-[#151B33] rounded-xl border border-white/10 px-4 py-3 flex-row items-center">
-                                <Ionicons name="mail-outline" size={20} color="#64748b" />
+                                <Icon name="mail-outline" size={20} color="#64748b" />
                                 <TextInput
                                     placeholder="Email"
                                     placeholderTextColor="#64748b"
@@ -137,7 +153,7 @@ export default function LoginScreen() {
                             </View>
 
                             <View className="bg-[#151B33] rounded-xl border border-white/10 px-4 py-3 flex-row items-center">
-                                <Ionicons name="lock-closed-outline" size={20} color="#64748b" />
+                                <Icon name="lock-closed-outline" size={20} color="#64748b" />
                                 <TextInput
                                     placeholder="Contraseña"
                                     placeholderTextColor="#64748b"
@@ -150,7 +166,7 @@ export default function LoginScreen() {
                         </View>
 
                         {/* ACTION BUTTON */}
-                        <TouchableOpacity
+                        <TO
                             onPress={handleLogin}
                             disabled={loading}
                             className="bg-indigo-600 mt-8 py-4 rounded-xl items-center shadow-lg shadow-indigo-500/30"
@@ -160,7 +176,7 @@ export default function LoginScreen() {
                             ) : (
                                 <Text className="text-white font-bold text-lg">Entrar a la Caja</Text>
                             )}
-                        </TouchableOpacity>
+                        </TO>
 
                         {/* SOCIAL LOGINS */}
                         <View className="mt-8 flex-row items-center space-x-4">
@@ -170,37 +186,37 @@ export default function LoginScreen() {
                         </View>
 
                         <View className="mt-6 flex-row space-x-4">
-                            <TouchableOpacity
+                            <TO
                                 onPress={handleGoogleLogin}
                                 className="flex-1 bg-white/5 border border-white/10 py-4 rounded-xl flex-row items-center justify-center space-x-3"
                             >
-                                <FontAwesome5 name="google" size={18} color="white" />
+                                <FA name="google" size={18} color="white" />
                                 <Text className="text-white font-semibold">Google</Text>
-                            </TouchableOpacity>
+                            </TO>
 
-                            <TouchableOpacity
+                            <TO
                                 onPress={handleAppleLogin}
                                 className="flex-1 bg-white/5 border border-white/10 py-4 rounded-xl flex-row items-center justify-center space-x-3"
                             >
-                                <FontAwesome5 name="apple" size={20} color="white" />
+                                <FA name="apple" size={20} color="white" />
                                 <Text className="text-white font-semibold">Apple</Text>
-                            </TouchableOpacity>
+                            </TO>
                         </View>
 
                         {/* FOOTER */}
                         <View className="mt-6 items-center">
-                            <TouchableOpacity onPress={() => navigation.navigate('SignUp')} className="mb-4">
+                            <TO onPress={() => navigation.navigate('SignUp')} className="mb-4">
                                 <Text className="text-gray-400">
                                     ¿Nuevo aquí? <Text className="text-indigo-400 font-bold">Crear cuenta</Text>
                                 </Text>
-                            </TouchableOpacity>
+                            </TO>
 
-                            <TouchableOpacity onPress={() => navigation.navigate('Terms')} className="opacity-60">
+                            <TO onPress={() => navigation.navigate('Terms')} className="opacity-60">
                                 <Text className="text-gray-500 text-xs text-center px-4">
                                     Al continuar, aceptas nuestros{"\n"}
                                     <Text className="text-indigo-400 underline">Términos y Condiciones</Text>
                                 </Text>
-                            </TouchableOpacity>
+                            </TO>
                         </View>
                     </ScrollView>
                 </KeyboardAvoidingView>
