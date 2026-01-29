@@ -21,10 +21,6 @@
             "distribution": "internal",
             "android": {
                 "buildType": "apk"
-            },
-            "cli": {
-                "requireCommit": true,
-                "appVersionSource": "remote"
             }
         },
         "production": {}
