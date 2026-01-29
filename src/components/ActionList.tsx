@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ActionItem } from '../types';
+import { ActionItem } from '../core-types';
 import { SupabaseService } from '../services/SupabaseService';
 
 interface Props {

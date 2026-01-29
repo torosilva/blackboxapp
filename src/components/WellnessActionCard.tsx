@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Zap, Sparkles } from 'lucide-react-native';
-import { WellnessRecommendation } from '../types';
+import { WellnessRecommendation } from '../core-types';
 
 interface Props {
     recommendation: WellnessRecommendation | string | null | undefined;

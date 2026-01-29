@@ -3,7 +3,7 @@ import * as FileSystem from 'expo-file-system';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DiaryEntry, WellnessRecommendation } from '../types';
+import { DiaryEntry, WellnessRecommendation } from '../core-types';
 
 WebBrowser.maybeCompleteAuthSession(); // Required for web-based auth flows
 

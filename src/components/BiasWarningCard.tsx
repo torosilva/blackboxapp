@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { UserRoundCheck } from 'lucide-react-native';
-import { StrategicInsight } from '../types';
+import { StrategicInsight } from '../core-types';
 
 interface Props {
     insight: StrategicInsight | null | undefined;
