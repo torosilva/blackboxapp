@@ -5,7 +5,7 @@
     "scheme": "blackbox",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logo_square.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "splash": {
       "image": "./assets/logo.png",
@@ -22,7 +22,7 @@
     "android": {
       "package": "com.blackboxmind.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo_square.png",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#020617"
       },
       "edgeToEdgeEnabled": true,
