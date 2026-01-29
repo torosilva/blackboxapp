@@ -3,7 +3,7 @@ import * as WebBrowser from 'expo-web-browser';
 
 WebBrowser.maybeCompleteAuthSession();
 
-import "./src/theme/global.css";
+import "./global.css";
 import { registerRootComponent } from 'expo';
 import React from 'react';
 import RootNavigator from './src/navigation/RootNavigator';
