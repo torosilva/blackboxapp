@@ -17,6 +17,16 @@
                 "buildType": "apk"
             }
         },
+        "debug-remote": {
+            "distribution": "internal",
+            "android": {
+                "buildType": "apk"
+            },
+            "cli": {
+                "requireCommit": true,
+                "appVersionSource": "remote"
+            }
+        },
         "production": {}
     },
     "submit": {

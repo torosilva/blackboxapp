@@ -78,7 +78,7 @@ export const SupabaseService = {
 
             // Read file as Base64
             const base64 = await FileSystem.readAsStringAsync(uri, {
-                encoding: 'base64' as any,
+                encoding: FileSystem.EncodingType.Base64,
             });
 
             const { data, error } = await supabase.storage

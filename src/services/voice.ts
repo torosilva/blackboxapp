@@ -43,7 +43,7 @@ export class VoiceService {
 
             // 1. Read file as base64
             const base64 = await FileSystem.readAsStringAsync(uri, {
-                encoding: 'base64' as any,
+                encoding: FileSystem.EncodingType.Base64,
             });
 
             // 2. Discover available model
