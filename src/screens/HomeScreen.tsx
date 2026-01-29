@@ -21,7 +21,7 @@ import Animated, {
   withTiming,
   withSequence
 } from 'react-native-reanimated';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import {
@@ -79,6 +79,14 @@ const HomeScreen = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [showSearch, setShowSearch] = useState(false); // NEW: Independent search visibility
   const searchInputRef = useRef<TextInput>(null);
+  const isFocused = useIsFocused();
+
+  // Auto-refresh when screen comes into focus
+  useEffect(() => {
+    if (isFocused && user) {
+      fetchData();
+    }
+  }, [isFocused, user]);
 
   // PULSING BRAIN ANIMATION
   const brainPulse = useSharedValue(1);

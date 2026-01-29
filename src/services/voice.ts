@@ -98,7 +98,7 @@ export class VoiceService {
 
         } catch (err: any) {
             console.error('VoiceService: Transcription failed:', err.message);
-            return "(Transcription failed)";
+            return `(Transcription failed: ${err.message})`;
         }
     }
 }
