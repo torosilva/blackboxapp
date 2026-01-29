@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, AppState } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ShieldCheck, Fingerprint } from 'lucide-react-native';
 import { BioAuthService } from '../services/BioAuthService';
@@ -37,7 +37,25 @@ const LockScreen: React.FC<LockScreenProps> = ({ onUnlock }) => {
     };
 
     useEffect(() => {
-        handleAuth();
+        // Only trigger auth if app is active (foreground)
+        // This prevents the "Blackbox" freeze loop on Android if triggered from background
+        const checkAuth = () => {
+            if (AppState.currentState === 'active') {
+                handleAuth();
+            }
+        };
+
+        const subscription = AppState.addEventListener('change', (nextAppState) => {
+            if (nextAppState === 'active') {
+                handleAuth();
+            }
+        });
+
+        checkAuth();
+
+        return () => {
+            subscription.remove();
+        };
     }, []);
 
     return (

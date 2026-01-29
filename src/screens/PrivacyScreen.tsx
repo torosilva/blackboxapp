@@ -33,10 +33,10 @@ const PrivacyScreen = () => {
     const isMandatory = route.params?.isMandatory || false;
 
     const handleAccept = async () => {
-        if (!user) return;
+        if (!user || !user.email) return;
         setLoading(true);
         try {
-            await SupabaseService.acceptPrivacy(user.id);
+            await SupabaseService.acceptPrivacy(user.id, user.email);
             await refreshProfile();
 
             if (isMandatory) {

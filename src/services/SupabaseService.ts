@@ -318,13 +318,14 @@ export const SupabaseService = {
     /**
      * Mark terms as accepted for the user
      */
-    async acceptTerms(userId: string) {
+    async acceptTerms(userId: string, email: string) {
         try {
             console.log('SUPABASE_SERVICE: Accepting terms for:', userId);
             const { error } = await supabase
                 .from('profiles')
                 .upsert({
                     id: userId,
+                    email: email, // Required if creating profile for the first time
                     accepted_terms_at: new Date().toISOString()
                 }, { onConflict: 'id' });
 
@@ -339,13 +340,14 @@ export const SupabaseService = {
     /**
      * Mark privacy policy as accepted for the user
      */
-    async acceptPrivacy(userId: string) {
+    async acceptPrivacy(userId: string, email: string) {
         try {
             console.log('SUPABASE_SERVICE: Accepting privacy for:', userId);
             const { error } = await supabase
                 .from('profiles')
                 .upsert({
                     id: userId,
+                    email: email, // Required in case profile is missing
                     accepted_privacy_at: new Date().toISOString()
                 }, { onConflict: 'id' });
 

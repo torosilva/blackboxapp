@@ -53,6 +53,8 @@ ALTER TABLE public.summaries ENABLE ROW LEVEL SECURITY;
 -- Example policy: Users can only see their own data
 CREATE POLICY "Users can see own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can see own entries" ON public.entries FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can insert own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 
 -- Feedback table
 CREATE TABLE IF NOT EXISTS public.feedback (

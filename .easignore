@@ -1,0 +1,18 @@
+
+# Valid EAS Ignore file (blocklist)
+node_modules/
+.git/
+.expo/
+npm-debug.log
+yarn-error.log
+.DS_Store
+
+# Ignore build artifacts
+dist/
+web-build/
+
+# Ignore local env files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

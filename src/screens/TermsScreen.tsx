@@ -31,10 +31,10 @@ const TermsScreen = () => {
     const isMandatory = route.params?.isMandatory || false;
 
     const handleAccept = async () => {
-        if (!user) return;
+        if (!user || !user.email) return;
         setLoading(true);
         try {
-            await SupabaseService.acceptTerms(user.id);
+            await SupabaseService.acceptTerms(user.id, user.email);
             await refreshProfile(); // Ensure the app knows terms are accepted
 
             if (isMandatory) {
