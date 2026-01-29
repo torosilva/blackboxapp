@@ -17,12 +17,6 @@
                 "buildType": "apk"
             }
         },
-        "debug-remote": {
-            "distribution": "internal",
-            "android": {
-                "buildType": "apk"
-            }
-        },
         "production": {}
     },
     "submit": {

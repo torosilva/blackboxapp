@@ -20,3 +20,6 @@ web-build/
 supabase/
 
 .agent/
+
+src/styles
+src/types
