@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../services/SupabaseService';
+import { supabase } from '../services/SupabaseService';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -112,7 +112,7 @@ export default function SignUpScreen() {
                         <View className="items-center mb-10 pt-16">
                             <Animated.View style={[animatedLogoStyle, animatedLogoSizeStyle]}>
                                 <Image
-                                    source={require('../../../assets/logo.png')}
+                                    source={require('../../assets/logo.png')}
                                     style={{ width: '100%', height: '100%' }}
                                     resizeMode="contain"
                                 />

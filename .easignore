@@ -1,4 +1,3 @@
-
 # Valid EAS Ignore file (blocklist)
 node_modules/
 .git/
@@ -18,8 +17,11 @@ web-build/
 .env.production.local
 
 supabase/
-
 .agent/
 
 src/styles
 src/types
+
+# Generated native folders
+android/
+ios/

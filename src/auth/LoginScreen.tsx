@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase, SupabaseService } from '../../services/SupabaseService';
+import { supabase, SupabaseService } from '../services/SupabaseService';
 import { FontAwesome5 } from '@expo/vector-icons';
 import Animated, {
     useSharedValue,
@@ -131,7 +131,7 @@ export default function LoginScreen() {
                         <View className="items-center mb-10">
                             <Animated.View style={[animatedLogoStyle, animatedLogoSizeStyle]}>
                                 <Image
-                                    source={require('../../../assets/logo.png')}
+                                    source={require('../../assets/logo.png')}
                                     style={{ width: '100%', height: '100%' }}
                                     resizeMode="contain"
                                 />

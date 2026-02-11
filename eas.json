@@ -17,7 +17,11 @@
                 "buildType": "apk"
             }
         },
-        "production": {}
+        "production": {
+            "env": {
+                "NPM_CONFIG_LEGACY_PEER_DEPS": "1"
+            }
+        }
     },
     "submit": {
         "production": {}
