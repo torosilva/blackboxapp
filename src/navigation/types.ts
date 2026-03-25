@@ -11,6 +11,8 @@ export type RootStackParamList = {
     Settings: { initialViewMode?: 'hub' | 'pending' | 'completed' | 'biases' };
     ChatHub: undefined;
     Chat: { threadId: string; category: string; title: string };
+    FeedbackHistory: undefined;
+    QuickCapture: undefined;
     Terms: { isMandatory?: boolean };
     Privacy: { isMandatory?: boolean };
 };

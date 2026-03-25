@@ -22,6 +22,7 @@ import DashboardScreen from '../screens/DashboardScreen';
 import ChatHubScreen from '../screens/ChatHubScreen';
 import ForgotPasswordScreen from '../auth/ForgotPasswordScreen';
 import FeedbackHistoryScreen from '../screens/FeedbackHistoryScreen';
+import QuickCaptureScreen from '../screens/QuickCaptureScreen';
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -70,6 +71,7 @@ function AppNavigator() {
             {user ? (
                 // === RUTAS PRIVADAS (Si está logueado) ===
                 <React.Fragment>
+                    <Stack.Screen name="QuickCapture" component={QuickCaptureScreen as any} />
                     <Stack.Screen name="Dashboard" component={DashboardScreen as any} />
                     <Stack.Screen name="Home" component={HomeScreen as any} />
                     <Stack.Screen name="Settings" component={SettingsScreen as any} />

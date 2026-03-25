@@ -28,7 +28,6 @@ import {
     Briefcase,
     Heart,
     MessageSquare,
-    MessageCircle
 } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { SupabaseService } from '../services/SupabaseService';
@@ -272,11 +271,11 @@ const DashboardScreen = () => {
 
                     <View style={styles.secondaryActions}>
                         <TO 
-                            style={styles.secondaryBtn}
-                            onPress={() => navigation.navigate('NewEntry', {})}
+                            style={[styles.secondaryBtn, { backgroundColor: '#6366f1' }]}
+                            onPress={() => navigation.navigate('QuickCapture')}
                         >
-                            <Brain size={18} color="#94a3b8" />
-                            <Text style={styles.secondaryBtnText}>Nuevo Registro</Text>
+                            <Mic size={18} color="white" />
+                            <Text style={[styles.secondaryBtnText, { color: 'white' }]}>QuickCapture</Text>
                         </TO>
                         <TO 
                             style={styles.secondaryBtn}

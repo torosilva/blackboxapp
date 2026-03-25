@@ -45,8 +45,8 @@ const NewEntryScreen = () => {
   const androidPadding = (StatusBar.currentHeight || 0) + 40;
 
   const handleSave = async () => {
-    if (!title.trim() || !content.trim()) {
-      Alert.alert('Faltan datos', 'Por favor, añade un título y contenido.');
+    if (!content.trim()) {
+      Alert.alert('Faltan datos', 'Por favor, escribe o graba algo.');
       return;
     }
     if (!user) {
@@ -64,11 +64,12 @@ const NewEntryScreen = () => {
       // Fetch historical context for "Long-Term Memory"
       const historicalContext = await SupabaseService.getRecentInsights(user.id);
 
-      const analysis = await aiService.generateDailySummary([{ title, content }], historicalContext);
+      // AI generates the title, summary, and strategic insights
+      const analysis = await aiService.generateDailySummary([content], historicalContext);
 
       await SupabaseService.createEntry({
         user_id: user.id,
-        title,
+        title: analysis.title, // <--- AI Bautiza la entrada
         content: analysis.original_text || content,
         sentiment_score: analysis.sentiment_score,
         mood_label: analysis.mood_label,
@@ -140,18 +141,11 @@ const NewEntryScreen = () => {
 
       <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
         <TI
-          style={styles.titleInput}
-          placeholder="Título de la sesión..."
-          placeholderTextColor="#475569"
-          value={title}
-          onChangeText={setTitle}
-        />
-
-        <TI
           multiline
           style={styles.contentInput}
           placeholder="¿Qué tienes en mente?"
           placeholderTextColor="#475569"
+          autoFocus
           value={content}
           onChangeText={setContent}
         />
