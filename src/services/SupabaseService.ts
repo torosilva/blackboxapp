@@ -130,7 +130,7 @@ export const SupabaseService = {
                         content: entry.content,
                         audio_url: entry.audio_url,
                         original_text: entry.original_text,
-                        // NEW CONSOLIDATED SCHEMA
+                        // Consolidate into JSONB if column exists, AND keep flat columns for legacy support
                         ai_analysis: {
                             summary: entry.summary,
                             mood_label: entry.mood_label,
@@ -139,13 +139,14 @@ export const SupabaseService = {
                             strategic_insight: entry.strategic_insight,
                             action_items: entry.action_items
                         },
-                        // Keep legacy columns during transition if they still exist in DB
+                        // Direct flat columns (Legacy/Standard)
                         summary: entry.summary,
                         mood_label: entry.mood_label,
                         sentiment_score: entry.sentiment_score,
                         wellness_recommendation: entry.wellness_recommendation,
                         strategic_insight: entry.strategic_insight,
-                        action_items: entry.action_items
+                        action_items: entry.action_items,
+                        mood: entry.mood_label // Alias for 'mood' column in old schema
                     },
                 ])
                 .select()

@@ -40,6 +40,14 @@ CREATE TABLE IF NOT EXISTS public.entries (
   mood TEXT,
   transcription TEXT,
   image_url TEXT, -- Added to match entryService.saveEntry
+  original_text TEXT,
+  summary TEXT,
+  mood_label TEXT,
+  sentiment_score FLOAT8,
+  wellness_recommendation JSONB,
+  strategic_insight JSONB,
+  action_items JSONB,
+  ai_analysis JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   diary_date DATE DEFAULT CURRENT_DATE,
   updated_at TIMESTAMPTZ DEFAULT NOW()

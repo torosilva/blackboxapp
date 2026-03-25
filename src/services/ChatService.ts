@@ -61,31 +61,36 @@ export const ChatService = {
                 { role: 'user', parts: [{ text: userMessage }] }
             ];
 
-            // Insert system instructions as a preamble for this specific model call
-            // (Gemini 1.5 allows system_instruction as a dedicated field, but we'll use prompt injection for simplicity/compatibility)
-            const fullPrompt = `${systemPrompt}\n\nUsuario: ${userMessage}`;
+            const modelWithVer = 'gemini-1.5-flash';
+            const chatUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelWithVer}:generateContent?key=${GEMINI_API_KEY}`;
+
+            const payload = {
+                system_instruction: { parts: [{ text: systemPrompt }] },
+                contents: chatHistory.length > 0 ? chatHistory : [{ role: 'user', parts: [{ text: userMessage }] }],
+                generationConfig: {
+                    temperature: 0.7,
+                    maxOutputTokens: 1200,
+                }
+            };
+
+            // If we have history, we must ADD the new message at the end
+            if (chatHistory.length > 0) {
+                payload.contents.push({ role: 'user', parts: [{ text: userMessage }] });
+            }
 
             const response: any = await RetryHelper.withRetry(async () => {
-                const res = await axios.post(url, {
-                    contents: [
-                        ...chatHistory,
-                        { role: 'user', parts: [{ text: fullPrompt }] }
-                    ],
-                    generationConfig: {
-                        temperature: 0.7,
-                        maxOutputTokens: 1200,
-                    }
-                });
-                return res;
+                return await axios.post(chatUrl, payload);
             });
 
             if (response.data?.candidates?.[0]) {
-                return response.data.candidates[0].content;
+                const aiResponse = response.data.candidates[0].content;
+                // Double check if aiResponse matches exactly what's needed
+                return aiResponse;
             }
 
             throw new Error('No response from AI');
         } catch (error) {
-            console.error('CHAT_SERVICE: Error sending message', error);
+            console.error('CHAT_SERVICE: Critical failure during chat', error);
             throw error;
         }
     }

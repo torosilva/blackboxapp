@@ -40,9 +40,9 @@ export const aiService = {
 
         try {
             // gemini-flash-latest is stable and future-proof
-            const modelName = 'gemini-flash-latest';
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
-            console.log('AI_SERVICE: Invoking target model for Active Loops (with Memory):', modelName);
+            const categoryModel = 'gemini-1.5-flash';
+            const categoryUrl = `https://generativelanguage.googleapis.com/v1beta/models/${categoryModel}:generateContent?key=${GEMINI_API_KEY}`;
+            console.log('AI_SERVICE: Invoking target model for Active Loops (with Memory):', categoryModel);
 
             // Format entries for the prompt, including titles if available
             const formattedEntries = entries.map(e => {
@@ -103,22 +103,31 @@ export const aiService = {
                 ${formattedEntries}
             `;
 
+            const currentModel = 'gemini-1.5-flash';
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${GEMINI_API_KEY}`;
+            
+            const payload = {
+                system_instruction: { parts: [{ text: systemPrompt }] },
+                contents: [{ parts: [{ text: `Analiza esta entrada: ${JSON.stringify(entries[0])}` }] }],
+                generationConfig: { response_mime_type: "application/json" }
+            };
+
             const response = await RetryHelper.withRetry(async () => {
-                return await axios.post(url, {
-                    contents: [{ parts: [{ text: systemPrompt }] }],
-                    generationConfig: { response_mime_type: "application/json" }
-                });
+                return await axios.post(apiUrl, payload);
             });
 
             if (response.data?.candidates?.[0]) {
                 const text = response.data.candidates[0].content.parts[0].text;
                 try {
-                    const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                    // Robust JSON extraction
+                    const jsonMatch = text.match(/\{[\s\S]*\}/);
+                    const cleanJson = jsonMatch ? jsonMatch[0] : text;
                     let parsed = JSON.parse(cleanJson);
+                    
                     if (Array.isArray(parsed)) parsed = parsed[0];
 
                     return {
-                        original_text: parsed.original_text || (typeof entries[0] === 'string' ? entries[0] : entries[0].content),
+                        original_text: parsed.original_text || (typeof entries[0] === 'string' ? entries[0] : (entries[0] as any).content),
                         summary: parsed.summary || fallback.summary,
                         mood_label: parsed.mood_label || fallback.mood_label,
                         sentiment_score: parsed.sentiment_score ?? fallback.sentiment_score,
@@ -127,12 +136,12 @@ export const aiService = {
                         action_items: parsed.action_items || fallback.action_items
                     };
                 } catch (e) {
-                    console.log('AI_SERVICE: Parse failed, using raw fallback summary');
-                    return { ...fallback, summary: text.substring(0, 150) };
+                    console.error('AI_SERVICE: JSON Parse Failed. Raw text:', text);
+                    return { ...fallback, summary: "Error de procesamiento IA. Reintenta en unos minutos." };
                 }
             }
         } catch (e: any) {
-            console.log('AI_SERVICE: Error in generateDailySummary:', e.response?.data?.error?.message || e.message);
+            console.error('AI_SERVICE: Critical failure:', e.response?.data?.error?.message || e.message);
         }
         return fallback;
     },
@@ -150,9 +159,9 @@ export const aiService = {
                 strategic_insight: e.strategic_insight
             }));
 
-            const modelName = 'gemini-flash-latest';
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
-            console.log('AI_SERVICE: Invoking Weekly Report with Tactical Outlook:', modelName);
+            const weeklyModel = 'gemini-1.5-flash';
+            const weeklyUrl = `https://generativelanguage.googleapis.com/v1beta/models/${weeklyModel}:generateContent?key=${GEMINI_API_KEY}`;
+            console.log('AI_SERVICE: Invoking Weekly Report with Tactical Outlook:', weeklyModel);
 
             const prompt = `
                 ROL: 
@@ -186,7 +195,7 @@ export const aiService = {
             `;
 
             const response = await RetryHelper.withRetry(async () => {
-                return await axios.post(url, {
+                return await axios.post(weeklyUrl, {
                     contents: [{ parts: [{ text: prompt }] }]
                 });
             });
