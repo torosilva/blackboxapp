@@ -61,7 +61,7 @@ export const ChatService = {
                 { role: 'user', parts: [{ text: userMessage }] }
             ];
 
-            const modelWithVer = 'gemini-1.5-flash';
+            const modelWithVer = 'gemini-flash-latest';
             const chatUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelWithVer}:generateContent?key=${GEMINI_API_KEY}`;
 
             const payload = {

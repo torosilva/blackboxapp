@@ -47,7 +47,7 @@ export class VoiceService {
             });
 
             // 2. Discover available model
-            let modelName = 'gemini-1.5-flash'; // Default
+            let modelName = 'gemini-flash-latest'; // Default
             try {
                 const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`;
                 const listResponse = await fetch(listUrl);

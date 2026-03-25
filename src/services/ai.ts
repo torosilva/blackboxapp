@@ -40,9 +40,9 @@ export const aiService = {
 
         try {
             // gemini-flash-latest is stable and future-proof
-            const categoryModel = 'gemini-1.5-flash';
+            const categoryModel = 'gemini-flash-latest';
             const categoryUrl = `https://generativelanguage.googleapis.com/v1beta/models/${categoryModel}:generateContent?key=${GEMINI_API_KEY}`;
-            console.log('AI_SERVICE: Invoking target model for Active Loops (with Memory):', categoryModel);
+            console.log('AI_SERVICE: Invoking target model for Active Loops:', categoryModel);
 
             // Format entries for the prompt, including titles if available
             const formattedEntries = entries.map(e => {
@@ -103,13 +103,19 @@ export const aiService = {
                 ${formattedEntries}
             `;
 
-            const currentModel = 'gemini-1.5-flash';
+            const currentModel = 'gemini-flash-latest';
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${GEMINI_API_KEY}`;
             
             const payload = {
                 system_instruction: { parts: [{ text: systemPrompt }] },
                 contents: [{ parts: [{ text: `Analiza esta entrada: ${JSON.stringify(entries[0])}` }] }],
-                generationConfig: { response_mime_type: "application/json" }
+                generationConfig: { 
+                    response_mime_type: "application/json",
+                    temperature: 1,
+                    topP: 0.95,
+                    topK: 40,
+                    maxOutputTokens: 2048,
+                }
             };
 
             const response = await RetryHelper.withRetry(async () => {
@@ -137,11 +143,23 @@ export const aiService = {
                     };
                 } catch (e) {
                     console.error('AI_SERVICE: JSON Parse Failed. Raw text:', text);
-                    return { ...fallback, summary: "Error de procesamiento IA. Reintenta en unos minutos." };
+                    return { ...fallback, summary: "Error de formato IA. El consultor tuvo un desliz técnico. Reintenta." };
                 }
             }
         } catch (e: any) {
-            console.error('AI_SERVICE: Critical failure:', e.response?.data?.error?.message || e.message);
+            const errorMsg = e.response?.data?.error?.message || e.message;
+            console.error('AI_SERVICE: Critical failure:', errorMsg);
+            
+            let diagnosticSummary = "Error de conexión con la IA.";
+            if (e.response?.status === 401 || e.response?.status === 403) {
+                diagnosticSummary = "Error de Autenticación (API Key). Revisa la configuración del build.";
+            } else if (e.response?.status === 404) {
+                diagnosticSummary = "Modelo IA no encontrado. (404)";
+            } else if (e.response?.status === 429) {
+                diagnosticSummary = "Límite de velocidad alcanzado. Espera un momento.";
+            }
+            
+            return { ...fallback, summary: diagnosticSummary };
         }
         return fallback;
     },
@@ -159,7 +177,7 @@ export const aiService = {
                 strategic_insight: e.strategic_insight
             }));
 
-            const weeklyModel = 'gemini-1.5-flash';
+            const weeklyModel = 'gemini-flash-latest';
             const weeklyUrl = `https://generativelanguage.googleapis.com/v1beta/models/${weeklyModel}:generateContent?key=${GEMINI_API_KEY}`;
             console.log('AI_SERVICE: Invoking Weekly Report with Tactical Outlook:', weeklyModel);
 
