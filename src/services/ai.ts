@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { WellnessRecommendation, WellnessActivityType, DiaryEntry, StrategicInsight, ActionItem } from '../core-types';
+import { RetryHelper } from './RetryHelper';
 
 const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 let cachedModel: string | null = null;
@@ -14,23 +15,7 @@ export interface AIAnalysis {
     action_items: ActionItem[];
 }
 
-const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
-
-async function callGeminiWithRetry(url: string, data: any, retries: number = 3): Promise<any> {
-    try {
-        return await axios.post(url, data);
-    } catch (error: any) {
-        const status = error.response?.status;
-        const isRetryable = status === 429 || status === 503 || status === 504;
-
-        if (isRetryable && retries > 0) {
-            console.log(`AI_SERVICE: Server busy or limited (${status}). Retrying in 5s... (${retries} left)`);
-            await delay(5000);
-            return callGeminiWithRetry(url, data, retries - 1);
-        }
-        throw error;
-    }
-}
+// Local retry logic replaced by RetryHelper
 
 export const aiService = {
     generateDailySummary: async (entries: (string | { title: string, content: string })[], historicalContext?: string, base64Image?: string): Promise<AIAnalysis> => {
@@ -64,37 +49,40 @@ export const aiService = {
                 if (typeof e === 'string') return e;
                 return `Título: ${e.title}\nContenido: ${e.content}`;
             }).join('\n---\n');
-
             const systemPrompt = `
                 ROL: 
-                Eres un Estratega de Negocios y Coach de Rendimiento Mental de alto nivel. Tu objetivo es convertir el caos mental en PLANES DE EJECUCIÓN y CLARIDAD.
+                Eres un Analista Estratégico, Coach de Rendimiento Mental y un "Extreme Action-Item Extractor". Tu objetivo es convertir el caos mental en CLARIDAD TÁCTICA y PLANES DE EJECUCIÓN.
 
-                MEMORIA DE LARGO PLAZO (CONTEXTO):
-                ${historicalContext ? `Aquí tienes un resumen de lo que ha estado pasando últimamente:\n${historicalContext}\nUsa esto para detectar patrones recurrentes o progreso.` : 'No hay contexto previo disponible todavía.'}
+                CONTEXTO HISTÓRICO (Memoria de Corto/Largo Plazo):
+                ${historicalContext ? `Lo que ha estado pasando últimamente:\n${historicalContext}\nUsa esto para detectar progresos o recaídas en patrones previos.` : 'Sin contexto previo.'}
 
-                REGLAS CRÍTICAS DE INTERPRETACIÓN:
-                1. CONTEXTO CULTURAL Y LUGARES: Distingue nombres propios de calles de estados emocionales.
-                2. JERARQUÍA DE SENTIMIENTO: Prioriza el TÍTULO y afirmaciones explícitas.
-                3. AUDITORÍA LÓGICA: Identifica sesgos como Falacia de Costo Hundido o Sobregeneralización.
-                4. PATRONES RECURRENTES: Si el contexto muestra que el usuario ha tenido el mismo problema o sesgo varias veces, menciónalo en el summary o strategic_insight.
-                5. EXTRACCIÓN TÁCTICA (ACTIVE LOOPS): Identifica compromisos explícitos o implícitos. Formato: Verbo + Tarea.
+                REGLAS DE ORO PARA EL ANÁLISIS:
+                1. RECORTE DE RUIDO: Ignora muletillas ("este", "o sea") y nombres de calles/lugares irrelevantes para tu análisis emocional.
+                2. ACTIVE LOOPS (Action Items): Los compromisos no siempre son explícitos. Si el usuario dice "tengo que ver lo del banco", conviértelo en: "Contactar al banco para [Asunto]". 
+                   - Sé imperativo: "Verbo + Tarea específica".
+                   - Califica prioridad: HIGH (Si afecta el negocio o salud inmediata), MEDIUM (Mejora operacional), LOW (Mantenimiento).
+                3. AUDITORÍA LÓGICA (Sesgos): Identifica sesgos como:
+                   - Falacia de Costo Hundido (seguir con algo solo por el tiempo invertido).
+                   - Sesgo de Disponibilidad (sobreestimar lo último que pasó).
+                   - Síndrome del Impostor o Parálisis por Análisis.
+                4. TONO: Directo, profesional, empático pero orientado a resultados.
 
-                Devuelve UN ÚNICO objeto JSON con esta estructura ESTRICTA:
+                FORMATO DE RESPUESTA (JSON ESTRICTO):
                 {
-                  "original_text": "Transcripción corregida verbatim",
-                  "summary": "Resumen ejecutivo balanceado (máx 2 frases). Si detectas un patrón histórico, menciónalo.",
+                  "original_text": "Transcripción corregida y fluida en español",
+                  "summary": "Resumen ejecutivo balanceado (máx 2 frases). Une el contexto histórico si es relevante.",
                   "mood_label": "Frustrado" | "En Flow" | "Agotado" | "Disperso" | "Ansioso" | "Satisfecho",
                   "sentiment_score": de -1.0 a 1.0,
                   
                   "strategic_insight": {
-                    "detected_bias": "string" | null,
-                    "warning_message": "string (breve advertencia estratégica)",
-                    "counter_thought": "string (pensamiento para neutralizar el sesgo)"
+                    "detected_bias": "Nombre del sesgo detectado o null",
+                    "warning_message": "Advertencia estratégica breve",
+                    "counter_thought": "Pregunta o reflexión para neutralizar el sesgo"
                   },
 
                   "action_items": [
                     {
-                      "description": "Verbo + Tarea (Ej: Revisar presupuesto)",
+                      "description": "Verbo + Tarea (Ej: Revisar presupuesto semanal)",
                       "priority": "HIGH" | "MEDIUM" | "LOW",
                       "category": "BUSINESS" | "PERSONAL" | "HEALTH"
                     }
@@ -102,19 +90,21 @@ export const aiService = {
 
                   "wellness_recommendation": {
                      "type": "EXERCISE" | "MEDITATION" | "FOCUS_TOOL",
-                     "title": "string", 
-                     "description": "string",
+                     "title": "Título de la herramienta", 
+                     "description": "Instrucción corta de cómo aplicarla",
                      "duration_minutes": 5
                   }
                 }
 
-                Entradas para analizar hoy:
+                ENTRADAS PARA ANALIZAR:
                 ${formattedEntries}
             `;
 
-            const response = await callGeminiWithRetry(url, {
-                contents: [{ parts: [{ text: systemPrompt }] }],
-                generationConfig: { response_mime_type: "application/json" }
+            const response = await RetryHelper.withRetry(async () => {
+                return await axios.post(url, {
+                    contents: [{ parts: [{ text: systemPrompt }] }],
+                    generationConfig: { response_mime_type: "application/json" }
+                });
             });
 
             if (response.data?.candidates?.[0]) {
@@ -163,25 +153,39 @@ export const aiService = {
 
             const prompt = `
                 ROL: 
-                Analista Estratégico de Rendimiento de Alto Nivel. Tu tarea es sintetizar una semana de registros en un reporte de EJECUCIÓN y CLARIDAD MENTAL.
+                Analista Estratégico de Rendimiento de Alto Nivel. Tu tarea es sintetizar una semana de registros en un reporte de EJECUCIÓN, CLARIDAD MENTAL y OUTLOOK TÁCTICO.
                 
                 REGLAS DE ORO:
-                - RECONOCIMIENTO DE LUGARES: No confundas nombres de calles mexicanas o lugares geográficos con estados psicológicos.
-                - PRIORIDAD SUBJETIVA: Prioriza el éxito reportado por el usuario sobre palabras aisladas.
-                - ENFOQUE EN EJECUCIÓN: Resume el progreso en las tareas y el rendimiento estratégico.
+                1. RECONOCIMIENTO DE CONTEXTO: Diferencia nombres de lugares o personas de estados psicológicos.
+                2. PRIORIDAD DE LOGROS: Resalta los hitos alcanzados y el "Flow State" detectado.
+                3. AUDITORÍA DE SESGOS SEMANAL: Identifica si hay un sesgo recurrente durante toda la semana (ej. "Siempre subestimas el tiempo de entrega").
+                4. ACTIVE LOOPS (Outlook Táctico): Resume las tareas más críticas que quedaron pendientes.
 
-                Genera un reporte estructurado en Markdown que incluya:
-                1. **Análisis de Rendimiento Semanal**: Tendencia emocional y nivel de "Flow".
-                2. **Auditoría Lógica & Sesgos**: Resumen de los sesgos cognitivos más frecuentes detectados en la semana.
-                3. **Outlook Táctico (Active Loops)**: Resumen de tareas completadas vs pendientes y próximos pasos críticos.
-                4. **Temas Críticos para Sesión**: Sugerencias para discutir con un coach o terapeuta.
-                
+                ESTRUCTURA DEL REPORTE (Markdown):
+                # 📊 Reporte Estratégico Semanal
+
+                ## 1. Análisis de Rendimiento y Claridad
+                [Resumen de la tendencia emocional, enfoque y momentos de mayor productividad].
+
+                ## 2. Auditoría Lógica y Patrones Detectados
+                [Identifica los sesgos cognitivos más frecuentes de la semana y cómo afectaron las decisiones].
+
+                ## 3. Outlook Táctico (Active Loops)
+                - **Completado**: [Resumen de lo logrado].
+                - **Pendiente Crítico**: [Tareas que requieren atención inmediata].
+
+                ## 4. Temas para Profundizar (Coach/Terapia)
+                - [Propuesta de temas basados en los patrones detectados].
+
+                ---
                 Datos de la semana:
                 ${JSON.stringify(dataForAnalysis)}
             `;
 
-            const response = await callGeminiWithRetry(url, {
-                contents: [{ parts: [{ text: prompt }] }]
+            const response = await RetryHelper.withRetry(async () => {
+                return await axios.post(url, {
+                    contents: [{ parts: [{ text: prompt }] }]
+                });
             });
 
             return response.data?.candidates?.[0]?.content?.parts?.[0]?.text || "No se pudo generar el reporte.";

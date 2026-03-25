@@ -88,3 +88,54 @@ CREATE TABLE IF NOT EXISTS public.feedback (
 ALTER TABLE public.feedback ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can insert own feedback" ON public.feedback FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Admins can read all feedback" ON public.feedback FOR SELECT USING (true); -- Simplified for now
+
+-- Chat Threads table
+CREATE TABLE IF NOT EXISTS public.chat_threads (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  category TEXT NOT NULL CHECK (category IN ('BUSINESS', 'PERSONAL', 'HEALTH', 'GENERAL')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Chat Messages table
+CREATE TABLE IF NOT EXISTS public.chat_messages (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  thread_id UUID REFERENCES public.chat_threads(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('user', 'model')),
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS for Chat
+ALTER TABLE public.chat_threads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage own threads" ON public.chat_threads 
+  FOR ALL USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can manage own messages" ON public.chat_messages 
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM public.chat_threads 
+      WHERE id = public.chat_messages.thread_id AND user_id = auth.uid()
+    )
+  );
+
+-- Goals table for Strategic Objectives
+CREATE TABLE IF NOT EXISTS public.goals (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT,
+  category TEXT NOT NULL CHECK (category IN ('BUSINESS', 'PERSONAL', 'HEALTH')),
+  is_completed BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS for Goals
+ALTER TABLE public.goals ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage own goals" ON public.goals 
+  FOR ALL USING (auth.uid() = user_id);

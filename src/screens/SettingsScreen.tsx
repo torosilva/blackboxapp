@@ -3,7 +3,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import {
     ChevronLeft, ShieldCheck, Clock, Database, AlertCircle, Brain,
     Zap, Stethoscope, Calendar, Target, AlertTriangle, ArrowRight,
-    LogOut, Trash2, MessageSquareText, Send, X, ChevronDown, ChevronUp, User
+    LogOut, Trash2, MessageSquareText, Send, X, ChevronDown, ChevronUp, User,
+    CheckCircle2, Sparkles, Plus
 } from 'lucide-react-native';
 import * as WebBrowser from 'expo-web-browser';
 import {
@@ -34,22 +35,22 @@ const SettingsScreen = () => {
     const SC = ShieldCheck as any;
     const Clo = Clock as any;
     const Db = Database as any;
+    const Xi = X as any;
+    const AR = ArrowRight as any;
+    const MST = MessageSquareText as any;
+    const Tar = Target as any;
+    const AT = AlertTriangle as any;
+    const CD = ChevronDown as any;
+    const CU = ChevronUp as any;
+    const U = User as any;
     const AC = AlertCircle as any;
     const B = Brain as any;
     const Z = Zap as any;
     const Ste = Stethoscope as any;
     const Cal = Calendar as any;
-    const Tar = Target as any;
-    const AT = AlertTriangle as any;
-    const AR = ArrowRight as any;
     const LO = LogOut as any;
     const T2 = Trash2 as any;
-    const MST = MessageSquareText as any;
     const Sen = Send as any;
-    const Xi = X as any;
-    const CD = ChevronDown as any;
-    const CU = ChevronUp as any;
-    const U = User as any;
 
     const [entries, setEntries] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -60,6 +61,12 @@ const SettingsScreen = () => {
     const [feedbackContent, setFeedbackContent] = useState('');
     const [feedbackType, setFeedbackType] = useState<'bug' | 'improvement' | 'other'>('improvement');
     const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+    const [goals, setGoals] = useState<any[]>([]);
+    const [showGoalModal, setShowGoalModal] = useState(false);
+    const [newGoalTitle, setNewGoalTitle] = useState('');
+    const [newGoalDesc, setNewGoalDesc] = useState('');
+    const [newGoalCategory, setNewGoalCategory] = useState<'BUSINESS' | 'PERSONAL' | 'HEALTH'>('BUSINESS');
+    const [isCreatingGoal, setIsCreatingGoal] = useState(false);
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
         pending: true,
         completed: false,
@@ -70,6 +77,7 @@ const SettingsScreen = () => {
         privacy: false,
         account: false,
         profile: true, // Show by default to show off the polish
+        goals: true,
     });
     const [fullName, setFullName] = useState('');
     const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -91,12 +99,15 @@ const SettingsScreen = () => {
 
     useEffect(() => {
         const fetchAll = async () => {
-            if (!user) return;
             try {
-                const data = await SupabaseService.getEntries(user.id);
-                setEntries(data || []);
+                const [entriesData, goalsData] = await Promise.all([
+                    SupabaseService.getEntries(user!.id),
+                    SupabaseService.getGoals(user!.id)
+                ]);
+                setEntries(entriesData || []);
+                setGoals(goalsData || []);
             } catch (error) {
-                console.error('HUB: Error fetching entries', error);
+                console.error('HUB: Error fetching data', error);
             } finally {
                 setLoading(false);
             }
@@ -208,6 +219,48 @@ const SettingsScreen = () => {
             setIsSavingProfile(false);
         }
     };
+    const handleCreateGoal = async () => {
+        if (!newGoalTitle.trim() || !user) return;
+        setIsCreatingGoal(true);
+        try {
+            await SupabaseService.createGoal(user.id, newGoalTitle, newGoalDesc, newGoalCategory);
+            const updated = await SupabaseService.getGoals(user.id);
+            setGoals(updated || []);
+            setShowGoalModal(false);
+            setNewGoalTitle('');
+            setNewGoalDesc('');
+            Alert.alert("Meta Registrada", "Tu objetivo estratégico ha sido guardado.");
+        } catch (error) {
+            Alert.alert("Error", "No se pudo registrar la meta.");
+        } finally {
+            setIsCreatingGoal(false);
+        }
+    };
+
+    const toggleGoalStatus = async (goalId: string, currentStatus: boolean) => {
+        const success = await SupabaseService.updateGoalStatus(goalId, !currentStatus);
+        if (success) {
+            setGoals(prev => prev.map(g => g.id === goalId ? { ...g, is_completed: !currentStatus } : g));
+        }
+    };
+
+    const handleDeleteGoal = (goalId: string) => {
+        Alert.alert(
+            "Eliminar Meta",
+            "¿Estás seguro de que quieres borrar este objetivo estratégico?",
+            [
+                { text: "Cancelar", style: "cancel" },
+                { 
+                    text: "Eliminar", 
+                    style: "destructive",
+                    onPress: async () => {
+                        await SupabaseService.deleteGoal(goalId);
+                        setGoals(prev => prev.filter(g => g.id !== goalId));
+                    }
+                }
+            ]
+        );
+    };
 
     useEffect(() => {
         if (profile?.full_name) {
@@ -296,6 +349,62 @@ const SettingsScreen = () => {
                             )}
                         </View>
 
+                        {/* 0.5. STRATEGIC GOALS (METAS) */}
+                        <View style={styles.section}>
+                            <TO
+                                style={styles.sectionHeader}
+                                onPress={() => toggleSection('goals')}
+                                activeOpacity={0.7}
+                            >
+                                <Sparkles size={20} color="#6366f1" />
+                                <Text style={styles.sectionTitle}>Metas Estratégicas</Text>
+                                <TO style={styles.addMiniBtn} onPress={() => setShowGoalModal(true)}>
+                                    <Plus size={16} color="white" />
+                                </TO>
+                                {expandedSections.goals ? (
+                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 10 }} />
+                                ) : (
+                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 10 }} />
+                                )}
+                            </TO>
+
+                            {expandedSections.goals && (
+                                <View style={styles.goalsContainer}>
+                                    {goals.length === 0 ? (
+                                        <View style={styles.emptyGoals}>
+                                            <Text style={styles.emptyHubText}>Sin metas activas.</Text>
+                                            <TO style={styles.createGoalBtn} onPress={() => setShowGoalModal(true)}>
+                                                <Text style={styles.createGoalBtnText}>Dar de alta primera meta</Text>
+                                            </TO>
+                                        </View>
+                                    ) : (
+                                        goals.map((goal) => (
+                                            <View key={goal.id} style={[styles.goalCard, goal.is_completed && styles.goalCardCompleted]}>
+                                                <TO 
+                                                    style={styles.goalCheck} 
+                                                    onPress={() => toggleGoalStatus(goal.id, goal.is_completed)}
+                                                >
+                                                    <View style={[styles.checkBox, goal.is_completed && styles.checkBoxChecked]}>
+                                                        {goal.is_completed && <CheckCircle2 size={14} color="white" />}
+                                                    </View>
+                                                </TO>
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={[styles.goalTitle, goal.is_completed && styles.textCompleted]}>{goal.title}</Text>
+                                                    {!!goal.description && <Text style={styles.goalDesc}>{goal.description}</Text>}
+                                                    <View style={styles.goalBadge}>
+                                                        <Text style={styles.goalBadgeText}>{goal.category}</Text>
+                                                    </View>
+                                                </View>
+                                                <TO onPress={() => handleDeleteGoal(goal.id)}>
+                                                    <Trash2 size={16} color="#475569" />
+                                                </TO>
+                                            </View>
+                                        ))
+                                    )}
+                                </View>
+                            )}
+                        </View>
+
                         {/* 1. ACTIVE LOOPS (PENDIENTES) */}
                         <View style={styles.section}>
                             <TO
@@ -321,7 +430,14 @@ const SettingsScreen = () => {
                                             <View key={idx} style={styles.hubTaskItem}>
                                                 <View style={styles.hubTaskDot} />
                                                 <View style={{ flex: 1 }}>
-                                                    <Text style={styles.hubTaskDesc} numberOfLines={1}>{task.description}</Text>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                                        <Text style={styles.hubTaskDesc} numberOfLines={1}>{task.description}</Text>
+                                                        {task.category && (
+                                                            <View style={[styles.miniBadge, { backgroundColor: task.category === 'BUSINESS' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(16, 185, 129, 0.1)' }]}>
+                                                                <Text style={[styles.miniBadgeText, { color: task.category === 'BUSINESS' ? '#818cf8' : '#10b981' }]}>{task.category.substring(0, 1)}</Text>
+                                                            </View>
+                                                        )}
+                                                    </View>
                                                     <Text style={styles.hubTaskSource}>De: {task.entryTitle}</Text>
                                                 </View>
                                             </View>
@@ -472,19 +588,35 @@ const SettingsScreen = () => {
                             </TO>
 
                             {expandedSections.feedback && (
-                                <TO
-                                    style={[styles.tutorialButton, { borderColor: 'rgba(56, 189, 248, 0.2)' }]}
-                                    onPress={() => setShowFeedbackModal(true)}
-                                >
-                                    <View style={[styles.iconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.1)', width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }]}>
-                                        <MST size={18} color="#38bdf8" />
-                                    </View>
-                                    <View style={styles.policyTextContainer}>
-                                        <Text style={[styles.policyLabel, { color: '#38bdf8' }]}>Ayúdanos a mejorar</Text>
-                                        <Text style={styles.policyValue}>Reportar fallas o sugerir mejoras</Text>
-                                    </View>
-                                    <AR size={20} color="#38bdf8" />
-                                </TO>
+                                <>
+                                    <TO
+                                        style={[styles.tutorialButton, { borderColor: 'rgba(56, 189, 248, 0.2)' }]}
+                                        onPress={() => setShowFeedbackModal(true)}
+                                    >
+                                        <View style={[styles.iconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.1)', width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }]}>
+                                            <MST size={18} color="#38bdf8" />
+                                        </View>
+                                        <View style={styles.policyTextContainer}>
+                                            <Text style={[styles.policyLabel, { color: '#38bdf8' }]}>Ayúdanos a mejorar</Text>
+                                            <Text style={styles.policyValue}>Reportar fallas o sugerir mejoras</Text>
+                                        </View>
+                                        <AR size={20} color="#38bdf8" />
+                                    </TO>
+                                    
+                                    <TO
+                                        style={[styles.tutorialButton, { borderColor: 'rgba(129, 140, 248, 0.2)', marginTop: 12 }]}
+                                        onPress={() => navigation.navigate('FeedbackHistory')}
+                                    >
+                                        <View style={[styles.iconCircle, { backgroundColor: 'rgba(129, 140, 248, 0.1)', width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }]}>
+                                            <Db size={18} color="#818cf8" />
+                                        </View>
+                                        <View style={styles.policyTextContainer}>
+                                            <Text style={[styles.policyLabel, { color: '#818cf8' }]}>Admin: Ver Feedback</Text>
+                                            <Text style={styles.policyValue}>Ver comentarios de testers</Text>
+                                        </View>
+                                        <AR size={20} color="#818cf8" />
+                                    </TO>
+                                </>
                             )}
                         </View>
 
@@ -542,7 +674,7 @@ const SettingsScreen = () => {
                                     <Text style={styles.legalIntro}>
                                         En BLACKBOX, la privacidad y el control de tus datos son pilares fundamentales.
                                     </Text>
-                                    <TO style={styles.policyRow} onPress={() => WebBrowser.openBrowserAsync('https://blackbox.ai/privacy')}>
+                                    <TO style={styles.policyRow} onPress={() => WebBrowser.openBrowserAsync('https://blackboxmind.ai/privacy')}>
                                         <View style={styles.iconCircle}>
                                             <SC size={18} color="#6366f1" />
                                         </View>
@@ -552,7 +684,7 @@ const SettingsScreen = () => {
                                         </View>
                                         <AR size={20} color="#475569" />
                                     </TO>
-                                    <TO style={styles.policyRow} onPress={() => WebBrowser.openBrowserAsync('https://blackbox.ai/terms')}>
+                                    <TO style={styles.policyRow} onPress={() => WebBrowser.openBrowserAsync('https://blackboxmind.ai/terms')}>
                                         <View style={[styles.iconCircle, { backgroundColor: 'rgba(99, 102, 241, 0.1)' }]}>
                                             <Db size={18} color="#6366f1" />
                                         </View>
@@ -569,34 +701,61 @@ const SettingsScreen = () => {
                 ) : (
                     /* FULL DETAIL VIEW (Tasks/Biases) */
                     <View style={{ paddingBottom: 40 }}>
-                        {(viewMode === 'pending' ? pendingTasks :
-                            viewMode === 'completed' ? completedTasks : biasHistory).map((item, idx) => (
+                        {viewMode === 'biases' ? (
+                            biasHistory.map((item, idx) => (
                                 <TO
                                     key={idx}
                                     style={styles.hubTaskItem}
                                     onPress={() => navigation.navigate('EntryDetail', { entryId: item.entryId })}
                                 >
-                                    {viewMode === 'pending' && <View style={styles.hubTaskDot} />}
-                                    {viewMode === 'completed' && <SC size={16} color="#10b981" style={{ marginRight: 12 }} />}
-                                    {viewMode === 'biases' && (
-                                        <View style={styles.biasTag}>
-                                            <Text style={styles.biasTagText}>{item.bias}</Text>
-                                        </View>
-                                    )}
+                                    <View style={styles.biasTag}>
+                                        <Text style={styles.biasTagText}>{item.bias}</Text>
+                                    </View>
                                     <View style={{ flex: 1 }}>
-                                        <Text style={[
-                                            styles.hubTaskDesc,
-                                            viewMode === 'completed' && { textDecorationLine: 'line-through', color: '#64748b' }
-                                        ]}>
-                                            {viewMode === 'biases' ? item.bias : item.description}
-                                        </Text>
-                                        <Text style={styles.hubTaskSource}>
-                                            {viewMode === 'biases' ? item.entryTitle : `En: ${item.entryTitle}`}
-                                        </Text>
+                                        <Text style={styles.hubTaskDesc}>{item.bias}</Text>
+                                        <Text style={styles.hubTaskSource}>{item.entryTitle}</Text>
                                     </View>
                                     <AR size={14} color="#475569" />
                                 </TO>
-                            ))}
+                            ))
+                        ) : (
+                            ['BUSINESS', 'PERSONAL', 'HEALTH', 'GENERAL'].map(cat => {
+                                const items = (viewMode === 'pending' ? pendingTasks : completedTasks)
+                                    .filter((t: any) => (t.category || 'GENERAL') === cat);
+                                
+                                if (items.length === 0) return null;
+
+                                return (
+                                    <View key={cat} style={{ marginTop: 20 }}>
+                                        <View style={[styles.catHeader, { backgroundColor: cat === 'BUSINESS' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(16, 185, 129, 0.1)' }]}>
+                                            <Text style={[styles.catHeaderText, { color: cat === 'BUSINESS' ? '#818cf8' : '#10b981' }]}>
+                                                {cat === 'BUSINESS' ? '💼 NEGOCIOS' : cat === 'PERSONAL' ? '👤 PERSONAL' : cat === 'HEALTH' ? '🏥 SALUD' : '📋 GENERAL'}
+                                            </Text>
+                                        </View>
+                                        {items.map((item: any, idx: number) => (
+                                            <TO
+                                                key={idx}
+                                                style={styles.hubTaskItem}
+                                                onPress={() => navigation.navigate('EntryDetail', { entryId: item.entryId })}
+                                            >
+                                                {viewMode === 'pending' && <View style={styles.hubTaskDot} />}
+                                                {viewMode === 'completed' && <CheckCircle2 size={16} color="#10b981" style={{ marginRight: 12 }} />}
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={[
+                                                        styles.hubTaskDesc,
+                                                        viewMode === 'completed' && { textDecorationLine: 'line-through', color: '#64748b' }
+                                                    ]}>
+                                                        {item.description}
+                                                    </Text>
+                                                    <Text style={styles.hubTaskSource}>En: {item.entryTitle}</Text>
+                                                </View>
+                                                <AR size={14} color="#475569" />
+                                            </TO>
+                                        ))}
+                                    </View>
+                                );
+                            })
+                        )}
                         <TO
                             style={[styles.generateButton, { marginTop: 30, backgroundColor: '#334155' }]}
                             onPress={() => setViewMode('hub')}
@@ -642,7 +801,7 @@ const SettingsScreen = () => {
 
                 <View style={styles.footer}>
                     <Text style={styles.versionText}>BLACKBOX MIND v1.3.0</Text>
-                    <Text style={styles.footerLegal}>© 2026 Blackbox AI. Todos los derechos reservados.</Text>
+                    <Text style={styles.footerLegal}>© 2026 Blackbox Mind. Todos los derechos reservados.</Text>
                 </View>
             </ScrollView>
 
@@ -707,6 +866,75 @@ const SettingsScreen = () => {
                                     <Text style={styles.sendButtonText}>Enviar Feedback</Text>
                                     <Sen size={18} color="#ffffff" style={{ marginLeft: 8 }} />
                                 </>
+                            )}
+                        </TO>
+                    </View>
+                </View>
+            </Modal>
+            {/* GOAL MODAL */}
+            <Modal
+                visible={showGoalModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowGoalModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Nueva Meta Estratégica</Text>
+                            <TO onPress={() => setShowGoalModal(false)}>
+                                <Xi size={24} color="#94a3b8" />
+                            </TO>
+                        </View>
+
+                        <Text style={styles.modalSubtitle}>Define un objetivo de alto nivel</Text>
+
+                        <TI
+                            style={styles.feedbackInput}
+                            placeholder="Título de la meta (Ej: Lanzar producto X)"
+                            placeholderTextColor="#64748b"
+                            value={newGoalTitle}
+                            onChangeText={setNewGoalTitle}
+                        />
+
+                        <TI
+                            style={[styles.feedbackInput, { height: 80, marginTop: 12 }]}
+                            placeholder="Descripción o métrica de éxito..."
+                            placeholderTextColor="#64748b"
+                            multiline
+                            value={newGoalDesc}
+                            onChangeText={setNewGoalDesc}
+                        />
+
+                        <View style={[styles.typeSelector, { marginTop: 20 }]}>
+                            {(['BUSINESS', 'PERSONAL', 'HEALTH'] as const).map((cat) => (
+                                <TO
+                                    key={cat}
+                                    style={[
+                                        styles.typeButton,
+                                        newGoalCategory === cat && styles.typeButtonActive
+                                    ]}
+                                    onPress={() => setNewGoalCategory(cat)}
+                                >
+                                    <Text style={[
+                                        styles.typeButtonText,
+                                        newGoalCategory === cat && styles.typeButtonTextActive
+                                    ]}>
+                                        {cat === 'BUSINESS' ? 'Negocios' : cat === 'PERSONAL' ? 'Personal' : 'Salud'}
+                                    </Text>
+                                </TO>
+                            ))}
+                        </View>
+
+                        <TO
+                            style={[styles.sendButton, (!newGoalTitle.trim() || isCreatingGoal) && styles.sendButtonDisabled, { backgroundColor: '#6366f1', marginTop: 30 }]}
+                            onPress={handleCreateGoal}
+                            disabled={!newGoalTitle.trim() || isCreatingGoal}
+                        >
+                            {isCreatingGoal ? (
+                                <ActivityIndicator color="#ffffff" />
+                            ) : (
+                                <Text style={styles.sendButtonText}>Registrar Meta</Text>
                             )}
                         </TO>
                     </View>
@@ -1060,6 +1288,36 @@ const styles = StyleSheet.create({
         color: '#ffffff',
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    miniBadge: { paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 },
+    miniBadgeText: { fontSize: 9, fontWeight: 'bold' },
+    addMiniBtn: { backgroundColor: '#6366f1', width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginLeft: 12 },
+    goalsContainer: { gap: 12, marginBottom: 10 },
+    emptyGoals: { padding: 20, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 20 },
+    createGoalBtn: { marginTop: 10, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: 'rgba(99, 102, 241, 0.1)', borderRadius: 10 },
+    createGoalBtnText: { color: '#818cf8', fontWeight: 'bold', fontSize: 13 },
+    goalCard: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#1e293b', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', gap: 12 },
+    goalCardCompleted: { opacity: 0.6 },
+    goalCheck: { padding: 4 },
+    checkBox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: '#6366f1', justifyContent: 'center', alignItems: 'center' },
+    checkBoxChecked: { backgroundColor: '#6366f1' },
+    goalTitle: { color: '#ffffff', fontSize: 16, fontWeight: '700' },
+    goalDesc: { color: '#94a3b8', fontSize: 13, marginTop: 2 },
+    goalBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.05)', marginTop: 6 },
+    goalBadgeText: { color: '#64748b', fontSize: 10, fontWeight: 'bold' },
+    textCompleted: { textDecorationLine: 'line-through' },
+    catHeader: {
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        marginTop: 20,
+        marginBottom: 8,
+        alignSelf: 'flex-start',
+    },
+    catHeaderText: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        letterSpacing: 1,
     },
 });
 

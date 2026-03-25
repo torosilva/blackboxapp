@@ -56,7 +56,8 @@ import {
   Cloud,
   Layers,
   ZapOff,
-  Bot
+  Bot,
+  LayoutDashboard
 } from 'lucide-react-native';
 import { aiService } from '../services/ai';
 import { useAuth } from '../context/AuthContext';
@@ -286,7 +287,7 @@ const HomeScreen = () => {
   useEffect(() => {
     const syncAndFetch = async () => {
       if (user) {
-        await SupabaseService.upsertProfile(user.id, user.email || 'user@blackbox.ai');
+        await SupabaseService.upsertProfile(user.id, user.email || 'user@blackboxmind.ai');
         fetchData();
       } else {
         setLoading(false);
@@ -388,9 +389,9 @@ const HomeScreen = () => {
         </TO>
         <TO
           style={styles.iconButton}
-          onPress={() => navigation.navigate('Settings', { initialViewMode: 'hub' })}
+          onPress={() => navigation.navigate('Dashboard')}
         >
-          <S size={22} color="#94a3b8" />
+          <LayoutDashboard size={22} color="#94a3b8" />
         </TO>
       </View>
 
@@ -609,7 +610,7 @@ const HomeScreen = () => {
         </TO>
 
         <TO
-          onPress={() => navigation.navigate('Chat')}
+          onPress={() => navigation.navigate('ChatHub')}
           style={styles.fabSecondary}
         >
           <Bo size={24} color="white" />

@@ -8,11 +8,14 @@ import { aiService } from '../services/ai';
 import { ActionList } from '../components/ActionList';
 import { BiasWarningCard } from '../components/BiasWarningCard';
 import { WellnessActionCard } from '../components/WellnessActionCard';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useAuth } from '../context/AuthContext';
 
 const EntryDetailScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const route = useRoute();
   const { entryId } = route.params as { entryId: string };
+  const { user } = useAuth();
 
   const SAV = SafeAreaView as any;
   const TO = TouchableOpacity as any;
@@ -146,6 +149,43 @@ const EntryDetailScreen = () => {
     } catch (error) {
       console.error('SAVE_ERROR:', error);
       Alert.alert("Error", "No se pudieron guardar los cambios.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleConsultWithAI = async () => {
+    if (!user || !entry) return;
+    setIsSaving(true);
+    try {
+      // Create a thread automatically for this entry
+      const threadTitle = `Consulta: ${entry.title || 'Sesión sin título'}`;
+      // Map mood to a category or use GENERAL
+      let category: 'BUSINESS' | 'PERSONAL' | 'HEALTH' | 'GENERAL' = 'GENERAL';
+      
+      // Heuristic for category based on content (simple version)
+      const content = entry.content.toLowerCase();
+      if (content.includes('negocio') || content.includes('trabajo') || content.includes('business') || content.includes('cliente')) {
+        category = 'BUSINESS';
+      } else if (content.includes('salud') || content.includes('entrenar') || content.includes('dieta') || content.includes('health')) {
+        category = 'HEALTH';
+      } else if (content.includes('personal') || content.includes('sueño') || content.includes('emoción')) {
+        category = 'PERSONAL';
+      }
+
+      const newThread = await SupabaseService.createChatThread(user.id, threadTitle, category);
+      
+      if (newThread) {
+        // Option 1: Just navigate
+        navigation.navigate('Chat' as any, {
+          threadId: newThread.id,
+          category: newThread.category,
+          title: newThread.title
+        });
+      }
+    } catch (error) {
+      console.error('CONSULT_AI_ERROR:', error);
+      Alert.alert("Error", "No se pudo iniciar la consulta con IA.");
     } finally {
       setIsSaving(false);
     }
@@ -287,6 +327,19 @@ const EntryDetailScreen = () => {
           recommendation={entry.wellness_recommendation}
           summary={entry.summary}
         />
+
+        {/* 4. CHAT WITH AI ABOUT THIS */}
+        <TO 
+          style={styles.chatBtn} 
+          onPress={handleConsultWithAI}
+          disabled={isSaving}
+        >
+          <LG colors={['#6366f1', '#4f46e5']} start={{x:0, y:0}} end={{x:1, y:0}} style={styles.chatBtnGradient}>
+            <Sp size={20} color="white" style={{ marginRight: 10 }} />
+            <Text style={styles.chatBtnText}>Analizar con IA Consultant</Text>
+            {isSaving && <ActivityIndicator size="small" color="white" style={{ marginLeft: 10 }} />}
+          </LG>
+        </TO>
 
         {/* Audio URL indicator if exists */}
         {entry.audio_url && (
@@ -436,8 +489,32 @@ const styles = StyleSheet.create({
     color: '#ef4444',
     fontWeight: 'bold',
     fontSize: 16
+  },
+  chatBtn: {
+    marginTop: 20,
+    borderRadius: 20,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8
+  },
+  chatBtnGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+  },
+  chatBtnText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+    letterSpacing: 0.5
   }
 });
+
+const LG = LinearGradient as any;
 
 export default EntryDetailScreen;
 

@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { TabProvider } from '../context/TabContext';
-import { ActivityIndicator, View, AppState, AppStateStatus } from 'react-native';
+import { ActivityIndicator, View, AppState, AppStateStatus, StyleSheet } from 'react-native';
 import LockScreen from '../components/LockScreen';
 
 // Importa tus pantallas
@@ -18,6 +18,10 @@ import WeeklyReportScreen from '../screens/WeeklyReportScreen';
 import ChatScreen from '../screens/ChatScreen';
 import TermsScreen from '../screens/TermsScreen';
 import PrivacyScreen from '../screens/PrivacyScreen';
+import DashboardScreen from '../screens/DashboardScreen';
+import ChatHubScreen from '../screens/ChatHubScreen';
+import ForgotPasswordScreen from '../auth/ForgotPasswordScreen';
+import FeedbackHistoryScreen from '../screens/FeedbackHistoryScreen';
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -50,56 +54,23 @@ function AppNavigator() {
     }, []);
 
     if (isLoading) {
-        console.log('NAVIGATOR: Loading state active');
-        // Pantalla de carga (Splash) mientras revisa si hay usuario
+        console.log('NAVIGATOR: Still loading auth state...');
         return (
             <View style={{ flex: 1, backgroundColor: '#0B1021', justifyContent: 'center', alignItems: 'center' }}>
                 <ActivityIndicator size="large" color="#818cf8" />
             </View>
         );
     }
-    console.log('NAVIGATOR: Loading complete, User:', user?.id);
-
-    // Show Biometric Lock only if user is logged in and screen is locked
-    if (user && isLocked) {
-        const Lock = LockScreen as any;
-        return <Lock onUnlock={() => setIsLocked(false)} />;
-    }
-
-    // Force Terms acceptance
-    if (user && !profile?.accepted_terms_at) {
-        const Nav = Stack.Navigator as any;
-        return (
-            <Nav screenOptions={{ headerShown: false }}>
-                <Stack.Screen
-                    name="Terms"
-                    component={TermsScreen as any}
-                    initialParams={{ isMandatory: true }}
-                />
-            </Nav>
-        );
-    }
-
-    // Force Privacy acceptance
-    if (user && !profile?.accepted_privacy_at) {
-        const Nav = Stack.Navigator as any;
-        return (
-            <Nav screenOptions={{ headerShown: false }}>
-                <Stack.Screen
-                    name="Privacy"
-                    component={PrivacyScreen as any}
-                    initialParams={{ isMandatory: true }}
-                />
-            </Nav>
-        );
-    }
+    console.log('NAVIGATOR: Auth Load Complete. User:', user?.id, 'Profile Loaded:', !!profile);
 
     const Nav = Stack.Navigator as any;
-    return (
+
+    const mainNavigator = (
         <Nav screenOptions={{ headerShown: false }}>
             {user ? (
                 // === RUTAS PRIVADAS (Si está logueado) ===
                 <React.Fragment>
+                    <Stack.Screen name="Dashboard" component={DashboardScreen as any} />
                     <Stack.Screen name="Home" component={HomeScreen as any} />
                     <Stack.Screen name="Settings" component={SettingsScreen as any} />
                     <Stack.Screen
@@ -109,7 +80,9 @@ function AppNavigator() {
                     />
                     <Stack.Screen name="EntryDetail" component={EntryDetailScreen as any} />
                     <Stack.Screen name="WeeklyReport" component={WeeklyReportScreen as any} />
+                    <Stack.Screen name="ChatHub" component={ChatHubScreen as any} />
                     <Stack.Screen name="Chat" component={ChatScreen as any} />
+                    <Stack.Screen name="FeedbackHistory" component={FeedbackHistoryScreen as any} />
                     <Stack.Screen name="Terms" component={TermsScreen as any} />
                     <Stack.Screen name="Privacy" component={PrivacyScreen as any} />
                     <Stack.Screen name="Onboarding" component={OnboardingScreen as any} />
@@ -119,10 +92,41 @@ function AppNavigator() {
                 <React.Fragment>
                     <Stack.Screen name="Login" component={LoginScreen as any} />
                     <Stack.Screen name="SignUp" component={SignUpScreen as any} />
+                    <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen as any} />
                     <Stack.Screen name="Onboarding" component={OnboardingScreen as any} />
+                    <Stack.Screen name="Terms" component={TermsScreen as any} />
+                    <Stack.Screen name="Privacy" component={PrivacyScreen as any} />
                 </React.Fragment>
             )}
         </Nav>
+    );
+
+    // Conditional overlays (instead of conditional returns) to preserve state
+    return (
+        <View style={{ flex: 1 }}>
+            {mainNavigator}
+
+            {/* Mandatory Terms Overlay */}
+            {user && !profile?.accepted_terms_at && (
+                <View style={[StyleSheet.absoluteFill, { zIndex: 9000 }]}>
+                    <TermsScreen isMandatory={true} />
+                </View>
+            )}
+
+            {/* Mandatory Privacy Overlay */}
+            {user && profile?.accepted_terms_at && !profile?.accepted_privacy_at && (
+                <View style={[StyleSheet.absoluteFill, { zIndex: 9001 }]}>
+                    <PrivacyScreen isMandatory={true} />
+                </View>
+            )}
+            
+            {/* Biometric Lock Overlay */}
+            {user && isLocked && (
+                <View style={[StyleSheet.absoluteFill, { zIndex: 9999 }]}>
+                    <LockScreen onUnlock={() => setIsLocked(false)} />
+                </View>
+            )}
+        </View>
     );
 }
 

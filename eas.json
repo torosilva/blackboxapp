@@ -11,7 +11,11 @@
             "distribution": "internal",
             "env": {
                 "EAS_SKIP_AUTO_FINGERPRINT": "1",
-                "NPM_CONFIG_LEGACY_PEER_DEPS": "1"
+                "NPM_CONFIG_LEGACY_PEER_DEPS": "1",
+                "EXPO_PUBLIC_SUPABASE_URL": "https://fozsvbwagmqblvfurgco.supabase.co",
+                "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_0-P-ribHEgg7OSOIrJRg7Q_lACRKbRk",
+                "EXPO_PUBLIC_GEMINI_API_KEY": "AIzaSyCZ2MoLVEqE8zQx2TzlvgLyExBOw-Fmuw8",
+                "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyCYrtUfNN6z68MKnDnZbwq-EXRSIkixgVI"
             },
             "android": {
                 "buildType": "apk"
@@ -19,7 +23,11 @@
         },
         "production": {
             "env": {
-                "NPM_CONFIG_LEGACY_PEER_DEPS": "1"
+                "NPM_CONFIG_LEGACY_PEER_DEPS": "1",
+                "EXPO_PUBLIC_SUPABASE_URL": "https://fozsvbwagmqblvfurgco.supabase.co",
+                "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_0-P-ribHEgg7OSOIrJRg7Q_lACRKbRk",
+                "EXPO_PUBLIC_GEMINI_API_KEY": "AIzaSyCZ2MoLVEqE8zQx2TzlvgLyExBOw-Fmuw8",
+                "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyCYrtUfNN6z68MKnDnZbwq-EXRSIkixgVI"
             }
         }
     },

@@ -21,7 +21,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     useEffect(() => {
         console.log('AUTH: Initializing session check...');
         // 1. Verificar sesión actual al abrir la app
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        supabase.auth.getSession().then(({ data: { session }, error }) => {
+            if (error) {
+                console.error('AUTH_CONTEXT: getSession error:', error.message);
+                if (error.message.includes('refresh_token_not_found') || error.message.includes('invalid_grant')) {
+                    supabase.auth.signOut();
+                }
+                setIsLoading(false);
+                return;
+            }
             console.log('AUTH: Session check complete. Session exists:', !!session);
             setSession(session);
             setUser(session?.user ?? null);
@@ -29,10 +37,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         });
 
         // 2. Escuchar cambios (Login, Logout, Auto-refresh)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+            console.log('AUTH_CONTEXT: Auth event type:', _event);
+            
+            if (_event === 'SIGNED_OUT') {
+                console.log('AUTH_CONTEXT: User signed out, clearing state.');
+                setSession(null);
+                setUser(null);
+                setProfile(null);
+                setIsLoading(false);
+                return;
+            }
+            
+            console.log('AUTH_CONTEXT: New session detected for user:', session?.user?.id);
             setSession(session);
             setUser(session?.user ?? null);
+            
             if (session?.user) {
+                console.log('AUTH_CONTEXT: Loading profile for user:', session.user.id);
                 fetchProfile(session.user.id);
             } else {
                 setProfile(null);
@@ -58,6 +80,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     console.log('AUTH_CONTEXT: Profile not found, creating it...');
                     const email = session?.user?.email || '';
                     await SupabaseService.upsertProfile(userId, email);
+                    await SupabaseService.seedWelcomeEntry(userId);
                     // Fetch again after creation
                     const { data: newData, error: newError } = await supabase
                         .from('profiles')

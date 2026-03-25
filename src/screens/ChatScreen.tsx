@@ -2,16 +2,19 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TextInput,
     TouchableOpacity, ScrollView, KeyboardAvoidingView,
-    Platform, ActivityIndicator, StatusBar
+    Platform, ActivityIndicator, StatusBar, Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Send, ChevronLeft, Bot, User, Sparkles, Brain } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
+import { Send, ChevronLeft, Bot, Sparkles, Brain } from 'lucide-react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { ChatService, ChatMessage } from '../services/ChatService';
 import { useAuth } from '../context/AuthContext';
+import { SupabaseService } from '../services/SupabaseService';
 
 const ChatScreen = () => {
     const navigation = useNavigation<any>();
+    const route = useRoute<any>();
+    const { threadId, category, title } = route.params || {};
     const { user, profile } = useAuth();
 
     const SAV = SafeAreaView as any;
@@ -20,25 +23,58 @@ const ChatScreen = () => {
     const Sn = Send as any;
     const CL = ChevronLeft as any;
     const Bo = Bot as any;
-    const Us = User as any;
-    const Sp = Sparkles as any;
-    const Br = Brain as any;
 
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputText, setInputText] = useState('');
     const [loading, setLoading] = useState(false);
+    const [fetchingHistory, setFetchingHistory] = useState(true);
     const scrollViewRef = useRef<ScrollView>(null);
 
     const fullName = profile?.full_name || user?.email?.split('@')[0] || 'Explorador';
 
     const predefinedQuestions = [
-        "¿Qué sesgos he tenido esta semana?",
-        "¿Cómo puedo mejorar mi enfoque?",
-        "Hazme un resumen de mi progreso",
+        "¿Qué sesgos detectas aquí?",
+        "¿Cuáles son los siguientes pasos?",
+        "Resume nuestra discusión estratégica",
     ];
 
+    useEffect(() => {
+        if (threadId) {
+            loadHistory();
+        } else {
+            setFetchingHistory(false);
+            // Fallback: If no threadId, go back
+            navigation.goBack();
+        }
+    }, [threadId]);
+
+    const loadHistory = async () => {
+        try {
+            const history = await SupabaseService.getChatMessages(threadId);
+            if (history && history.length > 0) {
+                const formatted = history.map((m: any) => ({
+                    role: m.role as 'user' | 'model',
+                    parts: [{ text: m.content }]
+                }));
+                setMessages(formatted);
+            } else {
+                // Initial greeting if no messages
+                setMessages([
+                    {
+                        role: 'model',
+                        parts: [{ text: `Hola ${fullName}, estoy listo para profundizar en "${title || 'esta consulta'}". ¿En qué puedo ayudarte hoy dentro de esta categoría?` }]
+                    }
+                ]);
+            }
+        } catch (error) {
+            console.error('LOAD_HISTORY_ERROR:', error);
+        } finally {
+            setFetchingHistory(false);
+        }
+    };
+
     const handleSend = async (text: string = inputText) => {
-        if (!text.trim() || loading || !user) return;
+        if (!text.trim() || loading || !user || !threadId) return;
 
         const userMsg: ChatMessage = { role: 'user', parts: [{ text }] };
         setMessages(prev => [...prev, userMsg]);
@@ -46,13 +82,25 @@ const ChatScreen = () => {
         setLoading(true);
 
         try {
-            const response = await ChatService.sendMessage(user.id, text, messages, fullName);
+            // 1. Save User Message to DB
+            await SupabaseService.saveChatMessage(threadId, 'user', text);
+
+            // 2. Get AI Response
+            // Pass the category to the ChatService for more efficient/specialized prompting
+            const response = await ChatService.sendMessage(user.id, text, messages, fullName, category);
+            
+            const aiText = response.parts[0].text;
             const aiMsg: ChatMessage = {
                 role: 'model',
-                parts: [{ text: response.parts[0].text }]
+                parts: [{ text: aiText }]
             };
+            
+            // 3. Save AI Response to DB
+            await SupabaseService.saveChatMessage(threadId, 'model', aiText);
+            
             setMessages(prev => [...prev, aiMsg]);
         } catch (error) {
+            console.error('SEND_MESSAGE_ERROR:', error);
             const errorMsg: ChatMessage = {
                 role: 'model',
                 parts: [{ text: "Lo siento, tuve un problema al procesar tu solicitud. Intenta de nuevo." }]
@@ -63,21 +111,17 @@ const ChatScreen = () => {
         }
     };
 
-    useEffect(() => {
-        // Initial greeting if no messages
-        if (messages.length === 0) {
-            setMessages([
-                {
-                    role: 'model',
-                    parts: [{ text: `Hola ${fullName}, soy tu Blackbox AI Consultant. Estoy al tanto de tus registros recientes. ¿En qué podemos profundizar hoy para optimizar tu rendimiento?` }]
-                }
-            ]);
-        }
-    }, [fullName]);
+    if (fetchingHistory) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#6366f1" />
+            </View>
+        );
+    }
 
     return (
         <SAV style={styles.container}>
-            <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+            <StatusBar barStyle="light-content" />
 
             {/* Header */}
             <View style={styles.header}>
@@ -85,16 +129,16 @@ const ChatScreen = () => {
                     <CL color="white" size={28} />
                 </TO>
                 <View style={styles.headerTitleContainer}>
-                    <Bo size={20} color="#818cf8" />
-                    <Text style={styles.headerTitle}>BLACKBOX AI CONSULTANT</Text>
+                    <Text style={styles.headerTitle} numberOfLines={1}>{title?.toUpperCase() || 'CHAT'}</Text>
+                    <Text style={styles.categoryLabel}>{category}</Text>
                 </View>
-                <View style={{ width: 40 }} />
+                <View style={{ width: 44 }} />
             </View>
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 style={{ flex: 1 }}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
             >
                 <ScrollView
                     ref={scrollViewRef}
@@ -134,7 +178,7 @@ const ChatScreen = () => {
                 </ScrollView>
 
                 {/* Suggestions */}
-                {messages.length === 1 && !loading && (
+                {messages.length <= 1 && !loading && (
                     <View style={styles.suggestions}>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20 }}>
                             {predefinedQuestions.map((q, i) => (
@@ -154,7 +198,7 @@ const ChatScreen = () => {
                 <View style={styles.inputArea}>
                     <TI
                         style={styles.input}
-                        placeholder="Pregunta sobre tus registros..."
+                        placeholder="Escribe un mensaje..."
                         placeholderTextColor="#64748b"
                         value={inputText}
                         onChangeText={setInputText}
@@ -175,27 +219,28 @@ const ChatScreen = () => {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#020617' },
+    loadingContainer: { flex: 1, backgroundColor: '#020617', justifyContent: 'center', alignItems: 'center' },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 15,
-        paddingTop: Platform.OS === 'ios' ? 10 : 15,
-        paddingBottom: 15,
+        paddingVertical: 15,
         borderBottomWidth: 1,
         borderColor: '#1e293b'
     },
-    headerTitleContainer: { flexDirection: 'row', alignItems: 'center' },
-    headerTitle: { color: 'white', fontWeight: 'bold', letterSpacing: 2, marginLeft: 8 },
-    backBtn: { padding: 10, minWidth: 44, minHeight: 44, justifyContent: 'center' },
+    headerTitleContainer: { flex: 1, alignItems: 'center' },
+    headerTitle: { color: 'white', fontWeight: 'bold', letterSpacing: 2, fontSize: 13 },
+    categoryLabel: { color: '#6366f1', fontSize: 10, fontWeight: '900', marginTop: 2 },
+    backBtn: { padding: 8 },
     chatContainer: { flex: 1 },
-    chatContent: { padding: 20, paddingBottom: 150 },
-    messageWrapper: { marginBottom: 24, width: '100%', flexDirection: 'row' },
+    chatContent: { padding: 20, paddingBottom: 100 },
+    messageWrapper: { marginBottom: 20, width: '100%', flexDirection: 'row' },
     userWrapper: { justifyContent: 'flex-end' },
     aiWrapper: { justifyContent: 'flex-start' },
-    messageBubble: { padding: 16, borderRadius: 20, maxWidth: '85%' },
+    messageBubble: { padding: 16, borderRadius: 24, maxWidth: '85%' },
     userBubble: { backgroundColor: '#6366f1', borderBottomRightRadius: 4 },
-    aiBubble: { backgroundColor: '#1e293b', borderBottomLeftRadius: 4, borderWidth: 1, borderColor: '#334155' },
+    aiBubble: { backgroundColor: '#0f172a', borderBottomLeftRadius: 4, borderWidth: 1, borderColor: '#1e293b' },
     messageText: { fontSize: 15, lineHeight: 22 },
     userText: { color: 'white' },
     aiText: { color: '#cbd5e1' },
@@ -214,7 +259,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'flex-end',
         padding: 15,
-        paddingBottom: Platform.OS === 'ios' ? 30 : 15,
+        paddingBottom: Platform.OS === 'ios' ? 20 : 15,
         backgroundColor: '#020617',
         borderTopWidth: 1,
         borderColor: '#1e293b'
@@ -229,7 +274,7 @@ const styles = StyleSheet.create({
         color: 'white',
         maxHeight: 200,
         borderWidth: 1,
-        borderColor: '#334155'
+        borderColor: '#1e293b'
     },
     sendBtn: {
         width: 44,

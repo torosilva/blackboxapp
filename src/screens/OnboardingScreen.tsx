@@ -28,22 +28,22 @@ const { width, height } = Dimensions.get('window');
 const SLIDES = [
     {
         id: '1',
-        title: 'Tu Bóveda Digital',
-        description: 'Tus pensamientos y grabaciones procesados con privacidad de grado militar. Tu mente, bajo tu control.',
-        icon: <Shield size={120} color="#6366f1" />,
+        title: 'Estrategia en Tu Bolsillo',
+        description: 'BLACKBOX es tu segundo cerebro para capturar pensamientos, audios y planes. Tu mente, organizada estratégicamente.',
+        icon: <TrendingUp size={120} color="#6366f1" />,
         color: '#6366f1'
     },
     {
         id: '2',
-        title: 'Consultoría con IA',
-        description: 'Blackbox analiza tus patrones cognitivos para extraer insights estratégicos que te ayudan a crecer.',
+        title: 'Tu Consultor 24/7',
+        description: 'No es solo un diario. Mi IA audita tus sesgos cognitivos y te da insights tácticos para tu crecimiento impulsado por datos.',
         icon: <Brain size={120} color="#c084fc" />,
         color: '#c084fc'
     },
     {
         id: '3',
-        title: 'Bajos de Rendimiento',
-        description: 'Transformamos cada reflexión en "Active Loops": tareas concretas y accionables para tu éxito diario.',
+        title: 'De la Idea a la Acción',
+        description: 'Cada reflexión se convierte en un plan. Gestiona tus "Active Loops" por categorías de Negocios, Personal y Salud.',
         icon: <Zap size={120} color="#38bdf8" />,
         color: '#38bdf8'
     },

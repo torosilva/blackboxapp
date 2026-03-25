@@ -165,6 +165,13 @@ export default function LoginScreen() {
                             </View>
                         </View>
 
+                        <TO
+                            onPress={() => navigation.navigate('ForgotPassword')}
+                            className="mt-4 self-end"
+                        >
+                            <Text className="text-gray-400 text-sm">¿Olvidaste tu contraseña?</Text>
+                        </TO>
+
                         {/* ACTION BUTTON */}
                         <TO
                             onPress={handleLogin}

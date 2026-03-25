@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { SupabaseService } from './SupabaseService';
+import { RetryHelper } from './RetryHelper';
 
 const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 
@@ -12,7 +13,7 @@ export const ChatService = {
     /**
      * Main function to send a message to the Strategic Consultant
      */
-    async sendMessage(userId: string, userMessage: string, chatHistory: ChatMessage[] = [], userName?: string) {
+    async sendMessage(userId: string, userMessage: string, chatHistory: ChatMessage[] = [], userName?: string, category?: string) {
         if (!GEMINI_API_KEY) throw new Error('API Key missing');
 
         try {
@@ -40,7 +41,14 @@ export const ChatService = {
         5. Al final de conversaciones importantes, sugiere un "Active Loop" (tarea accionable).
         6. Sé empático pero enfocado en la ejecución y la claridad.
 
-        INSTRUCCIÓN: Responde al mensaje del usuario manteniendo la coherencia con su historial.
+        CONTEXTO DE ESTA CONVERSACIÓN:
+        Esta consulta está categorizada como: ${category || 'GENERAL'}. 
+        Ajusta tu profundidad y terminología a esta categoría.
+        Si es BUSINESS, enfócate en ROI, estrategia y ejecución. 
+        Si es PERSONAL, enfócate en psicología y crecimiento.
+        Si es HEALTH, enfócate en biohacking y bienestar.
+
+        INSTRUCCIÓN: Responde al mensaje del usuario manteniendo la coherencia con su historial y la categoría seleccionada.
       `;
 
             const modelName = 'gemini-flash-latest'; // Consistent with ai.ts
@@ -56,15 +64,18 @@ export const ChatService = {
             // (Gemini 1.5 allows system_instruction as a dedicated field, but we'll use prompt injection for simplicity/compatibility)
             const fullPrompt = `${systemPrompt}\n\nUsuario: ${userMessage}`;
 
-            const response = await axios.post(url, {
-                contents: [
-                    ...chatHistory,
-                    { role: 'user', parts: [{ text: fullPrompt }] }
-                ],
-                generationConfig: {
-                    temperature: 0.7,
-                    maxOutputTokens: 1200,
-                }
+            const response: any = await RetryHelper.withRetry(async () => {
+                const res = await axios.post(url, {
+                    contents: [
+                        ...chatHistory,
+                        { role: 'user', parts: [{ text: fullPrompt }] }
+                    ],
+                    generationConfig: {
+                        temperature: 0.7,
+                        maxOutputTokens: 1200,
+                    }
+                });
+                return res;
             });
 
             if (response.data?.candidates?.[0]) {

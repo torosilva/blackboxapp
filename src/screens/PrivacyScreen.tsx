@@ -12,13 +12,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Shield, ChevronLeft, Lock } from 'lucide-react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, NavigationRouteContext } from '@react-navigation/native';
 import { SupabaseService } from '../services/SupabaseService';
 import { useAuth } from '../context/AuthContext';
 
-const PrivacyScreen = () => {
+const PrivacyScreen = ({ isMandatory: propIsMandatory }: { isMandatory?: boolean }) => {
     const navigation = useNavigation<any>();
-    const route = useRoute<any>();
+    const route: any = React.useContext(NavigationRouteContext);
     const { user, refreshProfile } = useAuth();
 
     const SAV = SafeAreaView as any;
@@ -30,7 +30,7 @@ const PrivacyScreen = () => {
     const [loading, setLoading] = useState(false);
 
     // If this screen is shown via the mandatory flow
-    const isMandatory = route.params?.isMandatory || false;
+    const isMandatory = propIsMandatory || route?.params?.isMandatory || false;
 
     const handleAccept = async () => {
         const email = user?.email || `user_${user?.id}@placeholder.com`;

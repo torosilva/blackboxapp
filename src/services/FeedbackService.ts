@@ -31,5 +31,23 @@ export const FeedbackService = {
             console.error('FeedbackService: Error submitting feedback', error);
             return { data: null, error };
         }
+    },
+
+    /**
+     * Fetch all feedback (Admin only)
+     */
+    async getAllFeedback() {
+        try {
+            const { data, error } = await supabase
+                .from('feedback')
+                .select('*, profiles(full_name)')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            return { data, error: null };
+        } catch (error: any) {
+            console.error('FeedbackService: Error fetching feedback', error);
+            return { data: null, error };
+        }
     }
 };

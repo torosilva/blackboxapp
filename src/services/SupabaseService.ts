@@ -437,16 +437,40 @@ export const SupabaseService = {
     },
 
     /**
+     * 6. Password Reset
+     */
+    async resetPassword(email: string) {
+        // Use the most compatible redirect URI for the current environment
+        const redirectUrl = AuthSession.makeRedirectUri({
+            path: 'reset-password'
+        });
+        
+        console.log('SUPABASE_SERVICE: Reset Password Redirect URI:', redirectUrl);
+
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: redirectUrl,
+        });
+        if (error) throw error;
+        return true;
+    },
+
+    /**
      * 7. Social Authentication (Google)
      */
     async signInWithGoogle() {
         try {
+            // Simplified redirect for better compatibility in Expo Go
             const redirectUrl = AuthSession.makeRedirectUri({
-                scheme: 'blackbox',
                 path: 'auth/callback'
             });
+            
             console.log('SUPABASE_SERVICE: Generated Google Redirect URI:', redirectUrl);
             console.log('SUPABASE_SERVICE: Starting Google OAuth...');
+            
+            // Helpful note for the developer
+            if (redirectUrl.startsWith('exp://')) {
+                console.log('SUPABASE_SERVICE: NOTE: Using Expo Go scheme. Ensure this exact URI is whitelisted in Supabase Dashboard.');
+            }
 
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
@@ -572,6 +596,172 @@ export const SupabaseService = {
         } catch (error: any) {
             console.error('SUPABASE_SERVICE: Delete Account Failed:', error.message);
             throw error;
+        }
+    },
+
+    /**
+     * 10. Strategic Goals
+     */
+    async getGoals(userId: string) {
+        try {
+            const { data, error } = await supabase
+                .from('goals')
+                .select('*')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            return data;
+        } catch (error: any) {
+            console.error('SUPABASE_SERVICE: Error fetching goals', error);
+            return [];
+        }
+    },
+
+    async createGoal(userId: string, title: string, description: string, category: 'BUSINESS' | 'PERSONAL' | 'HEALTH') {
+        try {
+            const { data, error } = await supabase
+                .from('goals')
+                .insert([{ user_id: userId, title, description, category }])
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
+        } catch (error: any) {
+            console.error('SUPABASE_SERVICE: Error creating goal', error);
+            throw error;
+        }
+    },
+
+    async updateGoalStatus(goalId: string, isCompleted: boolean) {
+        try {
+            const { error } = await supabase
+                .from('goals')
+                .update({ is_completed: isCompleted, updated_at: new Date().toISOString() })
+                .eq('id', goalId);
+
+            if (error) throw error;
+            return true;
+        } catch (error: any) {
+            console.error('SUPABASE_SERVICE: Error updating goal', error);
+            return false;
+        }
+    },
+
+    async deleteGoal(goalId: string) {
+        try {
+            const { error } = await supabase
+                .from('goals')
+                .delete()
+                .eq('id', goalId);
+
+            if (error) throw error;
+            return true;
+        } catch (error: any) {
+            console.error('SUPABASE_SERVICE: Error deleting goal', error);
+            return false;
+        }
+    },
+
+    /**
+     * 11. Chat Strategy & History
+     */
+    async getChatThreads(userId: string) {
+        const { data, error } = await supabase
+            .from('chat_threads')
+            .select('*')
+            .eq('user_id', userId)
+            .order('updated_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    },
+
+    async createChatThread(userId: string, title: string, category: 'BUSINESS' | 'PERSONAL' | 'HEALTH' | 'GENERAL') {
+        const { data, error } = await supabase
+            .from('chat_threads')
+            .insert([{ user_id: userId, title, category }])
+            .select()
+            .single();
+        if (error) throw error;
+        return data;
+    },
+
+    async deleteChatThread(threadId: string) {
+        const { error } = await supabase
+            .from('chat_threads')
+            .delete()
+            .eq('id', threadId);
+        if (error) throw error;
+        return true;
+    },
+
+    async getChatMessages(threadId: string) {
+        const { data, error } = await supabase
+            .from('chat_messages')
+            .select('*')
+            .eq('thread_id', threadId)
+            .order('created_at', { ascending: true });
+        if (error) throw error;
+        return data;
+    },
+
+    async saveChatMessage(threadId: string, role: 'user' | 'model', content: string) {
+        const { error } = await supabase
+            .from('chat_messages')
+            .insert([{ thread_id: threadId, role, content }]);
+
+        // Also update the thread's updated_at timestamp
+        await supabase
+            .from('chat_threads')
+            .update({ updated_at: new Date().toISOString() })
+            .eq('id', threadId);
+
+        if (error) throw error;
+        return true;
+    },
+
+    /**
+     * seedWelcomeEntry: Creates a sample entry for new users to demonstrate the app's value.
+     */
+    async seedWelcomeEntry(userId: string) {
+        try {
+            const welcomeTitle = "Bienvenida a BLACKBOX: Tu Primera Sesión";
+            const welcomeContent = "Esta es una entrada de ejemplo para que veas cómo BLACKBOX funciona. Aquí puedes registrar tus pensamientos, grabaciones de voz o planes estratégicos. Una vez que guardas, mi motor de IA analiza tu contenido para detectar sesgos, resumir puntos clave y sugerir pasos accionables.";
+            
+            const analysis = {
+                summary: "Bienvenido a tu nueva herramienta de claridad mental. Esta sesión demuestra cómo BLACKBOX transforma texto en estrategia. Se ha detectado un tono positivo y enfocado en el crecimiento.",
+                sentiment_score: 0.9,
+                mood_label: "Inspirado",
+                strategic_insight: "Tu mayor activo es la capacidad de reflexionar sobre tus propios procesos cognitivos. No dejes que el sesgo de confirmación limite tus decisiones hoy.",
+                wellness_recommendation: "Tómate 5 minutos para revisar tus Active Loops de hoy y prioriza el que tenga mayor impacto en tu meta de NEGOCIOS.",
+                action_items: [
+                    { id: '1', task: "Explorar la sección de Metas en Configuración", is_completed: false, category: "BUSINESS" },
+                    { id: '2', task: "Registrar mi primera reflexión de voz usando el micro", is_completed: false, category: "PERSONAL" },
+                    { id: '3', task: "Probar el Chat Estratégico desde el Hub", is_completed: false, category: "BUSINESS" }
+                ]
+            };
+
+            const { error } = await supabase
+                .from('entries')
+                .insert([{
+                    user_id: userId,
+                    title: welcomeTitle,
+                    content: welcomeContent,
+                    summary: analysis.summary,
+                    sentiment_score: analysis.sentiment_score,
+                    mood_label: analysis.mood_label,
+                    strategic_insight: analysis.strategic_insight,
+                    wellness_recommendation: analysis.wellness_recommendation,
+                    action_items: analysis.action_items,
+                    created_at: new Date().toISOString()
+                }]);
+
+            if (error) throw error;
+            return true;
+        } catch (error) {
+            console.error('SEED_WELCOME_ERROR:', error);
+            return false;
         }
     }
 };
