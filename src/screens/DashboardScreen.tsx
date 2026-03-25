@@ -28,6 +28,8 @@ import {
     Briefcase,
     Heart,
     MessageSquare,
+    MessageCircle,
+    Mic
 } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { SupabaseService } from '../services/SupabaseService';
