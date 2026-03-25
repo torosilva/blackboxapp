@@ -40,34 +40,38 @@ const ChatScreen = () => {
 
     useEffect(() => {
         if (threadId) {
+            setMessages([]); // Clear previous state to avoid cross-thread leaks
+            setFetchingHistory(true);
             loadHistory();
         } else {
             setFetchingHistory(false);
-            // Fallback: If no threadId, go back
             navigation.goBack();
         }
     }, [threadId]);
 
     const loadHistory = async () => {
         try {
+            console.log('CHAT_SCREEN: Loading history for thread:', threadId);
             const history = await SupabaseService.getChatMessages(threadId);
             if (history && history.length > 0) {
+                console.log('CHAT_SCREEN: History loaded, messages:', history.length);
                 const formatted = history.map((m: any) => ({
                     role: m.role as 'user' | 'model',
                     parts: [{ text: m.content }]
                 }));
                 setMessages(formatted);
             } else {
-                // Initial greeting if no messages
+                console.log('CHAT_SCREEN: No history found, showing greeting');
                 setMessages([
                     {
                         role: 'model',
-                        parts: [{ text: `Hola ${fullName}, estoy listo para profundizar en "${title || 'esta consulta'}". ¿En qué puedo ayudarte hoy dentro de esta categoría?` }]
+                        parts: [{ text: `Hola ${fullName}, estoy listo para profundizar en "${title || 'esta consulta'}". ¿En qué puedo ayudarte hoy?` }]
                     }
                 ]);
             }
         } catch (error) {
             console.error('LOAD_HISTORY_ERROR:', error);
+            Alert.alert('Error', 'No se pudo cargar el historial del chat');
         } finally {
             setFetchingHistory(false);
         }

@@ -637,19 +637,43 @@ const SettingsScreen = () => {
                             </TO>
 
                             {expandedSections.guide && (
-                                <TO
-                                    style={styles.tutorialButton}
-                                    onPress={() => navigation.navigate('Onboarding')}
-                                >
-                                    <View style={styles.iconCircleYellow}>
-                                        <B size={18} color="#facc15" />
-                                    </View>
-                                    <View style={styles.policyTextContainer}>
-                                        <Text style={styles.policyLabel}>Tutorial Interactivo</Text>
-                                        <Text style={styles.policyValue}>Ver explicación de BLACKBOX</Text>
-                                    </View>
-                                    <CL size={20} color="#475569" style={{ transform: [{ rotate: '180deg' }] }} />
-                                </TO>
+                                <>
+                                    <TO
+                                        style={styles.tutorialButton}
+                                        onPress={() => navigation.navigate('Onboarding')}
+                                    >
+                                        <View style={styles.iconCircleYellow}>
+                                            <B size={18} color="#facc15" />
+                                        </View>
+                                        <View style={styles.policyTextContainer}>
+                                            <Text style={styles.policyLabel}>Tutorial Interactivo</Text>
+                                            <Text style={styles.policyValue}>Ver explicación de BLACKBOX</Text>
+                                        </View>
+                                        <CL size={20} color="#475569" style={{ transform: [{ rotate: '180deg' }] }} />
+                                    </TO>
+
+                                    <TO
+                                        style={[styles.tutorialButton, { marginTop: 12 }]}
+                                        onPress={async () => {
+                                            try {
+                                                await SupabaseService.seedWelcomeEntry(user!.id);
+                                                navigation.navigate('Dashboard');
+                                                Alert.alert('Éxito', 'Se ha generado una sesión de ejemplo en tu Dashboard.');
+                                            } catch (error) {
+                                                Alert.alert('Error', 'No se pudo generar el ejemplo.');
+                                            }
+                                        }}
+                                    >
+                                        <View style={[styles.iconCircle, { backgroundColor: 'rgba(99, 102, 241, 0.1)' }]}>
+                                            <Sparkles size={18} color="#6366f1" />
+                                        </View>
+                                        <View style={styles.policyTextContainer}>
+                                            <Text style={[styles.policyLabel, { color: '#818cf8' }]}>Simular Sesión IA</Text>
+                                            <Text style={styles.policyValue}>Generar ejemplo estratégico en Dashboard</Text>
+                                        </View>
+                                        <CL size={20} color="#475569" style={{ transform: [{ rotate: '180deg' }] }} />
+                                    </TO>
+                                </>
                             )}
                         </View>
 

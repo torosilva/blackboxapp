@@ -197,12 +197,17 @@ const DashboardScreen = () => {
                                 <Text style={styles.latestInsight} numberOfLines={2}>
                                     {stats.latestEntry.summary || 'Tu última entrada está siendo procesada...'}
                                 </Text>
+                                <TO style={[styles.seedBtn, { marginTop: 10, alignSelf: 'flex-start' }]} onPress={handleSeedSample}>
+                                    <Sparkles size={12} color="#818cf8" style={{marginRight: 4}} />
+                                    <Text style={[styles.seedBtnText, { fontSize: 11 }]}>Reiniciar Sesión de Ejemplo</Text>
+                                </TO>
                             </View>
                         ) : (
                             <View>
                                 <Text style={styles.latestInsight}>Aún no hay registros. Comienza hoy tu viaje de claridad mental.</Text>
                                 <TO style={styles.seedBtn} onPress={handleSeedSample}>
-                                    <Text style={styles.seedBtnText}>Ver Sesión de Ejemplo</Text>
+                                    <Sparkles size={14} color="#818cf8" style={{marginRight: 6}} />
+                                    <Text style={styles.seedBtnText}>Ver Sesión de Ejemplo (IA)</Text>
                                 </TO>
                             </View>
                         )}
