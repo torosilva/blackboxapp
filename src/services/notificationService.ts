@@ -18,34 +18,43 @@ export const NotificationService = {
      * Request permissions and register for push notifications
      */
     async registerForPushNotificationsAsync() {
-        if (!Device.isDevice) {
-            console.log('Must use physical device for Push Notifications');
+        try {
+            if (!Device.isDevice) {
+                console.log('Must use physical device for Push Notifications');
+                return null;
+            }
+
+            // In Expo Go (SDK 54+), remote push notifications are not supported
+            // and can trigger errors just by asking for permissions in some cases.
+            // We'll proceed but carefully.
+            
+            const { status: existingStatus } = await Notifications.getPermissionsAsync();
+            let finalStatus = existingStatus;
+
+            if (existingStatus !== 'granted') {
+                const { status } = await Notifications.requestPermissionsAsync();
+                finalStatus = status;
+            }
+
+            if (finalStatus !== 'granted') {
+                console.log('Failed to get notifications permission!');
+                return null;
+            }
+
+            if (Platform.OS === 'android') {
+                await Notifications.setNotificationChannelAsync('default', {
+                    name: 'default',
+                    importance: Notifications.AndroidImportance.MAX,
+                    vibrationPattern: [0, 250, 250, 250],
+                    lightColor: '#FF231F7C',
+                });
+            }
+
+            return true;
+        } catch (error) {
+            console.warn('NOTIFICATION_SERVICE: Error in registration (likely Expo Go limitation):', error);
             return null;
         }
-
-        const { status: existingStatus } = await Notifications.getPermissionsAsync();
-        let finalStatus = existingStatus;
-
-        if (existingStatus !== 'granted') {
-            const { status } = await Notifications.requestPermissionsAsync();
-            finalStatus = status;
-        }
-
-        if (finalStatus !== 'granted') {
-            console.log('Failed to get push token for push notification!');
-            return null;
-        }
-
-        if (Platform.OS === 'android') {
-            Notifications.setNotificationChannelAsync('default', {
-                name: 'default',
-                importance: Notifications.AndroidImportance.MAX,
-                vibrationPattern: [0, 250, 250, 250],
-                lightColor: '#FF231F7C',
-            });
-        }
-
-        return true;
     },
 
     /**
@@ -82,9 +91,36 @@ export const NotificationService = {
     },
 
     /**
-     * Cancel today's notification if it hasn't fired yet
-     * (Simplification: just cancel all and reschedule for tomorrow if needed, 
-     * but usually local reminders are fine to repeat even if entry exists)
+     * Schedule an aggressive follow-up for a high-priority task (72h later)
+     * Compatible with Expo Go (Local Notification)
+     */
+    async scheduleStrategicFollowup(taskTitle: string) {
+        try {
+            const title = "DIAGNÓSTICO DE PROCRASTINACIÓN";
+            const body = `Llevas 72 horas con '${taskTitle}' en espera. Estás poniendo en riesgo la ejecución estratégica. ¿Qué te detiene?`;
+
+            await Notifications.scheduleNotificationAsync({
+                content: {
+                    title,
+                    body,
+                    sound: true,
+                    priority: Notifications.AndroidNotificationPriority.HIGH,
+                    data: { type: 'STRATEGIC_FOLLOWUP' }
+                },
+                trigger: {
+                    type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+                    seconds: 3 * 24 * 60 * 60, // 72 hours
+                },
+            });
+
+            console.log(`Notification Service: Aggressive follow-up scheduled for: ${taskTitle}`);
+        } catch (error) {
+            console.warn('NOTIFICATION_SERVICE: Failed to schedule local follow-up', error);
+        }
+    },
+
+    /**
+     * Cancel all notifications
      */
     async cancelAllNotifications() {
         await Notifications.cancelAllScheduledNotificationsAsync();

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Share } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ActionItem } from '../core-types';
 import { SupabaseService } from '../services/SupabaseService';
@@ -30,6 +30,18 @@ export const ActionList: React.FC<Props> = ({ actions, entryId }) => {
                 const rollbackItems = [...items];
                 setItems(rollbackItems);
             }
+        }
+    };
+
+    const handleShare = async (item: ActionItem) => {
+        try {
+            const message = `BLACKBOX DIRECTIVE:\n\n${item.description}\n\nPriority: ${item.priority}\nCategory: ${item.category}\n\nAction requested.`;
+            await Share.share({
+                message,
+                title: 'Delegar Active Loop'
+            });
+        } catch (error) {
+            console.error('SHARE_ERROR:', error);
         }
     };
 
@@ -92,6 +104,17 @@ export const ActionList: React.FC<Props> = ({ actions, entryId }) => {
                                 )}
                             </View>
                         </View>
+
+                        {/* DELEGATE (SHARE) BUTTON */}
+                        <TouchableOpacity 
+                            onPress={(e) => {
+                                e.stopPropagation();
+                                handleShare(item);
+                            }}
+                            style={styles.shareButton}
+                        >
+                            <Ionicons name="share-outline" size={20} color="#94a3b8" />
+                        </TouchableOpacity>
                     </TouchableOpacity>
                 ))}
             </View>
@@ -193,5 +216,9 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontWeight: 'bold',
         textTransform: 'uppercase',
+    },
+    shareButton: {
+        padding: 8,
+        marginLeft: 8,
     },
 });

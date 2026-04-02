@@ -1,27 +1,31 @@
 import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 export class VoiceService {
     private recording: Audio.Recording | null = null;
 
     async startRecording(onStatusUpdate?: (status: Audio.RecordingStatus) => void) {
-        try {
-            const permission = await Audio.requestPermissionsAsync();
-            if (permission.status !== 'granted') return;
+        const permission = await Audio.requestPermissionsAsync();
+        if (permission.status !== 'granted') {
+            throw new Error('Permisos de micrófono denegados. Actívalos en configuración.');
+        }
 
+        try {
             await Audio.setAudioModeAsync({
                 allowsRecordingIOS: true,
                 playsInSilentModeIOS: true,
+                staysActiveInBackground: false, // Ensures it doesn't try to activate as background
             });
 
             const { recording } = await Audio.Recording.createAsync(
                 Audio.RecordingOptionsPresets.HIGH_QUALITY,
                 onStatusUpdate,
-                100 // Update every 100ms for smooth visuals
+                100 
             );
             this.recording = recording;
-        } catch (err) {
-            console.error('Failed to start recording', err);
+        } catch (err: any) {
+            console.error('VoiceService: Failed to create recording:', err);
+            throw new Error(`Error al iniciar grabación: ${err.message}`);
         }
     }
 

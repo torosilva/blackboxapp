@@ -68,12 +68,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [profile, setProfile] = useState<any | null>(null);
 
     const fetchProfile = async (userId: string) => {
+        // Safety timeout for profile fetch (10s)
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Profile fetch timeout')), 10000)
+        );
+
         try {
-            const { data, error } = await supabase
+            console.log('AUTH_CONTEXT: Fetching profile for:', userId);
+            const fetchPromise = supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', userId)
                 .single();
+
+            const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
 
             if (error) {
                 if (error.code === 'PGRST116') {
@@ -96,8 +104,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setProfile(data);
             }
         } catch (error) {
-            console.error('AUTH_CONTEXT: Error fetching profile', error);
+            console.error('AUTH_CONTEXT: Error or timeout fetching profile', error);
         } finally {
+            console.log('AUTH_CONTEXT: Profile fetch operation finished.');
             setIsLoading(false);
         }
     };

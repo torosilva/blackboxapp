@@ -9,18 +9,23 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
-  StatusBar
+  StatusBar,
+  Animated,
+  Easing,
+  KeyboardAvoidingView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Mic, X, Camera, Image as ImageIcon } from 'lucide-react-native';
+import { Mic, X, Camera, Image as ImageIcon, Brain } from 'lucide-react-native';
 import { aiService } from '../services/ai';
 import { voiceService } from '../services/voice';
 import { SupabaseService } from '../services/SupabaseService';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList } from '../navigation/types';
 import VoiceVisualizer from '../components/VoiceVisualizer';
+import AILoadingOverlay from '../components/AILoadingOverlay';
+import { NotificationService } from '../services/notificationService';
 
 const NewEntryScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -40,6 +45,49 @@ const NewEntryScreen = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [lastRecordingUri, setLastRecordingUri] = useState<string | null>(null);
   const [metering, setMetering] = useState(-160);
+  const [isLimitReached, setIsLimitReached] = useState(false);
+  const [inviteCode, setInviteCode] = useState('');
+  const pulseAnim = React.useRef(new Animated.Value(1)).current;
+  const { profile, refreshProfile } = useAuth();
+
+  React.useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.1, duration: 1000, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
+      ])
+    ).start();
+    
+    checkLimits();
+  }, []);
+
+  const checkLimits = async () => {
+    if (user && profile && !profile.is_pro) {
+      const usage = await SupabaseService.getTodayUsage(user.id);
+      if (usage.entriesCount >= 1) {
+        setIsLimitReached(true);
+      }
+    }
+  };
+
+  const handleApplyCode = async () => {
+    if (!inviteCode.trim() || !user) return;
+    setLoading(true);
+    try {
+        const success = await SupabaseService.applyInvitationCode(user.id, `BB-${inviteCode.trim().toUpperCase()}`);
+        if (success) {
+            await refreshProfile();
+            setIsLimitReached(false);
+            Alert.alert("¡Éxito!", "Ahora eres PRO. Puedes crear memorias ilimitadas.");
+        } else {
+            Alert.alert("Error", "Código inválido o ya utilizado.");
+        }
+    } catch (e) {
+        Alert.alert("Error", "Hubo un problema al aplicar el código.");
+    } finally {
+        setLoading(false);
+    }
+  };
 
   // Buffer for Android status bar
   const androidPadding = (StatusBar.currentHeight || 0) + 40;
@@ -78,8 +126,17 @@ const NewEntryScreen = () => {
         strategic_insight: analysis.strategic_insight,
         action_items: analysis.action_items,
         audio_url: audioUrl,
-        original_text: analysis.original_text || content
+        original_text: analysis.original_text || content,
+        category: analysis.category || 'PERSONAL'
       });
+
+      // NEW: Aggressive Follow-up Trigger (Local)
+      if (Array.isArray(analysis.action_items)) {
+        const highPriorities = analysis.action_items.filter((ai: any) => ai.priority === 'HIGH');
+        for (const hp of highPriorities) {
+          await NotificationService.scheduleStrategicFollowup(hp.description);
+        }
+      }
 
       Alert.alert('Análisis de BLACKBOX', `${analysis.summary}`, [
         {
@@ -118,6 +175,48 @@ const NewEntryScreen = () => {
     }
   };
 
+  if (isLimitReached) {
+    return (
+        <SAV style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 30 }]}>
+            <View style={{ backgroundColor: '#1e293b', padding: 30, borderRadius: 30, width: '100%', borderWidth: 1, borderColor: '#6366f1' }}>
+                <Brain size={60} color="#6366f1" style={{ alignSelf: 'center', marginBottom: 20 }} />
+                <Text style={{ color: 'white', fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 }}>
+                    Límite Diario Alcanzado
+                </Text>
+                <Text style={{ color: '#94a3b8', fontSize: 16, textAlign: 'center', marginBottom: 30, lineHeight: 24 }}>
+                    Como usuario <Text style={{ color: '#6366f1', fontWeight: 'bold' }}>FREE</Text> solo puedes registrar una memoria por día.
+                    {"\n\n"}Si quieres agregar más memorias, activa tu suscripción a <Text style={{ color: '#a855f7', fontWeight: 'bold' }}>PRO</Text>.
+                </Text>
+
+                <View style={{ flexDirection: 'row', backgroundColor: '#0f172a', borderRadius: 15, paddingHorizontal: 15, paddingVertical: 5, marginBottom: 20, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                    <Text style={{ color: '#6366f1', fontWeight: 'bold', fontSize: 18 }}>BB-</Text>
+                    <TI
+                        style={{ flex: 1, height: 50, color: 'white', fontSize: 18, fontWeight: '600', letterSpacing: 2 }}
+                        placeholder="CÓDIGO"
+                        placeholderTextColor="#475569"
+                        autoCapitalize="characters"
+                        value={inviteCode}
+                        onChangeText={setInviteCode}
+                        maxLength={6}
+                    />
+                </View>
+
+                <TO 
+                    style={{ backgroundColor: '#6366f1', height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center' }}
+                    onPress={handleApplyCode}
+                    disabled={loading}
+                >
+                    {loading ? <ActivityIndicator color="white" /> : <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>ACTIVAR PRO</Text>}
+                </TO>
+
+                <TO onPress={() => navigation.goBack()} style={{ marginTop: 25, alignSelf: 'center' }}>
+                    <Text style={{ color: '#475569', fontSize: 14, fontWeight: '500' }}>Volver al inicio</Text>
+                </TO>
+            </View>
+        </SAV>
+    );
+  }
+
   return (
     <SAV style={styles.container}>
       <StatusBar barStyle="light-content" />
@@ -132,54 +231,57 @@ const NewEntryScreen = () => {
           style={[styles.publishBtn, loading && { opacity: 0.5 }]}
         >
           {loading ? (
-            <ActivityIndicator size="small" color="white" />
+            <View /> 
           ) : (
             <Text style={styles.publishBtnText}>PUBLICAR</Text>
           )}
         </TO>
       </View>
 
-      <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
-        <TI
-          multiline
-          style={styles.contentInput}
-          placeholder="¿Qué tienes en mente?"
-          placeholderTextColor="#475569"
-          autoFocus
-          value={content}
-          onChangeText={setContent}
-        />
-      </ScrollView>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
+          <TI
+            multiline
+            style={styles.contentInput}
+            placeholder="¿Qué tienes en mente?"
+            placeholderTextColor="#475569"
+            autoFocus={false} // Disable autoFocus to allow user to see microphone
+            value={content}
+            onChangeText={setContent}
+          />
+        </ScrollView>
 
-      <View style={styles.visualizerContainer}>
-        <VoiceVisualizer isActive={isRecording} metering={metering} />
-      </View>
-
-      <View style={styles.toolbar}>
-        <TO style={styles.toolBtn}>
-          <Ca size={24} color="#94a3b8" />
-        </TO>
-
-        <TO
-          onPress={toggleRecording}
-          style={[styles.recordBtn, isRecording && styles.recordBtnActive]}
-        >
-          <View style={[styles.innerRecord, isRecording && styles.innerRecordActive]}>
-            {isRecording ? <View style={styles.stopIcon} /> : <Mi size={28} color="white" />}
-          </View>
-        </TO>
-
-        <TO style={styles.toolBtn}>
-          <II size={24} color="#94a3b8" />
-        </TO>
-      </View>
-
-      {loading && (
-        <View style={styles.overlay}>
-          <ActivityIndicator size="large" color="#6366f1" />
-          <Text style={styles.overlayText}>Procesando Insights...</Text>
+        <View style={styles.visualizerContainer}>
+          <VoiceVisualizer isActive={isRecording} metering={metering} />
         </View>
-      )}
+
+        <View style={styles.toolbar}>
+          <TO style={styles.toolBtn}>
+            <Ca size={24} color="#94a3b8" />
+          </TO>
+
+          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+            <TO
+              onPress={toggleRecording}
+              style={[styles.recordBtn, isRecording && styles.recordBtnActive]}
+            >
+              <View style={[styles.innerRecord, isRecording && styles.innerRecordActive]}>
+                {isRecording ? <View style={styles.stopIcon} /> : <Mi size={28} color="white" />}
+              </View>
+            </TO>
+          </Animated.View>
+
+          <TO style={styles.toolBtn}>
+            <II size={24} color="#94a3b8" />
+          </TO>
+        </View>
+      </KeyboardAvoidingView>
+
+      <AILoadingOverlay visible={loading} message="Consultando a tu Coach Estratégico..." />
     </SAV>
   );
 };

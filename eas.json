@@ -15,7 +15,12 @@
                 "EXPO_PUBLIC_SUPABASE_URL": "https://fozsvbwagmqblvfurgco.supabase.co",
                 "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_0-P-ribHEgg7OSOIrJRg7Q_lACRKbRk",
                 "EXPO_PUBLIC_GEMINI_API_KEY": "AIzaSyCZ2MoLVEqE8zQx2TzlvgLyExBOw-Fmuw8",
-                "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyCYrtUfNN6z68MKnDnZbwq-EXRSIkixgVI"
+                "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyCYrtUfNN6z68MKnDnZbwq-EXRSIkixgVI",
+                "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "aidiarymobile.firebaseapp.com",
+                "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "aidiarymobile",
+                "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "aidiarymobile.firebasestorage.app",
+                "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "467999620638",
+                "EXPO_PUBLIC_FIREBASE_APP_ID": "1:467999620638:web:0cc7b67bbf1db0ecdf380f"
             },
             "android": {
                 "buildType": "apk"
@@ -27,7 +32,12 @@
                 "EXPO_PUBLIC_SUPABASE_URL": "https://fozsvbwagmqblvfurgco.supabase.co",
                 "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_0-P-ribHEgg7OSOIrJRg7Q_lACRKbRk",
                 "EXPO_PUBLIC_GEMINI_API_KEY": "AIzaSyCZ2MoLVEqE8zQx2TzlvgLyExBOw-Fmuw8",
-                "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyCYrtUfNN6z68MKnDnZbwq-EXRSIkixgVI"
+                "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyCYrtUfNN6z68MKnDnZbwq-EXRSIkixgVI",
+                "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "aidiarymobile.firebaseapp.com",
+                "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "aidiarymobile",
+                "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "aidiarymobile.firebasestorage.app",
+                "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "467999620638",
+                "EXPO_PUBLIC_FIREBASE_APP_ID": "1:467999620638:web:0cc7b67bbf1db0ecdf380f"
             }
         }
     },

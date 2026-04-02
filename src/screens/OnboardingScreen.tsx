@@ -13,8 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
-import { Ionicons } from '@expo/vector-icons';
-import { Brain, TrendingUp, Shield, Zap } from 'lucide-react-native';
+import { Brain, TrendingUp, Shield, Zap, LayoutDashboard, Check } from 'lucide-react-native';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -28,24 +27,43 @@ const { width, height } = Dimensions.get('window');
 const SLIDES = [
     {
         id: '1',
-        title: 'Estrategia en Tu Bolsillo',
-        description: 'BLACKBOX es tu segundo cerebro para capturar pensamientos, audios y planes. Tu mente, organizada estratégicamente.',
-        icon: <TrendingUp size={120} color="#6366f1" />,
+        title: 'BIENVENIDO A BLACKBOX',
+        subtitle: 'Tu Coach de Alto Rendimiento',
+        description: 'BLACKBOX no es un diario; es un motor de ejecución clínica para mentes que no se detienen.',
+        icon: <Brain size={120} color="#6366f1" />,
         color: '#6366f1'
     },
     {
         id: '2',
-        title: 'Tu Consultor 24/7',
-        description: 'No es solo un diario. Mi IA audita tus sesgos cognitivos y te da insights tácticos para tu crecimiento impulsado por datos.',
-        icon: <Brain size={120} color="#c084fc" />,
+        title: 'PASO 1: CAPTURA',
+        subtitle: 'Vacía tu mente al instante',
+        description: 'Usa el botón "QuickCapture" o el icono del Micrófono. Habla sin filtros. BLACKBOX extraerá lo esencial.',
+        icon: <Zap size={120} color="#c084fc" />,
         color: '#c084fc'
     },
     {
         id: '3',
-        title: 'De la Idea a la Acción',
-        description: 'Cada reflexión se convierte en un plan. Gestiona tus "Active Loops" por categorías de Negocios, Personal y Salud.',
-        icon: <Zap size={120} color="#38bdf8" />,
+        title: 'PASO 2: ANÁLISIS',
+        subtitle: 'Auditoría Cognitiva',
+        description: 'La IA analizará tus sesgos, generará un plan de ataque y extraerá "Active Loops" para que nada se pierda.',
+        icon: <Shield size={120} color="#38bdf8" />,
         color: '#38bdf8'
+    },
+    {
+        id: '4',
+        title: 'PASO 3: LOOPS',
+        subtitle: 'Cierra el Ciclo Ejecutivo',
+        description: 'Gestiona tus tareas en el Centro Estratégico. Lo que no marcas como verde, BLACKBOX lo perseguirá con alertas de 72h.',
+        icon: <TrendingUp size={120} color="#22c55e" />,
+        color: '#22c55e'
+    },
+    {
+        id: '5',
+        title: 'PASO 4: CONSULTA',
+        subtitle: 'Profundiza en el Chat',
+        description: 'Entra al Chat Hub para debatir estrategias, debugear ideas o pedir planes de wellness con tu coach de IA.',
+        icon: <LayoutDashboard size={120} color="#facc15" />,
+        color: '#facc15'
     },
 ];
 
@@ -63,12 +81,15 @@ export default function OnboardingScreen() {
     const Z = Zap as any;
 
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [dontShowAgain, setDontShowAgain] = useState(false);
     const flatListRef = useRef<FlatList>(null);
     const scrollX = useSharedValue(0);
 
     const handleComplete = async () => {
         try {
-            await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
+            if (dontShowAgain) {
+                await AsyncStorage.setItem('HIDE_GUIDE', 'true');
+            }
             if (user) {
                 navigation.goBack();
             } else {
@@ -103,6 +124,7 @@ export default function OnboardingScreen() {
                 </View>
 
                 <Text style={styles.title}>{item.title}</Text>
+                {item.subtitle && <Text style={styles.subtitle}>{item.subtitle}</Text>}
                 <Text style={styles.description}>{item.description}</Text>
             </View>
         );
@@ -159,6 +181,17 @@ export default function OnboardingScreen() {
                     })}
                 </View>
 
+                {/* DON'T SHOW AGAIN CHECKBOX */}
+                <TO
+                    style={styles.checkboxRow}
+                    onPress={() => setDontShowAgain(!dontShowAgain)}
+                >
+                    <View style={[styles.checkbox, dontShowAgain && styles.checkboxActive]}>
+                        {dontShowAgain && <Check size={14} color="white" />}
+                    </View>
+                    <Text style={styles.checkboxLabel}>No volver a mostrar esta guía</Text>
+                </TO>
+
                 {/* BUTTON */}
                 <TO
                     onPress={handleNext}
@@ -207,7 +240,16 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#fff',
         textAlign: 'center',
+        marginBottom: 8,
+    },
+    subtitle: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#6366f1',
+        textAlign: 'center',
         marginBottom: 20,
+        letterSpacing: 2,
+        textTransform: 'uppercase',
     },
     description: {
         fontSize: 20,
@@ -254,4 +296,28 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
     },
+    checkboxRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 20,
+        gap: 10
+    },
+    checkbox: {
+        width: 20,
+        height: 20,
+        borderRadius: 6,
+        borderWidth: 2,
+        borderColor: '#6366f1',
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    checkboxActive: {
+        backgroundColor: '#6366f1'
+    },
+    checkboxLabel: {
+        color: '#94a3b8',
+        fontSize: 14,
+        fontWeight: '500'
+    }
 });

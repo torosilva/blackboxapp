@@ -301,7 +301,7 @@ const HomeScreen = () => {
     const baseMatch = (e: any) => (e.title || '').toLowerCase().includes(searchLower) ||
       (e.content || '').toLowerCase().includes(searchLower) ||
       (e.mood_label || '').toLowerCase().includes(searchLower) ||
-      (Array.isArray(e.action_items) && e.action_items.some((ai: any) => ai.description.toLowerCase().includes(searchLower)));
+      (Array.isArray(e.action_items) && e.action_items.some((ai: any) => (ai.task || ai.description || '').toLowerCase().includes(searchLower)));
 
     const entriesMatchingSearch = entries.filter(baseMatch);
 
@@ -311,6 +311,10 @@ const HomeScreen = () => {
       biases: entriesMatchingSearch.filter(e => e.strategic_insight?.detected_bias).length,
       positive: entriesMatchingSearch.filter(e => e.sentiment_score > 0.3).length,
       negative: entriesMatchingSearch.filter(e => e.sentiment_score < -0.3).length,
+      BUSINESS: entriesMatchingSearch.filter(e => e.category === 'BUSINESS').length,
+      PERSONAL: entriesMatchingSearch.filter(e => e.category === 'PERSONAL').length,
+      DEVELOPMENT: entriesMatchingSearch.filter(e => e.category === 'DEVELOPMENT').length,
+      WELLNESS: entriesMatchingSearch.filter(e => e.category === 'WELLNESS').length,
     };
   };
 
@@ -321,7 +325,8 @@ const HomeScreen = () => {
     const matchesSearch = (e.title || '').toLowerCase().includes(searchLower) ||
       (e.content || '').toLowerCase().includes(searchLower) ||
       (e.mood_label || '').toLowerCase().includes(searchLower) ||
-      (Array.isArray(e.action_items) && e.action_items.some((ai: any) => ai.description.toLowerCase().includes(searchLower)));
+      (e.category || '').toLowerCase().includes(searchLower) ||
+      (Array.isArray(e.action_items) && e.action_items.some((ai: any) => (ai.task || ai.description || '').toLowerCase().includes(searchLower)));
 
     if (!matchesSearch) return false;
 
@@ -330,6 +335,10 @@ const HomeScreen = () => {
       case 'biases': return e.strategic_insight?.detected_bias;
       case 'positive': return e.sentiment_score > 0.3;
       case 'negative': return e.sentiment_score < -0.3;
+      case 'BUSINESS': return e.category === 'BUSINESS';
+      case 'PERSONAL': return e.category === 'PERSONAL';
+      case 'DEVELOPMENT': return e.category === 'DEVELOPMENT';
+      case 'WELLNESS': return e.category === 'WELLNESS';
       default: return true;
     }
   });
@@ -435,10 +444,14 @@ const HomeScreen = () => {
             >
               {[
                 { id: 'all', label: 'Todo' },
+                { id: 'BUSINESS', label: 'Estrategia', icon: <Z size={14} color="currentColor" /> },
+                { id: 'PERSONAL', label: 'Personales', icon: <User size={14} color="currentColor" /> },
+                { id: 'DEVELOPMENT', label: 'Desarrollo Personal', icon: <SP size={14} color="currentColor" /> },
+                { id: 'WELLNESS', label: 'Bienestar', icon: <Stethoscope size={14} color="currentColor" /> },
                 { id: 'loops', label: 'Loops Activos', icon: <T size={14} color="currentColor" /> },
                 { id: 'biases', label: 'Sesgos', icon: <AT size={14} color="currentColor" /> },
-                { id: 'positive', label: 'Mente Positiva', icon: <L size={14} color="currentColor" /> },
-                { id: 'negative', label: 'Mente Negativa', icon: <FR size={14} color="currentColor" /> },
+                { id: 'positive', label: 'Positivo', icon: <L size={14} color="currentColor" /> },
+                { id: 'negative', label: 'Negativo', icon: <FR size={14} color="currentColor" /> },
               ].map(filter => (
                 <TO
                   key={filter.id}

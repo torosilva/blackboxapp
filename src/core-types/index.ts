@@ -39,6 +39,7 @@ export interface DiaryEntry {
         wellness_recommendation: any;
         strategic_insight: StrategicInsight;
         action_items: ActionItem[];
+        suggested_goals: string[];
     };
 
     // Mantenemos estos para compatibilidad con la UI mientras se desempaqueta

@@ -147,3 +147,19 @@ CREATE TABLE IF NOT EXISTS public.goals (
 ALTER TABLE public.goals ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can manage own goals" ON public.goals 
   FOR ALL USING (auth.uid() = user_id);
+
+-- STORAGE POLICIES (Supabase Storage)
+-- Execute these in the SQL Editor to allow audio uploads
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('diaries', 'diaries', true)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "Allow authenticated upload" 
+ON storage.objects FOR INSERT 
+TO authenticated 
+WITH CHECK (bucket_id = 'diaries' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+CREATE POLICY "Allow authenticated read" 
+ON storage.objects FOR SELECT 
+TO authenticated 
+USING (bucket_id = 'diaries' AND auth.uid()::text = (storage.foldername(name))[1]);

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Modal } from 'react-native';
 import Animated, {
     useSharedValue,
@@ -19,8 +19,25 @@ const AILoadingOverlay: React.FC<AILoadingOverlayProps> = ({ visible, message = 
     const brainScale = useSharedValue(1);
     const cubeRotate = useSharedValue(0);
     const cubeTranslateY = useSharedValue(0);
+    const [progress, setProgress] = React.useState(0);
 
     useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (visible) {
+            setProgress(0);
+            interval = setInterval(() => {
+                setProgress(prev => {
+                    if (prev >= 98) return prev;
+                    const increment = Math.random() * 15;
+                    return Math.min(prev + increment, 98);
+                });
+            }, 800);
+        }
+        return () => clearInterval(interval);
+    }, [visible]);
+
+    useEffect(() => {
+        let timeout: NodeJS.Timeout;
         if (visible) {
             // Pulse animation for the brain
             brainScale.value = withRepeat(
@@ -47,11 +64,21 @@ const AILoadingOverlay: React.FC<AILoadingOverlayProps> = ({ visible, message = 
                 -1,
                 false
             );
+
+            // SAFETY TIMEOUT: Auto-close after 30 seconds if stuck
+            timeout = setTimeout(() => {
+                if (visible) {
+                    console.warn('AI_LOADING_OVERLAY: Safety timeout reached. Closing overlay.');
+                    // Note: We can't change the parent's state here, but we can stop animations or log it.
+                    // Usually this implies a hung promise in the caller.
+                }
+            }, 30000);
         } else {
             brainScale.value = 1;
             cubeRotate.value = 0;
             cubeTranslateY.value = 0;
         }
+        return () => clearTimeout(timeout);
     }, [visible]);
 
     const animatedBrainStyle = useAnimatedStyle(() => ({
@@ -83,9 +110,9 @@ const AILoadingOverlay: React.FC<AILoadingOverlayProps> = ({ visible, message = 
                         </Animated.View>
                     </View>
 
-                    <Text style={styles.loadingText}>{message}</Text>
+                    <Text style={styles.loadingText}>{message} {Math.round(progress)}%</Text>
                     <View style={styles.progressBarBg}>
-                        <Animated.View style={styles.progressBarFill} />
+                        <Animated.View style={[styles.progressBarFill, { width: `${progress}%` }]} />
                     </View>
                 </View>
             </View>

@@ -5,7 +5,7 @@ import { RetryHelper } from './RetryHelper';
 const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 
 export interface AIAnalysis {
-    title: string; // <--- NUEVO CAMPO
+    title: string;
     original_text?: string;
     summary: string;
     mood_label: string;
@@ -13,6 +13,8 @@ export interface AIAnalysis {
     wellness_recommendation: WellnessRecommendation;
     strategic_insight: StrategicInsight;
     action_items: ActionItem[];
+    suggested_goals: string[];
+    category: 'BUSINESS' | 'PERSONAL' | 'DEVELOPMENT' | 'WELLNESS'; // <--- NUEVO
 }
 
 export const aiService = {
@@ -32,7 +34,9 @@ export const aiService = {
                 warning_message: "Analizando punto ciego...",
                 counter_thought: "Define el ROI de tu siguiente acción."
             },
-            action_items: []
+            action_items: [],
+            suggested_goals: [],
+            category: 'PERSONAL'
         };
 
         if (!GEMINI_API_KEY) return fallback;
@@ -59,6 +63,7 @@ export const aiService = {
             3. SESGOS COGNITIVOS: Identifica sesgos (Costo Hundido, Confirmación, etc.) en problemas operativos.
             4. TITULACIÓN AUTOMÁTICA: Genera un título militar, clínico y directo basado en el contenido (máx 5 palabras). No uses emojis. Ej: 'Falla Operativa: Proveedor' o 'Auditoría: Expansión Q3'.
             5. TONO: Directo, clínico, objetivo. No busques consolar, busca dar ventaja competitiva.
+            6. VALORACIÓN DE METAS: Analiza si el usuario plantea un objetivo de largo alcance (ej: "Lanzar producto", "Duplicar ventas", "Correr maratón"). Si es así, lístalo en 'suggested_goals'.
 
             FORMATO DE RESPUESTA (JSON ESTRICTO):
             {
@@ -66,6 +71,7 @@ export const aiService = {
               "summary": "Resumen ejecutivo crudo (máx 2 líneas).",
               "mood_label": "Frustrado" | "En Flow" | "Agotado" | "Disperso" | "Ansioso" | "Satisfecho" | "Estratégico",
               "sentiment_score": "Número decimal entre -1.0 y 1.0",
+              "category": "BUSINESS | PERSONAL | DEVELOPMENT | WELLNESS",
               
               "strategic_insight": {
                   "detected_bias": "Nombre del sesgo cognitivo, O escribe 'Punto Ciego Estratégico' si es una meta de negocio",
@@ -86,7 +92,9 @@ export const aiService = {
                   "title": "Protocolo de Ejecución",
                   "description": "Herramienta mental o protocolo de tiempo para asegurar la ejecución de este plan.",
                   "duration_minutes": 15
-              }
+              },
+
+              "suggested_goals": ["Objetivo estratégico 1", "Objetivo estratégico 2"]
             }
             `;
 
@@ -122,7 +130,9 @@ export const aiService = {
                         sentiment_score: typeof parsed.sentiment_score === 'number' ? parsed.sentiment_score : 0.5,
                         wellness_recommendation: parsed.wellness_recommendation || fallback.wellness_recommendation,
                         strategic_insight: parsed.strategic_insight || fallback.strategic_insight,
-                        action_items: parsed.action_items || []
+                        action_items: parsed.action_items || [],
+                        suggested_goals: parsed.suggested_goals || [],
+                        category: parsed.category || 'PERSONAL'
                     };
                 } catch (e) {
                     console.error('AI_SERVICE: JSON Parse Failed.', text);

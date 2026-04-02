@@ -31,9 +31,10 @@ import { SupabaseService } from '../services/SupabaseService';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const CATEGORIES = [
-    { id: 'BUSINESS', label: 'Estrategia & Negocios', icon: Briefcase, color: '#818cf8', bg: 'rgba(129, 140, 248, 0.1)' },
-    { id: 'PERSONAL', label: 'Desarrollo Personal', icon: User, color: '#facc15', bg: 'rgba(250, 204, 21, 0.1)' },
-    { id: 'HEALTH', label: 'Bienestar & Salud', icon: Heart, color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
+    { id: 'BUSINESS', label: 'Estrategia', icon: Briefcase, color: '#818cf8', bg: 'rgba(129, 140, 248, 0.1)' },
+    { id: 'PERSONAL', label: 'Personales', icon: User, color: '#facc15', bg: 'rgba(250, 204, 21, 0.1)' },
+    { id: 'DEVELOPMENT', label: 'Desarrollo Personal', icon: Sparkles, color: '#a855f7', bg: 'rgba(168, 85, 247, 0.1)' },
+    { id: 'WELLNESS', label: 'Bienestar', icon: Heart, color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
     { id: 'GENERAL', label: 'Consulta General', icon: MessageSquare, color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.1)' },
 ];
 
@@ -252,10 +253,13 @@ const ChatHubScreen = () => {
                                         ]}
                                         onPress={() => setSelectedCategory(cat.id)}
                                     >
-                                        <Icon size={24} color={isSelected ? cat.color : '#475569'} />
+                                        <View style={[styles.catIconCircle, { backgroundColor: isSelected ? cat.color : '#1e293b' }]}>
+                                            <Icon size={24} color={isSelected ? 'white' : '#94a3b8'} />
+                                        </View>
                                         <Text style={[styles.categoryLabel, isSelected && { color: 'white' }]}>
                                             {cat.label}
                                         </Text>
+                                        <ChevronRight size={20} color={isSelected ? cat.color : '#1e293b'} style={{ marginLeft: 'auto' }} />
                                     </TO>
                                 );
                             })}
@@ -332,20 +336,26 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#1e293b'
     },
-    categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+    categoryGrid: { flexDirection: 'column', gap: 12 },
     categoryItem: {
-        width: '48%',
-        aspectRatio: 1,
+        width: '100%',
+        flexDirection: 'row',
         backgroundColor: '#0f172a',
         borderRadius: 20,
-        justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 2,
         borderColor: '#1e293b',
-        gap: 12,
-        padding: 10
+        padding: 16,
+        gap: 16
     },
-    categoryLabel: { color: '#475569', fontSize: 12, fontWeight: 'bold', textAlign: 'center' },
+    catIconCircle: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    categoryLabel: { color: '#94a3b8', fontSize: 16, fontWeight: '700' },
     formActions: { flexDirection: 'row', gap: 12, marginTop: 20 },
     cancelBtn: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 18 },
     cancelBtnText: { color: '#475569', fontWeight: 'bold' },

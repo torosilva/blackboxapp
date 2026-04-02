@@ -15,7 +15,7 @@ const ChatScreen = () => {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const { threadId, category, title } = route.params || {};
-    const { user, profile } = useAuth();
+    const { user, profile, refreshProfile } = useAuth();
 
     const SAV = SafeAreaView as any;
     const TO = TouchableOpacity as any;
@@ -32,11 +32,65 @@ const ChatScreen = () => {
 
     const fullName = profile?.full_name || user?.email?.split('@')[0] || 'Explorador';
 
-    const predefinedQuestions = [
-        "¿Qué sesgos detectas aquí?",
-        "¿Cuáles son los siguientes pasos?",
-        "Resume nuestra discusión estratégica",
-    ];
+    const getPredefinedQuestions = () => {
+        switch (category) {
+            case 'BUSINESS':
+                return [
+                    "¿Cómo optimizo mi flujo de trabajo?",
+                    "¿Qué riesgos estratégicos ves?",
+                    "¿Cómo puedo delegar esto?"
+                ];
+            case 'PERSONAL':
+                return [
+                    "¿Cómo mejoro mi claridad mental?",
+                    "¿Qué sesgos personales detectas?",
+                    "¿Cómo equilibro esto?"
+                ];
+            case 'DEVELOPMENT':
+                return [
+                    "¿Qué nuevas habilidades debería priorizar?",
+                    "¿Cómo acelero mi crecimiento profesional?",
+                    "¿Qué bloqueos detectas en mi avance?"
+                ];
+            case 'WELLNESS':
+            case 'HEALTH':
+                return [
+                    "¿Cómo afecta esto mi rendimiento?",
+                    "¿Qué pausas recomiendas?",
+                    "¿Cómo gestiono el estrés?"
+                ];
+            default:
+                return [
+                    "¿Qué sesgos detectas aquí?",
+                    "¿Cuáles son los siguientes pasos?",
+                    "Resume nuestra discusión"
+                ];
+        }
+    };
+
+    const predefinedQuestions = getPredefinedQuestions();
+
+    const [isLimitReached, setIsLimitReached] = useState(false);
+    const [inviteCode, setInviteCode] = useState('');
+
+    const handleApplyCode = async () => {
+        if (!inviteCode.trim() || !user) return;
+        setLoading(true);
+        try {
+            const success = await SupabaseService.applyInvitationCode(user.id, `BB-${inviteCode.trim().toUpperCase()}`);
+            if (success) {
+                await refreshProfile();
+                setIsLimitReached(false);
+                Alert.alert("¡Éxito!", "Ahora eres PRO. Chat ilimitado activado.");
+            } else {
+                Alert.alert("Error", "Código inválido o ya utilizado.");
+            }
+        } catch (e) {
+            Alert.alert("Error", "Hubo un problema al aplicar el código.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
         if (threadId) {
@@ -47,7 +101,18 @@ const ChatScreen = () => {
             setFetchingHistory(false);
             navigation.goBack();
         }
+        checkLimits();
     }, [threadId]);
+
+    const checkLimits = async () => {
+        if (user && profile && !profile.is_pro) {
+            const usage = await SupabaseService.getTodayUsage(user.id);
+            // If they already started a chat today and this is a new thread (no messages)
+            if (usage.chatsCount >= 1 && messages.length === 0) {
+                setIsLimitReached(true);
+            }
+        }
+    };
 
     const loadHistory = async () => {
         try {
@@ -115,6 +180,48 @@ const ChatScreen = () => {
         }
     };
 
+    if (isLimitReached) {
+        return (
+            <SAV style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 30 }]}>
+                <View style={{ backgroundColor: '#1e293b', padding: 30, borderRadius: 30, width: '100%', borderWidth: 1, borderColor: '#6366f1' }}>
+                    <Brain size={60} color="#6366f1" style={{ alignSelf: 'center', marginBottom: 20 }} />
+                    <Text style={{ color: 'white', fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 }}>
+                        Límite de Consultas
+                    </Text>
+                    <Text style={{ color: '#94a3b8', fontSize: 16, textAlign: 'center', marginBottom: 30, lineHeight: 24 }}>
+                        Como usuario <Text style={{ color: '#6366f1', fontWeight: 'bold' }}>FREE</Text> solo puedes iniciar un chat estratégico por día.
+                        {"\n\n"}Para consultas ilimitadas con la IA, activa tu suscripción a <Text style={{ color: '#a855f7', fontWeight: 'bold' }}>PRO</Text>.
+                    </Text>
+
+                    <View style={{ flexDirection: 'row', backgroundColor: '#0f172a', borderRadius: 15, paddingHorizontal: 15, paddingVertical: 5, marginBottom: 20, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                        <Text style={{ color: '#6366f1', fontWeight: 'bold', fontSize: 18 }}>BB-</Text>
+                        <TI
+                            style={{ flex: 1, height: 50, color: 'white', fontSize: 18, fontWeight: '600', letterSpacing: 2 }}
+                            placeholder="CÓDIGO"
+                            placeholderTextColor="#475569"
+                            autoCapitalize="characters"
+                            value={inviteCode}
+                            onChangeText={setInviteCode}
+                            maxLength={6}
+                        />
+                    </View>
+
+                    <TO 
+                        style={{ backgroundColor: '#6366f1', height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center' }}
+                        onPress={handleApplyCode}
+                        disabled={loading}
+                    >
+                        {loading ? <ActivityIndicator color="white" /> : <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>ACTIVAR PRO</Text>}
+                    </TO>
+
+                    <TO onPress={() => navigation.goBack()} style={{ marginTop: 25, alignSelf: 'center' }}>
+                        <Text style={{ color: '#475569', fontSize: 14, fontWeight: '500' }}>Volver</Text>
+                    </TO>
+                </View>
+            </SAV>
+        );
+    }
+
     if (fetchingHistory) {
         return (
             <View style={styles.loadingContainer}>
@@ -140,15 +247,16 @@ const ChatScreen = () => {
             </View>
 
             <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
             >
                 <ScrollView
                     ref={scrollViewRef}
                     style={styles.chatContainer}
                     contentContainerStyle={styles.chatContent}
                     keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"
                     onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
                 >
                     {messages.map((msg, idx) => (
@@ -184,7 +292,11 @@ const ChatScreen = () => {
                 {/* Suggestions */}
                 {messages.length <= 1 && !loading && (
                     <View style={styles.suggestions}>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20 }}>
+                        <ScrollView 
+                            horizontal 
+                            showsHorizontalScrollIndicator={false} 
+                            contentContainerStyle={{ paddingHorizontal: 20, paddingRight: 40 }}
+                        >
                             {predefinedQuestions.map((q, i) => (
                                 <TO
                                     key={i}
@@ -242,23 +354,25 @@ const styles = StyleSheet.create({
     messageWrapper: { marginBottom: 20, width: '100%', flexDirection: 'row' },
     userWrapper: { justifyContent: 'flex-end' },
     aiWrapper: { justifyContent: 'flex-start' },
-    messageBubble: { padding: 16, borderRadius: 24, maxWidth: '85%' },
-    userBubble: { backgroundColor: '#6366f1', borderBottomRightRadius: 4 },
-    aiBubble: { backgroundColor: '#0f172a', borderBottomLeftRadius: 4, borderWidth: 1, borderColor: '#1e293b' },
-    messageText: { fontSize: 15, lineHeight: 22 },
+    messageBubble: { padding: 18, borderRadius: 20, maxWidth: '88%' },
+    userBubble: { backgroundColor: '#4f46e5', borderBottomRightRadius: 4 },
+    aiBubble: { backgroundColor: '#1e293b', borderBottomLeftRadius: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+    messageText: { fontSize: 16, lineHeight: 24 },
     userText: { color: 'white' },
-    aiText: { color: '#cbd5e1' },
-    suggestions: { paddingVertical: 15 },
+    aiText: { color: '#f8fafc' },
+    suggestions: { paddingVertical: 10, backgroundColor: 'rgba(0,0,0,0.2)' },
     suggestionBtn: {
-        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+        backgroundColor: 'rgba(99, 102, 241, 0.15)',
         borderWidth: 1,
-        borderColor: 'rgba(99, 102, 241, 0.3)',
+        borderColor: 'rgba(99, 102, 241, 0.4)',
         borderRadius: 20,
-        paddingHorizontal: 15,
-        paddingVertical: 8,
-        marginRight: 10
+        paddingHorizontal: 18,
+        paddingVertical: 10,
+        marginRight: 12,
+        height: 40,
+        justifyContent: 'center'
     },
-    suggestionText: { color: '#a5b4fc', fontSize: 13 },
+    suggestionText: { color: '#c7d2fe', fontSize: 14, fontWeight: '500' },
     inputArea: {
         flexDirection: 'row',
         alignItems: 'flex-end',

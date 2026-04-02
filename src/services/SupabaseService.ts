@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -60,7 +60,8 @@ export const SupabaseService = {
                 sentiment_score: entry.ai_analysis.sentiment_score ?? entry.sentiment_score,
                 wellness_recommendation: entry.ai_analysis.wellness_recommendation || entry.wellness_recommendation,
                 strategic_insight: entry.ai_analysis.strategic_insight || entry.strategic_insight,
-                action_items: entry.ai_analysis.action_items || entry.action_items
+                action_items: entry.ai_analysis.action_items || entry.action_items,
+                category: entry.category || entry.ai_analysis.category || 'PERSONAL'
             };
         }
         return entry;
@@ -118,6 +119,7 @@ export const SupabaseService = {
         action_items: any[];
         audio_url: string | null;
         original_text: string;
+        category?: string;
     }) {
         try {
             console.log('SUPABASE_SERVICE: Inserting entry to DB with Active Loops...');
@@ -146,7 +148,8 @@ export const SupabaseService = {
                         wellness_recommendation: entry.wellness_recommendation,
                         strategic_insight: entry.strategic_insight,
                         action_items: entry.action_items,
-                        mood: entry.mood_label // Alias for 'mood' column in old schema
+                        mood: entry.mood_label, // Alias for 'mood' column in old schema
+                        category: entry.category || 'PERSONAL'
                     },
                 ])
                 .select()
@@ -619,7 +622,7 @@ export const SupabaseService = {
         }
     },
 
-    async createGoal(userId: string, title: string, description: string, category: 'BUSINESS' | 'PERSONAL' | 'HEALTH') {
+    async createGoal(userId: string, title: string, description: string, category: 'BUSINESS' | 'PERSONAL' | 'DEVELOPMENT' | 'WELLNESS') {
         try {
             const { data, error } = await supabase
                 .from('goals')
@@ -630,7 +633,7 @@ export const SupabaseService = {
             if (error) throw error;
             return data;
         } catch (error: any) {
-            console.error('SUPABASE_SERVICE: Error creating goal', error);
+            console.error('SUPABASE_SERVICE: Error creating goal', JSON.stringify(error));
             throw error;
         }
     },
@@ -764,5 +767,64 @@ export const SupabaseService = {
             console.error('SEED_WELCOME_ERROR:', error);
             return false;
         }
+    },
+
+    async applyInvitationCode(userId: string, code: string) {
+        const { data, error } = await supabase.rpc('apply_invitation_code', {
+            input_code: code,
+            user_id: userId
+        });
+        if (error) throw error;
+        return data as boolean;
+    },
+
+    async getTodayUsage(userId: string) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const isoToday = today.toISOString();
+
+        // Count entries
+        const { count: entriesCount, error: entriesError } = await supabase
+            .from('entries')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .gte('created_at', isoToday);
+
+        // Count chat threads (started today)
+        const { count: chatsCount, error: chatsError } = await supabase
+            .from('chat_threads')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .gte('created_at', isoToday);
+
+        if (entriesError || chatsError) throw (entriesError || chatsError);
+        
+        return {
+            entriesCount: entriesCount || 0,
+            chatsCount: chatsCount || 0
+        };
+    },
+
+    async createInvitation(email: string, invitedBy: string) {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No O, I, 0, 1 for clarity
+        let randomPart = '';
+        for (let i = 0; i < 6; i++) {
+            randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        const fullCode = `BB-${randomPart}`;
+
+        const { data, error } = await supabase
+            .from('invitations')
+            .insert([{
+                code: fullCode,
+                email: email.toLowerCase(),
+                invited_by: invitedBy,
+                created_at: new Date().toISOString()
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
     }
 };

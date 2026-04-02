@@ -12,6 +12,7 @@ import {
     RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -29,11 +30,25 @@ import {
     Heart,
     MessageSquare,
     MessageCircle,
-    Mic
+    Mic,
+    AlertTriangle,
+    ShieldAlert,
+    Stethoscope,
+    Box,
+    Calendar
 } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { SupabaseService } from '../services/SupabaseService';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Animated, { 
+    useSharedValue, 
+    useAnimatedStyle, 
+    withRepeat, 
+    withSequence, 
+    withTiming, 
+    withDelay 
+} from 'react-native-reanimated';
 
 const DashboardScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -46,15 +61,57 @@ const DashboardScreen = () => {
         totalMemories: 0,
         activeLoops: 0,
         completedGoals: 0,
+        totalGoals: 0,
+        goalPercentage: 0,
         latestEntry: null as any
     });
     const [recentThreads, setRecentThreads] = useState<any[]>([]);
+    const [interventions, setInterventions] = useState<any[]>([]);
+    const [onboardingChecked, setOnboardingChecked] = useState(false);
+    const [appointmentDate, setAppointmentDate] = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    
+    // Animation shared values
+    const floatValue = useSharedValue(0);
+    const pulseValue = useSharedValue(1);
 
     useEffect(() => {
-        if (isFocused && user) {
+        if (isFocused && user && !onboardingChecked) {
+            fetchStats();
+            checkOnboarding();
+            setOnboardingChecked(true);
+        } else if (isFocused && user) {
             fetchStats();
         }
-    }, [isFocused, user]);
+    }, [isFocused, user, onboardingChecked]);
+
+    useEffect(() => {
+        // Subtle floating / breathing animation
+        floatValue.value = withRepeat(
+            withSequence(
+                withTiming(1, { duration: 2500 }),
+                withTiming(0, { duration: 2500 })
+            ),
+            -1,
+            true
+        );
+        pulseValue.value = withRepeat(
+            withTiming(1.05, { duration: 1500 }),
+            -1,
+            true
+        );
+    }, []);
+
+    const checkOnboarding = async () => {
+        try {
+            const hasHidden = await AsyncStorage.getItem('HIDE_GUIDE');
+            if (hasHidden !== 'true') {
+                navigation.navigate('Onboarding');
+            }
+        } catch (e) {
+            console.error('Error checking onboarding state', e);
+        }
+    };
 
     const fetchStats = async () => {
         if (!user) return;
@@ -62,24 +119,53 @@ const DashboardScreen = () => {
         try {
             console.log('DASHBOARD: Fetching stats for user:', user.id);
             const data = await SupabaseService.getEntries(user.id);
+            let pending = 0;
             if (data) {
                 console.log('DASHBOARD: Data received, count:', data.length);
-                const pending = data.reduce((acc: number, entry: any) => {
+                pending = data.reduce((acc: number, entry: any) => {
                     const tasks = entry.action_items || [];
                     return acc + tasks.filter((t: any) => !t.is_completed).length;
                 }, 0);
+            }
 
-                const completed = data.reduce((acc: number, entry: any) => {
-                    const tasks = entry.action_items || [];
-                    return acc + tasks.filter((t: any) => t.is_completed).length;
-                }, 0);
+            // Fetch real goals from separate table
+            const goals = await SupabaseService.getGoals(user.id);
+            const totalGoals = goals ? goals.length : 0;
+            const completedGoals = goals ? goals.filter((g: any) => g.is_completed).length : 0;
+            const goalPercent = totalGoals > 0 ? Math.round((completedGoals / totalGoals) * 100) : 0;
 
-                setStats({
-                    totalMemories: data.length,
-                    activeLoops: pending,
-                    completedGoals: completed,
-                    latestEntry: data.length > 0 ? data[0] : null
+            const latestEntry = data && data.length > 0 ? data[0] : null;
+            setStats({
+                totalMemories: data ? data.length : 0,
+                activeLoops: pending,
+                completedGoals: completedGoals,
+                totalGoals: totalGoals,
+                goalPercentage: goalPercent,
+                latestEntry: latestEntry
+            });
+
+            // Calculate Interventions (HIGH priority > 72h)
+            if (data) {
+                const now = new Date().getTime();
+                const overdues: any[] = [];
+                data.forEach((entry: any) => {
+                    const entryDate = new Date(entry.created_at).getTime();
+                    const diffDays = (now - entryDate) / (1000 * 60 * 60 * 24);
+                    
+                    if (diffDays >= 3 && Array.isArray(entry.action_items)) {
+                        entry.action_items.forEach((item: any) => {
+                            if (item.priority === 'HIGH' && !item.is_completed) {
+                                overdues.push({ 
+                                    ...item, 
+                                    entryId: entry.id,
+                                    entryTitle: entry.title,
+                                    days: Math.floor(diffDays)
+                                });
+                            }
+                        });
+                    }
                 });
+                setInterventions(overdues.slice(0, 2)); // Show top 2 interventions
             }
 
             // Fetch recent threads
@@ -116,10 +202,27 @@ const DashboardScreen = () => {
         if (hour < 18) return 'Buenas tardes';
         return 'Buenas noches';
     };
+    
+    const onDateChange = (event: any, selectedDate?: Date) => {
+        setShowDatePicker(false);
+        if (selectedDate) {
+            setAppointmentDate(selectedDate);
+        }
+    };
 
     const TO = TouchableOpacity as any;
     const SAV = SafeAreaView as any;
     const LG = LinearGradient as any;
+
+    const animatedLogoStyle = useAnimatedStyle(() => {
+        return {
+            transform: [
+                { translateY: floatValue.value * -8 },
+                { scale: pulseValue.value }
+            ],
+            opacity: 0.9
+        };
+    });
 
     if (loading && !refreshing) {
         return (
@@ -139,24 +242,41 @@ const DashboardScreen = () => {
                     <RefreshControl refreshing={refreshing} onRefresh={fetchStats} tintColor="#6366f1" />
                 }
             >
-                {/* Header Section */}
-                <View style={styles.header}>
-                    <View>
-                        <Text style={styles.greeting}>{getGreeting()},</Text>
-                        <Text style={styles.userName}>{profile?.full_name || user?.email?.split('@')[0] || 'Explorador'}</Text>
+                {/* Header Section (v5.9.6 Logo & Name Restoration) */}
+                <View style={[styles.header, { paddingHorizontal: 20, paddingTop: 10 }]}>
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+                        <View style={{ marginRight: 12 }}>
+                            <Text style={styles.greeting}>{getGreeting()},</Text>
+                            <Text style={[styles.userName, { fontSize: 26, letterSpacing: -0.5 }]}>
+                                {profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'Explorador'}
+                            </Text>
+                        </View>
+                        
+                        <TouchableOpacity 
+                            onPress={() => !profile?.is_pro && navigation.navigate('InvitationCode')}
+                            activeOpacity={0.7}
+                            style={[
+                                styles.membershipBadge, 
+                                profile?.is_pro ? styles.proBadge : styles.freeBadge
+                            ]}
+                        >
+                            <Text style={styles.membershipBadgeText}>{profile?.is_pro ? 'PRO' : 'FREE'}</Text>
+                        </TouchableOpacity>
                     </View>
-                    <TO style={styles.profileBtn} onPress={() => navigation.navigate('Settings', {})}>
-                        <User size={20} color="#94a3b8" />
+                    
+                    <TO 
+                        onPress={() => navigation.navigate('Settings', { initialViewMode: 'hub' })}
+                        style={{ alignItems: 'flex-end', justifyContent: 'flex-start' }}
+                    >
+                        <Animated.View style={animatedLogoStyle}>
+                            <View style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                                {/* Core Cube */}
+                                <Box size={24} color="#818cf8" strokeWidth={2} style={{ position: 'absolute' }} />
+                                {/* Brain Overlay */}
+                                <Brain size={44} color="#a855f7" strokeWidth={1.5} />
+                            </View>
+                        </Animated.View>
                     </TO>
-                </View>
-
-                {/* Main Branding / Logo */}
-                <View style={styles.logoContainer}>
-                    <Image 
-                        source={require('../../assets/logo.png')} 
-                        style={styles.logo} 
-                        resizeMode="contain"
-                    />
                 </View>
 
                 {/* Stats Grid */}
@@ -178,42 +298,83 @@ const DashboardScreen = () => {
                     <TO style={styles.statCard} onPress={() => navigation.navigate('Settings', { initialViewMode: 'hub' })}>
                         <LG colors={['#1e293b', '#0f172a']} style={styles.cardGradient}>
                             <CheckCircle2 size={20} color="#10b981" />
-                            <Text style={styles.statValue}>{stats.completedGoals}</Text>
-                            <Text style={styles.statLabel}>Metas</Text>
+                            <Text style={stats.goalPercentage === 100 && stats.totalGoals > 0 ? [styles.statValue, { color: '#10b981' }] : styles.statValue}>
+                                {stats.completedGoals}/{stats.totalGoals}
+                            </Text>
+                            <Text style={styles.statLabel}>Metas ({stats.goalPercentage}%)</Text>
                         </LG>
                     </TO>
                 </View>
 
-                {/* Strategic Context section */}
-                <View style={styles.insightSection}>
-                    <LG colors={['rgba(99, 102, 241, 0.1)', 'rgba(0, 0, 0, 0)']} style={styles.insightGradient}>
+                {/* QuickCapture Banner (v5.9.7 - NEW PROMINENT LOCATION) */}
+                <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
+                    <TO 
+                        onPress={() => navigation.navigate('QuickCapture')}
+                        activeOpacity={0.8}
+                        style={styles.quickCaptureBanner}
+                    >
+                        <LG colors={['#6366f1', '#4f46e5']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={styles.quickCaptureGradient}>
+                            <View style={styles.quickCaptureIconContainer}>
+                                <Mic size={24} color="white" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.quickCaptureTitle}>Capturar Pensamiento</Text>
+                                <Text style={styles.quickCaptureSubtitle}>Libera tu sobrecarga mental ahora</Text>
+                            </View>
+                            <ChevronRight size={20} color="white" />
+                        </LG>
+                    </TO>
+                </View>
+
+                {/* Strategic Analysis Report Box (v5.9.6 - MOVED UP) */}
+                <View style={[styles.insightSection, { marginTop: 0, marginBottom: 20, borderColor: 'rgba(168, 85, 247, 0.4)' }]}>
+                    <LG colors={['rgba(168, 85, 247, 0.15)', 'rgba(0, 0, 0, 0)']} style={styles.insightGradient}>
                         <View style={styles.insightHeader}>
-                            <Sparkles size={16} color="#818cf8" />
-                            <Text style={styles.insightTitle}>ESTADO ESTRATÉGICO</Text>
+                           <Stethoscope size={16} color="#a855f7" />
+                           <Text style={[styles.insightTitle, { color: '#a855f7' }]}>REPORTE MÉTRICO ESTRATÉGICO</Text>
                         </View>
-                        
-                        {stats.latestEntry ? (
-                            <View>
-                                <Text style={styles.latestMood}>Último estado: <Text style={{color: '#fff'}}>{stats.latestEntry.mood_label || 'Estable'}</Text></Text>
-                                <Text style={styles.latestInsight} numberOfLines={2}>
-                                    {stats.latestEntry.summary || 'Tu última entrada está siendo procesada...'}
-                                </Text>
-                                <TO style={[styles.seedBtn, { marginTop: 10, alignSelf: 'flex-start' }]} onPress={handleSeedSample}>
-                                    <Sparkles size={12} color="#818cf8" style={{marginRight: 4}} />
-                                    <Text style={[styles.seedBtnText, { fontSize: 11 }]}>Reiniciar Sesión de Ejemplo</Text>
-                                </TO>
+                        <View style={styles.reportGrid}>
+                            <View style={styles.reportItem}>
+                                <Text style={styles.reportValue}>{stats.totalMemories > 0 ? Math.round((stats.completedGoals / stats.totalMemories) * 100) : 0}%</Text>
+                                <Text style={styles.reportLabel}>Ratio de Ejecución</Text>
                             </View>
-                        ) : (
-                            <View>
-                                <Text style={styles.latestInsight}>Aún no hay registros. Comienza hoy tu viaje de claridad mental.</Text>
-                                <TO style={styles.seedBtn} onPress={handleSeedSample}>
-                                    <Sparkles size={14} color="#818cf8" style={{marginRight: 6}} />
-                                    <Text style={styles.seedBtnText}>Ver Sesión de Ejemplo (IA)</Text>
-                                </TO>
+                            <View style={[styles.reportItem, { borderLeftWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }]}>
+                                <Text style={styles.reportValue}>{stats.activeLoops}</Text>
+                                <Text style={styles.reportLabel}>Sobrecarga Mental</Text>
                             </View>
-                        )}
+                        </View>
+                        <Text style={styles.reportVerdict}>
+                            {stats.activeLoops > 5 ? "⚠️ ALTA: Requiere purga de loops para recuperar claridad." : "✅ ÓPTIMA: Capacidad cognitiva disponible para retos nuevos."}
+                        </Text>
                     </LG>
                 </View>
+ 
+                {/* Strategic Interventions (Follow-up Agresivo) */}
+                {interventions.length > 0 && (
+                    <View style={styles.interventionSection}>
+                        <LG colors={['#7f1d1d', '#0f172a']} start={{x:0, y:0}} end={{x:1, y:1}} style={styles.interventionGradient}>
+                            <View style={styles.insightHeader}>
+                                <ShieldAlert size={16} color="#ef4444" />
+                                <Text style={[styles.insightTitle, { color: '#ef4444' }]}>INTERVENCIÓN ESTRATÉGICA</Text>
+                            </View>
+                            <Text style={styles.interventionText}>
+                                Llevas <Text style={{fontWeight: 'bold', color: '#f87171'}}>{interventions[0].days} días</Text> procrastinando: 
+                                <Text style={{color: '#fff'}}> "{interventions[0].task}"</Text>.
+                            </Text>
+                            <Text style={styles.interventionPunchline}>
+                                Estás comprometiendo tu ventaja competitiva. ¿Qué te detiene?
+                            </Text>
+                            <TO 
+                                style={styles.interventionBtn}
+                                onPress={() => navigation.navigate('EntryDetail', { entryId: interventions[0].entryId })}
+                            >
+                                <Text style={styles.interventionBtnText}>Resolver Ahora</Text>
+                                <ChevronRight size={14} color="#000" />
+                            </TO>
+                        </LG>
+                    </View>
+                )}
+
 
                 {/* Recent Conversations */}
                 {recentThreads.length > 0 && (
@@ -257,38 +418,67 @@ const DashboardScreen = () => {
                         </ScrollView>
                     </View>
                 )}
-
-                {/* Main Action Area */}
-                <View style={styles.actionArea}>
-                    <TO 
-                        style={styles.mainBtn}
-                        onPress={() => navigation.navigate('Home')}
-                    >
-                        <LG colors={['#6366f1', '#4f46e5']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={styles.btnGradient}>
-                            <LayoutDashboard size={20} color="white" style={{marginRight: 10}} />
-                            <Text style={styles.mainBtnText}>Entrar a mis Memorias</Text>
-                            <ChevronRight size={20} color="white" style={{marginLeft: 'auto'}} />
-                        </LG>
-                    </TO>
-
-                    <View style={styles.secondaryActions}>
-                        <TO 
-                            style={[styles.secondaryBtn, { backgroundColor: '#6366f1' }]}
-                            onPress={() => navigation.navigate('QuickCapture')}
-                        >
-                            <Mic size={18} color="white" />
-                            <Text style={[styles.secondaryBtnText, { color: 'white' }]}>QuickCapture</Text>
+                {/* Strategic Analysis Section (v5.9.8 - REPLACED ACTION AREA) */}
+                <View style={[styles.insightSection, { marginTop: 10 }]}>
+                    <LG colors={['rgba(99, 102, 241, 0.1)', 'rgba(0, 0, 0, 0)']} style={styles.insightGradient}>
+                        <View style={styles.insightHeader}>
+                            <Stethoscope size={20} color="#a855f7" />
+                            <Text style={[styles.insightTitle, { color: '#a855f7' }]}>ANÁLISIS ESTRATÉGICO</Text>
+                        </View>
+                        <Text style={styles.latestInsight}>
+                            Genera un reporte detallado de los 7 días previos a tu sesión de rendimiento para maximizar tu ejecución.
+                        </Text>
+                        
+                        <TO style={styles.dateSelector} onPress={() => setShowDatePicker(true)}>
+                            <Calendar size={18} color="#94a3b8" />
+                            <Text style={styles.dateText}>Fin del reporte: {appointmentDate.toLocaleDateString()}</Text>
                         </TO>
-                        <TO 
-                            style={styles.secondaryBtn}
-                            onPress={() => navigation.navigate('ChatHub' as any)}
+
+                        {!!showDatePicker && (
+                            <DateTimePicker
+                                value={appointmentDate}
+                                mode="date"
+                                display="default"
+                                onChange={onDateChange}
+                                maximumDate={new Date()}
+                            />
+                        )}
+
+                        <TO
+                            style={[styles.mainBtn, { marginTop: 15 }]}
+                            onPress={() => navigation.navigate('WeeklyReport', { reportEndDate: appointmentDate.toISOString() })}
                         >
-                            <Sparkles size={18} color="#94a3b8" />
-                            <Text style={styles.secondaryBtnText}>Consultar IA</Text>
+                            <LG colors={['#6366f1', '#4f46e5']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={styles.btnGradient}>
+                                <Sparkles size={20} color="white" style={{marginRight: 10}} />
+                                <Text style={styles.mainBtnText}>Generar Reporte Estratégico</Text>
+                                <ChevronRight size={20} color="white" style={{marginLeft: 'auto'}} />
+                            </LG>
                         </TO>
-                    </View>
+                    </LG>
                 </View>
 
+                {/* Strategic Guide moved to bottom */}
+                <View style={[styles.insightSection, { marginTop: 20 }]}>
+                    <LG colors={['rgba(250, 204, 21, 0.1)', 'rgba(0, 0, 0, 0)']} style={styles.insightGradient}>
+                        <View style={styles.insightHeader}>
+                            <Target size={16} color="#facc15" />
+                            <Text style={[styles.insightTitle, { color: '#facc15' }]}>GUÍA ESTRATÉGICA: BLACKBOX</Text>
+                        </View>
+                        <Text style={styles.latestInsight}>
+                            Domina el equilibrio entre Metas y Loops Activos para maximizar tu ejecución clínica.
+                        </Text>
+                        <View style={{ flexDirection: 'row', gap: 10, marginTop: 15 }}>
+                            <TO style={styles.guideActionBtn} onPress={() => navigation.navigate('Onboarding')}>
+                                <Text style={styles.guideActionBtnText}>Ver Guía de Inicio</Text>
+                            </TO>
+                            {!stats.latestEntry && (
+                                <TO style={[styles.guideActionBtn, { backgroundColor: '#1e293b' }]} onPress={handleSeedSample}>
+                                    <Text style={[styles.guideActionBtnText, { color: '#94a3b8' }]}>Cargar Ejemplo</Text>
+                                </TO>
+                            )}
+                        </View>
+                    </LG>
+                </View>
                 <View style={styles.footer}>
                     <Clock size={14} color="#475569" />
                     <Text style={styles.lastUpdate}>Actualizado hace un momento</Text>
@@ -305,9 +495,9 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 24,
-        paddingTop: 20,
+        alignItems: 'flex-start',
+        paddingHorizontal: 20,
+        paddingTop: 0,
         marginBottom: 20
     },
     greeting: { color: '#94a3b8', fontSize: 16, fontWeight: '500' },
@@ -322,13 +512,27 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.05)'
     },
-    logoContainer: {
+    headerBrainCircle: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#6366f1',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.5,
+        shadowRadius: 10,
+        elevation: 10
+    },
+    headerLogoContainer: {
+        flex: 2,
         alignItems: 'center',
         justifyContent: 'center',
-        height: 120,
-        marginBottom: 20
     },
-    logo: { width: '80%', height: '100%' },
+    headerLogo: {
+        width: 120,
+        height: 40,
+    },
     statsGrid: {
         flexDirection: 'row',
         paddingHorizontal: 20,
@@ -356,7 +560,22 @@ const styles = StyleSheet.create({
     mainBtn: { borderRadius: 18, overflow: 'hidden', elevation: 8, shadowColor: '#6366f1', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 10 },
     btnGradient: { flexDirection: 'row', alignItems: 'center', paddingVertical: 18, paddingHorizontal: 20 },
     mainBtnText: { color: '#ffffff', fontSize: 17, fontWeight: 'bold' },
-    secondaryActions: { flexDirection: 'row', gap: 12 },
+    dateSelector: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        padding: 15,
+        borderRadius: 16,
+        marginTop: 15,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.05)'
+    },
+    dateText: {
+        color: '#ffffff',
+        fontSize: 14,
+        fontWeight: '600',
+        marginLeft: 10
+    },
     secondaryBtn: {
         flex: 1,
         flexDirection: 'row',
@@ -414,6 +633,147 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 13,
         fontWeight: 'bold'
+    },
+    guideActionBtn: {
+        backgroundColor: '#facc15',
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+    },
+    guideActionBtnText: {
+        color: '#020617',
+        fontSize: 13,
+        fontWeight: '900',
+    },
+    quickCaptureBanner: {
+        borderRadius: 24,
+        overflow: 'hidden',
+        elevation: 10,
+        shadowColor: '#6366f1',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+    },
+    quickCaptureGradient: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 20,
+    },
+    quickCaptureIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 16,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 16,
+    },
+    quickCaptureTitle: {
+        color: 'white',
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 2,
+    },
+    quickCaptureSubtitle: {
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: 12,
+        fontWeight: '500',
+    },
+    interventionSection: {
+        marginHorizontal: 20,
+        marginBottom: 20,
+        borderRadius: 24,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#7f1d1d'
+    },
+    interventionGradient: {
+        padding: 24,
+    },
+    interventionText: {
+        color: '#cbd5e1',
+        fontSize: 15,
+        lineHeight: 22,
+        marginTop: 10,
+    },
+    interventionPunchline: {
+        color: '#f87171',
+        fontSize: 13,
+        fontWeight: '600',
+        fontStyle: 'italic',
+        marginTop: 8,
+    },
+    interventionBtn: {
+        backgroundColor: '#ef4444',
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 12,
+        marginTop: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        alignSelf: 'flex-start'
+    },
+    interventionBtnText: {
+        color: '#000',
+        fontWeight: '900',
+        fontSize: 13,
+        marginRight: 6
+    },
+    reportGrid: {
+        flexDirection: 'row',
+        marginTop: 15,
+        marginBottom: 15
+    },
+    reportItem: {
+        flex: 1,
+        alignItems: 'center',
+        paddingVertical: 10
+    },
+    reportValue: {
+        color: 'white',
+        fontSize: 20,
+        fontWeight: 'bold'
+    },
+    reportLabel: {
+        color: '#94a3b8',
+        fontSize: 10,
+        fontWeight: '600',
+        marginTop: 4,
+        textTransform: 'uppercase'
+    },
+    reportVerdict: {
+        color: '#cbd5e1',
+        fontSize: 13,
+        lineHeight: 18,
+        fontStyle: 'italic',
+        textAlign: 'center',
+        backgroundColor: 'rgba(255,255,255,0.03)',
+        padding: 10,
+        borderRadius: 12
+    },
+    membershipBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 10,
+        borderWidth: 1.5,
+        marginLeft: 15,
+        marginTop: 12,
+        alignSelf: 'center'
+    },
+    freeBadge: {
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        borderColor: '#475569',
+    },
+    proBadge: {
+        backgroundColor: 'rgba(99, 102, 241, 0.2)',
+        borderColor: '#818cf8',
+    },
+    membershipBadgeText: {
+        fontSize: 11,
+        fontWeight: 'bold',
+        letterSpacing: 1,
+        color: '#ffffff'
     }
 });
 

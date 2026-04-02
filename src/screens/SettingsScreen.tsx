@@ -10,7 +10,8 @@ import * as WebBrowser from 'expo-web-browser';
 import {
     View, Text, StyleSheet, TouchableOpacity,
     ScrollView, StatusBar, Platform, Modal, TextInput,
-    ActivityIndicator, Alert, LayoutAnimation, UIManager
+    ActivityIndicator, Alert, LayoutAnimation, UIManager,
+    KeyboardAvoidingView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -65,19 +66,26 @@ const SettingsScreen = () => {
     const [showGoalModal, setShowGoalModal] = useState(false);
     const [newGoalTitle, setNewGoalTitle] = useState('');
     const [newGoalDesc, setNewGoalDesc] = useState('');
-    const [newGoalCategory, setNewGoalCategory] = useState<'BUSINESS' | 'PERSONAL' | 'HEALTH'>('BUSINESS');
+    const [newGoalCategory, setNewGoalCategory] = useState<'BUSINESS' | 'PERSONAL' | 'DEVELOPMENT' | 'WELLNESS'>('BUSINESS');
     const [isCreatingGoal, setIsCreatingGoal] = useState(false);
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-        pending: true,
+        pending: false,
         completed: false,
         biases: false,
-        analysis: true,
+        analysis: false,
         feedback: false,
         guide: false,
         privacy: false,
         account: false,
-        profile: true, // Show by default to show off the polish
-        goals: true,
+        profile: false,
+        goals: false,
+    });
+    const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
+        'BUSINESS': false,
+        'PERSONAL': false,
+        'DEVELOPMENT': false,
+        'WELLNESS': false,
+        'GENERAL': false
     });
     const [fullName, setFullName] = useState('');
     const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -95,6 +103,11 @@ const SettingsScreen = () => {
     const toggleSection = (section: string) => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+    };
+
+    const toggleCategory = (cat: string) => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setExpandedCategories(prev => ({ ...prev, [cat]: !prev[cat] }));
     };
 
     useEffect(() => {
@@ -230,8 +243,9 @@ const SettingsScreen = () => {
             setNewGoalTitle('');
             setNewGoalDesc('');
             Alert.alert("Meta Registrada", "Tu objetivo estratégico ha sido guardado.");
-        } catch (error) {
-            Alert.alert("Error", "No se pudo registrar la meta.");
+        } catch (error: any) {
+            console.error('HUB: Error creating goal', error);
+            Alert.alert("Error", `No se pudo registrar la meta: ${error.message || 'Error de red o permisos'}`);
         } finally {
             setIsCreatingGoal(false);
         }
@@ -628,7 +642,7 @@ const SettingsScreen = () => {
                                 activeOpacity={0.7}
                             >
                                 <Z size={20} color="#facc15" />
-                                <Text style={styles.sectionTitle}>Guía Rápida</Text>
+                                <Text style={styles.sectionTitle}>Manual de Estratega & Protocolos</Text>
                                 {expandedSections.guide ? (
                                     <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
                                 ) : (
@@ -646,8 +660,8 @@ const SettingsScreen = () => {
                                             <B size={18} color="#facc15" />
                                         </View>
                                         <View style={styles.policyTextContainer}>
-                                            <Text style={styles.policyLabel}>Tutorial Interactivo</Text>
-                                            <Text style={styles.policyValue}>Ver explicación de BLACKBOX</Text>
+                                            <Text style={styles.policyLabel}>Guía Estratégica: BLACKBOX</Text>
+                                            <Text style={styles.policyValue}>Ver explicación de Metas vs Loops y protocolos de ejecución.</Text>
                                         </View>
                                         <CL size={20} color="#475569" style={{ transform: [{ rotate: '180deg' }] }} />
                                     </TO>
@@ -718,6 +732,18 @@ const SettingsScreen = () => {
                                         </View>
                                         <AR size={20} color="#475569" />
                                     </TO>
+
+                                    {/* Web Portal Link (NEW) */}
+                                    <TO style={[styles.policyRow, { marginTop: 10, paddingTop: 15, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' }]} onPress={() => WebBrowser.openBrowserAsync('https://blackboxmind.ai/dashboard')}>
+                                        <View style={[styles.iconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.1)' }]}>
+                                            <Sparkles size={18} color="#38bdf8" />
+                                        </View>
+                                        <View style={styles.policyTextContainer}>
+                                            <Text style={[styles.policyLabel, { color: '#38bdf8' }]}>Portal Web Blackbox</Text>
+                                            <Text style={styles.policyValue}>Accede a tu dashboard avanzado en blackboxmind.ai</Text>
+                                        </View>
+                                        <AR size={20} color="#38bdf8" />
+                                    </TO>
                                 </View>
                             )}
                         </View>
@@ -743,26 +769,58 @@ const SettingsScreen = () => {
                                 </TO>
                             ))
                         ) : (
-                            ['BUSINESS', 'PERSONAL', 'HEALTH', 'GENERAL'].map(cat => {
+                            ['BUSINESS', 'PERSONAL', 'DEVELOPMENT', 'WELLNESS', 'GENERAL'].map(cat => {
+                                const catLabels: any = {
+                                    'BUSINESS': 'Estrategia',
+                                    'PERSONAL': 'Personales',
+                                    'DEVELOPMENT': 'Desarrollo Personal',
+                                    'WELLNESS': 'Bienestar',
+                                    'HEALTH': 'Bienestar',
+                                    'GENERAL': 'Consulta General'
+                                };
                                 const items = (viewMode === 'pending' ? pendingTasks : completedTasks)
-                                    .filter((t: any) => (t.category || 'GENERAL') === cat);
+                                    .filter((t: any) => {
+                                        const c = t.category || 'GENERAL';
+                                        if (cat === 'WELLNESS' && (c === 'WELLNESS' || c === 'HEALTH')) return true;
+                                        return c === cat;
+                                    });
                                 
                                 if (items.length === 0) return null;
 
+                                // Sorting: Priority desc then Date desc
+                                const priorityMap: any = { 'HIGH': 3, 'MEDIUM': 2, 'MED': 2, 'LOW': 1 };
+                                const sortedItems = [...items].sort((a: any, b: any) => {
+                                    const pA = priorityMap[a.priority] || 0;
+                                    const pB = priorityMap[b.priority] || 0;
+                                    if (pA !== pB) return pB - pA;
+                                    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+                                });
+
+                                const isCatExpanded = expandedCategories[cat];
+
                                 return (
                                     <View key={cat} style={{ marginTop: 20 }}>
-                                        <View style={[styles.catHeader, { backgroundColor: cat === 'BUSINESS' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(16, 185, 129, 0.1)' }]}>
-                                            <Text style={[styles.catHeaderText, { color: cat === 'BUSINESS' ? '#818cf8' : '#10b981' }]}>
+                                        <TO 
+                                            style={[styles.catHeader, { backgroundColor: cat === 'BUSINESS' ? 'rgba(99, 102, 241, 0.15)' : cat === 'PERSONAL' ? 'rgba(250, 204, 21, 0.1)' : cat === 'HEALTH' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(148, 163, 184, 0.1)' }]}
+                                            onPress={() => toggleCategory(cat)}
+                                        >
+                                            <Text style={[styles.catHeaderText, { color: cat === 'BUSINESS' ? '#818cf8' : cat === 'PERSONAL' ? '#facc15' : cat === 'HEALTH' ? '#10b981' : '#94a3b8', flex: 1 }]}>
                                                 {cat === 'BUSINESS' ? '💼 NEGOCIOS' : cat === 'PERSONAL' ? '👤 PERSONAL' : cat === 'HEALTH' ? '🏥 SALUD' : '📋 GENERAL'}
                                             </Text>
-                                        </View>
-                                        {items.map((item: any, idx: number) => (
+                                            <View style={styles.catCountBadge}>
+                                                <Text style={styles.catCountText}>{items.length}</Text>
+                                            </View>
+                                            {isCatExpanded ? <CU size={18} color="#94a3b8" /> : <CD size={18} color="#94a3b8" />}
+                                        </TO>
+                                        {isCatExpanded && sortedItems.map((item: any, idx: number) => (
                                             <TO
                                                 key={idx}
                                                 style={styles.hubTaskItem}
                                                 onPress={() => navigation.navigate('EntryDetail', { entryId: item.entryId })}
                                             >
-                                                {viewMode === 'pending' && <View style={styles.hubTaskDot} />}
+                                                {viewMode === 'pending' && (
+                                                    <View style={[styles.hubTaskDot, { backgroundColor: item.priority === 'HIGH' ? '#ef4444' : '#818cf8' }]} />
+                                                )}
                                                 {viewMode === 'completed' && <CheckCircle2 size={16} color="#10b981" style={{ marginRight: 12 }} />}
                                                 <View style={{ flex: 1 }}>
                                                     <Text style={[
@@ -771,7 +829,10 @@ const SettingsScreen = () => {
                                                     ]}>
                                                         {item.description}
                                                     </Text>
-                                                    <Text style={styles.hubTaskSource}>En: {item.entryTitle}</Text>
+                                                    <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+                                                        {item.priority === 'HIGH' && <Text style={{fontSize: 10, color: '#ef4444', fontWeight: 'bold'}}>ALTA</Text>}
+                                                        <Text style={styles.hubTaskSource}>En: {item.entryTitle}</Text>
+                                                    </View>
                                                 </View>
                                                 <AR size={14} color="#475569" />
                                             </TO>
@@ -902,67 +963,74 @@ const SettingsScreen = () => {
                 transparent={true}
                 onRequestClose={() => setShowGoalModal(false)}
             >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Nueva Meta Estratégica</Text>
-                            <TO onPress={() => setShowGoalModal(false)}>
-                                <Xi size={24} color="#94a3b8" />
+                <KeyboardAvoidingView 
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={{ flex: 1 }}
+                >
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalContent}>
+                            <View style={styles.modalHeader}>
+                                <Text style={styles.modalTitle}>Nueva Meta Estratégica</Text>
+                                <TO onPress={() => setShowGoalModal(false)}>
+                                    <Xi size={24} color="#94a3b8" />
+                                </TO>
+                            </View>
+
+                            <Text style={styles.modalSubtitle}>Define un objetivo de alto nivel</Text>
+
+                            <TI
+                                style={styles.feedbackInput}
+                                placeholder="Título de la meta (Ej: Lanzar producto X)"
+                                placeholderTextColor="#64748b"
+                                value={newGoalTitle}
+                                onChangeText={setNewGoalTitle}
+                            />
+
+                            <TI
+                                style={[styles.feedbackInput, { height: 80, marginTop: 12 }]}
+                                placeholder="Descripción o métrica de éxito..."
+                                placeholderTextColor="#64748b"
+                                multiline
+                                value={newGoalDesc}
+                                onChangeText={setNewGoalDesc}
+                            />
+
+                            <View style={[styles.typeSelector, { marginTop: 20 }]}>
+                                {(['BUSINESS', 'PERSONAL', 'DEVELOPMENT', 'WELLNESS'] as const).map((cat) => (
+                                    <TO
+                                        key={cat}
+                                        style={[
+                                            styles.typeButton,
+                                            newGoalCategory === cat && styles.typeButtonActive
+                                        ]}
+                                        onPress={() => setNewGoalCategory(cat)}
+                                    >
+                                        <Text style={[
+                                            styles.typeButtonText,
+                                            newGoalCategory === cat && styles.typeButtonTextActive
+                                        ]}>
+                                            {cat === 'BUSINESS' ? 'Estrategia' : 
+                                             cat === 'PERSONAL' ? 'Personales' : 
+                                             cat === 'DEVELOPMENT' ? 'Desarrollo' : 'Bienestar'}
+                                        </Text>
+                                    </TO>
+                                ))}
+                            </View>
+
+                            <TO
+                                style={[styles.sendButton, (!newGoalTitle.trim() || isCreatingGoal) && styles.sendButtonDisabled, { backgroundColor: '#6366f1', marginTop: 30 }]}
+                                onPress={handleCreateGoal}
+                                disabled={!newGoalTitle.trim() || isCreatingGoal}
+                            >
+                                {isCreatingGoal ? (
+                                    <ActivityIndicator color="#ffffff" />
+                                ) : (
+                                    <Text style={styles.sendButtonText}>Registrar Meta</Text>
+                                )}
                             </TO>
                         </View>
-
-                        <Text style={styles.modalSubtitle}>Define un objetivo de alto nivel</Text>
-
-                        <TI
-                            style={styles.feedbackInput}
-                            placeholder="Título de la meta (Ej: Lanzar producto X)"
-                            placeholderTextColor="#64748b"
-                            value={newGoalTitle}
-                            onChangeText={setNewGoalTitle}
-                        />
-
-                        <TI
-                            style={[styles.feedbackInput, { height: 80, marginTop: 12 }]}
-                            placeholder="Descripción o métrica de éxito..."
-                            placeholderTextColor="#64748b"
-                            multiline
-                            value={newGoalDesc}
-                            onChangeText={setNewGoalDesc}
-                        />
-
-                        <View style={[styles.typeSelector, { marginTop: 20 }]}>
-                            {(['BUSINESS', 'PERSONAL', 'HEALTH'] as const).map((cat) => (
-                                <TO
-                                    key={cat}
-                                    style={[
-                                        styles.typeButton,
-                                        newGoalCategory === cat && styles.typeButtonActive
-                                    ]}
-                                    onPress={() => setNewGoalCategory(cat)}
-                                >
-                                    <Text style={[
-                                        styles.typeButtonText,
-                                        newGoalCategory === cat && styles.typeButtonTextActive
-                                    ]}>
-                                        {cat === 'BUSINESS' ? 'Negocios' : cat === 'PERSONAL' ? 'Personal' : 'Salud'}
-                                    </Text>
-                                </TO>
-                            ))}
-                        </View>
-
-                        <TO
-                            style={[styles.sendButton, (!newGoalTitle.trim() || isCreatingGoal) && styles.sendButtonDisabled, { backgroundColor: '#6366f1', marginTop: 30 }]}
-                            onPress={handleCreateGoal}
-                            disabled={!newGoalTitle.trim() || isCreatingGoal}
-                        >
-                            {isCreatingGoal ? (
-                                <ActivityIndicator color="#ffffff" />
-                            ) : (
-                                <Text style={styles.sendButtonText}>Registrar Meta</Text>
-                            )}
-                        </TO>
                     </View>
-                </View>
+                </KeyboardAvoidingView>
             </Modal>
         </SAV>
     );
@@ -1123,12 +1191,17 @@ const styles = StyleSheet.create({
     },
     emptyHubText: { color: '#64748b', fontSize: 14, fontStyle: 'italic', textAlign: 'center' },
     hubTaskItem: {
+        width: '100%',
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+        paddingVertical: 16,
+        paddingHorizontal: 16,
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        borderRadius: 16,
+        marginBottom: 10,
         gap: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
     hubTaskDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#818cf8' },
     hubTaskDesc: { color: '#ffffff', fontSize: 15, fontWeight: '500' },
@@ -1331,17 +1404,35 @@ const styles = StyleSheet.create({
     goalBadgeText: { color: '#64748b', fontSize: 10, fontWeight: 'bold' },
     textCompleted: { textDecorationLine: 'line-through' },
     catHeader: {
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-        borderRadius: 8,
-        marginTop: 20,
-        marginBottom: 8,
-        alignSelf: 'flex-start',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 16,
+        marginTop: 15,
+        marginBottom: 5,
+        width: '100%',
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.05)'
     },
     catHeaderText: {
-        fontSize: 12,
-        fontWeight: 'bold',
+        fontSize: 13,
+        fontWeight: '900',
         letterSpacing: 1,
+    },
+    catCountBadge: {
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 10,
+        marginRight: 12,
+        minWidth: 30,
+        alignItems: 'center'
+    },
+    catCountText: {
+        color: '#ffffff',
+        fontSize: 12,
+        fontWeight: 'bold'
     },
 });
 

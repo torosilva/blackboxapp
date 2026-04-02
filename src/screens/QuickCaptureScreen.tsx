@@ -8,10 +8,14 @@ import { voiceService } from '../services/voice';
 import { aiService } from '../services/ai';
 import { SupabaseService } from '../services/SupabaseService';
 import { useAuth } from '../context/AuthContext';
+import AILoadingOverlay from '../components/AILoadingOverlay';
+import { NotificationService } from '../services/notificationService';
+import { useSubscription } from '../hooks/useSubscription';
 
 export const QuickCaptureScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const { user } = useAuth();
+    const { canCreateAudit, refresh } = useSubscription();
     const [isRecording, setIsRecording] = useState(false);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [duration, setDuration] = useState(0);
@@ -49,12 +53,25 @@ export const QuickCaptureScreen = () => {
     }, [isRecording]);
 
     const handleStartRecording = async () => {
+        if (!canCreateAudit()) {
+            Alert.alert(
+                "Límite de Auditoría",
+                "Has alcanzado el límite de 3 auditorías gratuitas. Desbloquea el acceso ilimitado para continuar.",
+                [
+                    { text: "Ahora no", style: "cancel" },
+                    { text: "Ver Planes", onPress: () => navigation.navigate('Paywall') }
+                ]
+            );
+            return;
+        }
+
         try {
             await voiceService.startRecording();
             setIsRecording(true);
-        } catch (err) {
-            console.error('Failed to start recording', err);
-            Alert.alert('Error', 'No se pudo iniciar la grabación.');
+        } catch (err: any) {
+            console.error('QuickCapture: Recording error:', err);
+            setIsRecording(false);
+            Alert.alert('Error de Grabación', err.message);
         }
     };
 
@@ -84,6 +101,7 @@ export const QuickCaptureScreen = () => {
                 title: analysis.title,
                 content: transcription,
                 summary: analysis.summary,
+                category: analysis.category,
                 mood_label: analysis.mood_label,
                 sentiment_score: analysis.sentiment_score,
                 wellness_recommendation: analysis.wellness_recommendation,
@@ -93,9 +111,45 @@ export const QuickCaptureScreen = () => {
                 original_text: transcription
             });
 
-            // 5. Navigate to Home or Success
+            // 5. Navigate to Home
+            await refresh(); // Sync audit count
             navigation.navigate('Home');
-            Alert.alert('Protocolo Completado', `Bautizado como: ${analysis.title}`);
+
+            // NEW: Aggressive Follow-up Trigger (Local)
+            if (Array.isArray(analysis.action_items)) {
+                const highPriorities = analysis.action_items.filter((ai: any) => ai.priority === 'HIGH');
+                for (const hp of highPriorities) {
+                    await NotificationService.scheduleStrategicFollowup(hp.description);
+                }
+            }
+
+            // 6. Proactive Goal Assessment (v5.8)
+            if (analysis.suggested_goals && analysis.suggested_goals.length > 0) {
+                const goalsText = analysis.suggested_goals.join('\n• ');
+                Alert.alert(
+                    "🎯 Metas Detectadas",
+                    `He identificado objetivos estratégicos en tu sesión:\n\n• ${goalsText}\n\n¿Deseas registrarlos como Metas Oficiales?`,
+                    [
+                        { text: "Ahora no", style: "cancel" },
+                        { 
+                            text: "Registrar Metas", 
+                            onPress: async () => {
+                                try {
+                                    for (const goalTitle of analysis.suggested_goals) {
+                                        await SupabaseService.createGoal(user.id, goalTitle, `Identificado proactivamente en: ${analysis.title}`, 'BUSINESS');
+                                    }
+                                    Alert.alert("Éxito", "Metas registradas en tu Centro Estratégico.");
+                                } catch (e: any) {
+                                    console.error("Failed to register suggested goals", e);
+                                    Alert.alert("Error de Registro", `No se pudieron guardar las metas: ${e.message || 'Error desconocido'}`);
+                                }
+                            }
+                        }
+                    ]
+                );
+            } else {
+                Alert.alert('Protocolo Completado', `Bautizado como: ${analysis.title}`);
+            }
         } catch (err: any) {
             console.error('Process Error:', err);
             Alert.alert('Error', err.message || 'No se pudo procesar el volcado mental.');
@@ -144,7 +198,7 @@ export const QuickCaptureScreen = () => {
                     }`}
                 >
                     {isAnalyzing ? (
-                        <ActivityIndicator color="white" />
+                        <View /> // Handled by overlay
                     ) : (
                         <Ionicons 
                             name={isRecording ? "stop" : "mic"} 
@@ -183,6 +237,8 @@ export const QuickCaptureScreen = () => {
                   <Ionicons name="close-circle-outline" size={32} color="#475569" />
               </TouchableOpacity>
             )}
+
+            <AILoadingOverlay visible={isAnalyzing} message="Consultando a tu Coach Estratégico..." />
         </View>
     );
 };

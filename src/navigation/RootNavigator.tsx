@@ -23,6 +23,8 @@ import ChatHubScreen from '../screens/ChatHubScreen';
 import ForgotPasswordScreen from '../auth/ForgotPasswordScreen';
 import FeedbackHistoryScreen from '../screens/FeedbackHistoryScreen';
 import QuickCaptureScreen from '../screens/QuickCaptureScreen';
+import PaywallScreen from '../screens/PaywallScreen';
+import InvitationCodeScreen from '../screens/InvitationCodeScreen';
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -32,7 +34,8 @@ const Stack = createNativeStackNavigator();
 // Un componente wrapper para manejar la lógica de sesión
 function AppNavigator() {
     const { user, profile, isLoading } = useAuth();
-    const [isLocked, setIsLocked] = React.useState(true);
+    // Default to false for stability in Expo Go; can be re-enabled if needed
+    const [isLocked, setIsLocked] = React.useState(false);
 
     // Re-lock app when it goes to background
     const appState = React.useRef(AppState.currentState);
@@ -71,8 +74,8 @@ function AppNavigator() {
             {user ? (
                 // === RUTAS PRIVADAS (Si está logueado) ===
                 <React.Fragment>
-                    <Stack.Screen name="QuickCapture" component={QuickCaptureScreen as any} />
                     <Stack.Screen name="Dashboard" component={DashboardScreen as any} />
+                    <Stack.Screen name="QuickCapture" component={QuickCaptureScreen as any} />
                     <Stack.Screen name="Home" component={HomeScreen as any} />
                     <Stack.Screen name="Settings" component={SettingsScreen as any} />
                     <Stack.Screen
@@ -88,6 +91,8 @@ function AppNavigator() {
                     <Stack.Screen name="Terms" component={TermsScreen as any} />
                     <Stack.Screen name="Privacy" component={PrivacyScreen as any} />
                     <Stack.Screen name="Onboarding" component={OnboardingScreen as any} />
+                    <Stack.Screen name="Paywall" component={PaywallScreen as any} />
+                    <Stack.Screen name="InvitationCode" component={InvitationCodeScreen as any} />
                 </React.Fragment>
             ) : (
                 // === RUTAS PÚBLICAS (Si NO está logueado) ===

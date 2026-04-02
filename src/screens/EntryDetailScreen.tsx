@@ -10,6 +10,7 @@ import { BiasWarningCard } from '../components/BiasWarningCard';
 import { WellnessActionCard } from '../components/WellnessActionCard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
+import AILoadingOverlay from '../components/AILoadingOverlay';
 
 const EntryDetailScreen = () => {
   const navigation = useNavigation<any>();
@@ -130,6 +131,7 @@ const EntryDetailScreen = () => {
         summary: analysis.summary,
         sentiment_score: analysis.sentiment_score,
         mood_label: analysis.mood_label,
+        category: analysis.category,
         wellness_recommendation: analysis.wellness_recommendation,
         updated_at: new Date().toISOString()
       };
@@ -160,18 +162,11 @@ const EntryDetailScreen = () => {
     try {
       // Create a thread automatically for this entry
       const threadTitle = `Consulta: ${entry.title || 'Sesión sin título'}`;
-      // Map mood to a category or use GENERAL
-      let category: 'BUSINESS' | 'PERSONAL' | 'HEALTH' | 'GENERAL' = 'GENERAL';
+      let category = entry.category || 'GENERAL';
       
-      // Heuristic for category based on content (simple version)
-      const content = entry.content.toLowerCase();
-      if (content.includes('negocio') || content.includes('trabajo') || content.includes('business') || content.includes('cliente')) {
-        category = 'BUSINESS';
-      } else if (content.includes('salud') || content.includes('entrenar') || content.includes('dieta') || content.includes('health')) {
-        category = 'HEALTH';
-      } else if (content.includes('personal') || content.includes('sueño') || content.includes('emoción')) {
-        category = 'PERSONAL';
-      }
+      // Map to ChatThread categories if needed
+      if (category === 'WELLNESS') category = 'HEALTH';
+      if (category === 'DEVELOPMENT') category = 'PERSONAL';
 
       const newThread = await SupabaseService.createChatThread(user.id, threadTitle, category);
       
@@ -194,7 +189,7 @@ const EntryDetailScreen = () => {
   if (loading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#6366f1" />
+        <AILoadingOverlay visible={true} message="Recuperando memoria..." />
       </View>
     );
   }
@@ -256,7 +251,7 @@ const EntryDetailScreen = () => {
               onPress={handleSave}
               disabled={isSaving}
             >
-              {isSaving ? <ActivityIndicator size="small" color="white" /> : <Ch size={20} color="#ffffff" />}
+              {isSaving ? <View /> : <Ch size={20} color="#ffffff" />}
             </TO>
           )}
         </View>
@@ -280,6 +275,11 @@ const EntryDetailScreen = () => {
           <View style={styles.moodBadgeDetail}>
             {getMoodIcon(entry.mood_label, entry.sentiment_score)}
           </View>
+          {entry.category && (
+            <View style={[styles.metaBadge, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+              <Text style={[styles.metaText, { color: '#10b981' }]}>{entry.category}</Text>
+            </View>
+          )}
         </View>
 
         {/* Title */}
@@ -336,8 +336,7 @@ const EntryDetailScreen = () => {
         >
           <LG colors={['#6366f1', '#4f46e5']} start={{x:0, y:0}} end={{x:1, y:0}} style={styles.chatBtnGradient}>
             <Sp size={20} color="white" style={{ marginRight: 10 }} />
-            <Text style={styles.chatBtnText}>Analizar con IA Consultant</Text>
-            {isSaving && <ActivityIndicator size="small" color="white" style={{ marginLeft: 10 }} />}
+            <Text style={styles.chatBtnText}>Profundizar en Chat</Text>
           </LG>
         </TO>
 
@@ -354,6 +353,8 @@ const EntryDetailScreen = () => {
           <Text style={styles.deleteText}>Delete memory</Text>
         </TO>
       </ScrollView>
+
+      <AILoadingOverlay visible={isSaving} message="Consultando a tu Coach Estratégico..." />
     </SAV>
   );
 };

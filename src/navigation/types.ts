@@ -15,4 +15,6 @@ export type RootStackParamList = {
     QuickCapture: undefined;
     Terms: { isMandatory?: boolean };
     Privacy: { isMandatory?: boolean };
+    Paywall: undefined;
+    InvitationCode: undefined;
 };
