@@ -1,7 +1,6 @@
 {
     "cli": {
-        "appVersionSource": "remote",
-        "autoIncrement": true
+        "appVersionSource": "remote"
     },
     "build": {
         "development": {
@@ -10,6 +9,7 @@
         },
         "preview": {
             "distribution": "internal",
+            "autoIncrement": true,
             "env": {
                 "EAS_SKIP_AUTO_FINGERPRINT": "1",
                 "NPM_CONFIG_LEGACY_PEER_DEPS": "1",
@@ -27,6 +27,7 @@
             }
         },
         "production": {
+            "autoIncrement": true,
             "env": {
                 "NPM_CONFIG_LEGACY_PEER_DEPS": "1",
                 "EXPO_PUBLIC_SUPABASE_URL": "https://fozsvbwagmqblvfurgco.supabase.co",
