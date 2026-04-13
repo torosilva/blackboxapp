@@ -1,5 +1,6 @@
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
+import { supabase } from './supabase';
 
 export class VoiceService {
     private recording: Audio.Recording | null = null;
@@ -40,65 +41,27 @@ export class VoiceService {
 
     async transcribeAudio(uri: string): Promise<string> {
         try {
-            const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
-            if (!GEMINI_API_KEY) throw new Error('Gemini API Key missing');
+            console.log('VoiceService: Starting transcription via Edge Function...');
 
-            console.log('VoiceService: Starting real transcription...');
-
-            // 1. Read file as base64
-            const base64 = await FileSystem.readAsStringAsync(uri, {
+            // Read file as base64 (stays on device, sent securely to Edge Function)
+            const audioBase64 = await FileSystem.readAsStringAsync(uri, {
                 encoding: 'base64',
             });
 
-            // 2. Discover available model
-            let modelName = 'gemini-flash-latest'; // Default
-            try {
-                const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`;
-                const listResponse = await fetch(listUrl);
-                const listData = await listResponse.json();
-                const selected = listData.models?.find((m: any) =>
-                    (m.name || '').includes('flash') &&
-                    (m.supportedGenerationMethods || []).includes('generateContent')
-                );
-                if (selected) modelName = selected.name.split('/').pop();
-            } catch (e) {
-                console.log('VoiceService: Model discovery failed, using default');
-            }
-
-            // 3. Call Gemini for audio-to-text
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
-            console.log(`VoiceService: Using model ${modelName}`);
-
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [
-                            { text: "Verbatim transcription of this audio. Return ONLY the text or '[No speech detected]'." },
-                            { inline_data: { mime_type: "audio/mp4", data: base64 } }
-                        ]
-                    }]
-                })
+            const { data, error } = await supabase.functions.invoke('transcribe-audio', {
+                body: { audioBase64, mimeType: 'audio/mp4' },
             });
 
-            const data = await response.json();
-            console.log('VoiceService: Raw response data:', JSON.stringify(data).substring(0, 200));
+            if (error) throw error;
 
-            if (data.error) {
-                console.error('VoiceService: Gemini API Error:', data.error.message);
-                return `(Error: ${data.error.message})`;
-            }
-
-            const transcription = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
+            const transcription = data?.transcription;
             if (!transcription) {
-                console.warn('VoiceService: No transcription returned. Candidates:', JSON.stringify(data.candidates));
-                return "(Audio captured, but the AI could not hear any clear speech)";
+                console.warn('VoiceService: No transcription returned from Edge Function.');
+                return '(Audio captured, but the AI could not hear any clear speech)';
             }
 
             console.log('VoiceService: Transcription success');
-            return transcription.trim();
+            return transcription;
 
         } catch (err: any) {
             console.error('VoiceService: Transcription failed:', err.message);
