@@ -150,9 +150,13 @@ const NewEntryScreen = () => {
         },
       });
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('Save Error:', err);
-      Alert.alert('Error', 'No se pudo guardar la entrada. Intenta de nuevo.');
+      Alert.alert(
+        'No se pudo guardar',
+        err?.message || 'Error desconocido. Intenta de nuevo.',
+        [{ text: 'Entendido' }]
+      );
     } finally {
       setLoading(false);
     }

@@ -14,63 +14,45 @@ export interface AIAnalysis {
     category: 'BUSINESS' | 'PERSONAL' | 'DEVELOPMENT' | 'WELLNESS';
 }
 
-const FALLBACK: AIAnalysis = {
-    title: "Registro Estratégico",
-    summary: "Analizando rendimiento y enfoque...",
-    mood_label: "Estratégico",
-    sentiment_score: 0,
-    wellness_recommendation: {
-        type: 'FOCUS_TOOL',
-        title: 'Protocolo de Ejecución',
-        description: 'Define métricas claras para tu próximo movimiento.'
-    },
-    strategic_insight: {
-        detected_bias: "Falta de contexto estratégico",
-        warning_message: "Analizando punto ciego...",
-        counter_thought: "Define el ROI de tu siguiente acción."
-    },
-    action_items: [],
-    suggested_goals: [],
-    category: 'PERSONAL'
-};
 
 export const aiService = {
     generateDailySummary: async (
         entries: (string | { title?: string; content: string })[],
         historicalContext?: string
     ): Promise<AIAnalysis> => {
-        try {
-            const { data, error } = await supabase.functions.invoke('analyze-entry', {
-                body: { entries, historicalContext },
-            });
+        const { data, error } = await supabase.functions.invoke('analyze-entry', {
+            body: { entries, historicalContext },
+        });
 
-            if (error) throw error;
-
-            const parsed = data?.analysis;
-            if (!parsed) return FALLBACK;
-
-            const userText = entries.map(e => {
-                if (typeof e === 'string') return e;
-                return `${e.title ? `Título: ${e.title}\n` : ''}Contenido: ${e.content}`;
-            }).join('\n---\n');
-
-            return {
-                title: parsed.title || FALLBACK.title,
-                original_text: userText,
-                summary: parsed.summary || FALLBACK.summary,
-                mood_label: parsed.mood_label || FALLBACK.mood_label,
-                sentiment_score: typeof parsed.sentiment_score === 'number' ? parsed.sentiment_score : 0.5,
-                wellness_recommendation: parsed.wellness_recommendation || FALLBACK.wellness_recommendation,
-                strategic_insight: parsed.strategic_insight || FALLBACK.strategic_insight,
-                action_items: parsed.action_items || [],
-                suggested_goals: parsed.suggested_goals || [],
-                category: parsed.category || 'PERSONAL',
-            };
-        } catch (e: any) {
-            console.error('AI_SERVICE: generateDailySummary failed:', e.message);
-            return FALLBACK;
+        if (error) {
+            console.error('AI_SERVICE: Edge function error:', error.message);
+            throw new Error(`El análisis de IA falló: ${error.message}`);
         }
+
+        const parsed = data?.analysis;
+        if (!parsed) {
+            throw new Error('El análisis no devolvió datos. Intenta de nuevo.');
+        }
+
+        const userText = entries.map(e => {
+            if (typeof e === 'string') return e;
+            return `${e.title ? `Título: ${e.title}\n` : ''}Contenido: ${e.content}`;
+        }).join('\n---\n');
+
+        return {
+            title: parsed.title || 'Registro Estratégico',
+            original_text: userText,
+            summary: parsed.summary,
+            mood_label: parsed.mood_label,
+            sentiment_score: typeof parsed.sentiment_score === 'number' ? parsed.sentiment_score : 0,
+            wellness_recommendation: parsed.wellness_recommendation,
+            strategic_insight: parsed.strategic_insight,
+            action_items: parsed.action_items || [],
+            suggested_goals: parsed.suggested_goals || [],
+            category: parsed.category || 'PERSONAL',
+        };
     },
+
 
     generateWeeklyReport: async (entries: any[]): Promise<string> => {
         if (entries.length === 0) return "Datos insuficientes.";
