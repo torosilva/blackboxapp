@@ -12,9 +12,10 @@
       "resizeMode": "contain",
       "backgroundColor": "#020617"
     },
-    "ios": {
+            "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.blackboxmind.app",
+      "buildNumber": "2",
       "config": {
         "usesNonExemptEncryption": false
       }
