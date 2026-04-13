@@ -165,4 +165,4 @@ export const NotificationService = {
             console.warn('NOTIFICATION_SERVICE: Failed to schedule engagement notifications', error);
         }
     },
-
+};
