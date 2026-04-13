@@ -1,5 +1,6 @@
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
+import { Alert, Linking } from 'react-native';
 import { supabase } from './supabase';
 
 export class VoiceService {
@@ -8,7 +9,20 @@ export class VoiceService {
     async startRecording(onStatusUpdate?: (status: Audio.RecordingStatus) => void) {
         const permission = await Audio.requestPermissionsAsync();
         if (permission.status !== 'granted') {
-            throw new Error('Permisos de micrófono denegados. Actívalos en configuración.');
+            // If denied, guide the user directly to system settings instead of a dead-end error
+            Alert.alert(
+                'Micrófono bloqueado',
+                'Blackbox necesita acceso al micrófono para grabar tu voz. Actívalo en Configuración.',
+                [
+                    { text: 'Cancelar', style: 'cancel' },
+                    {
+                        text: 'Abrir Configuración',
+                        onPress: () => Linking.openSettings(),
+                    },
+                ]
+            );
+            // Return without throwing so the UI can recover cleanly
+            return;
         }
 
         try {
