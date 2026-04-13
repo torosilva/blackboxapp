@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { withRetry, fetchWithStatus } from "../_shared/retry.ts";
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
-const MODEL_NAME = 'gemini-2.0-flash';
+const MODEL_NAME = 'gemini-3.1-flash-lite';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
