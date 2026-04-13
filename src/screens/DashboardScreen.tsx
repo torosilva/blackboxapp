@@ -234,6 +234,7 @@ const DashboardScreen = () => {
     }
 
     return (
+        <>
         <SAV style={styles.container}>
             <StatusBar barStyle="light-content" />
             <ScrollView 
@@ -487,6 +488,7 @@ const DashboardScreen = () => {
             </ScrollView>
         </SAV>
         <WhatsNewModal />
+        </>
     );
 };
 
