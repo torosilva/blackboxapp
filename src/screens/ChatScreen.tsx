@@ -16,7 +16,7 @@ import { Crown } from 'lucide-react-native';
 const ChatScreen = () => {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
-    const { threadId, category, title } = route.params || {};
+    const { threadId, category, title, isTherapyMode, entryContext } = route.params || {};
     const { user, profile, refreshProfile } = useAuth();
     const { isPro } = useSubscription();
     const Cr = Crown as any;
@@ -85,11 +85,12 @@ const ChatScreen = () => {
             setFetchingHistory(false);
             navigation.goBack();
         }
-        // Chat is fully blocked for FREE users
-        if (!isPro) {
+        // Therapy mode (post-entry) is always accessible.
+        // The PRO gate only applies to manually opened chats from ChatHub.
+        if (!isPro && !isTherapyMode) {
             setIsLimitReached(true);
         }
-    }, [threadId, isPro]);
+    }, [threadId, isPro, isTherapyMode]);
 
     const loadHistory = async () => {
         try {
@@ -131,9 +132,16 @@ const ChatScreen = () => {
             // 1. Save User Message to DB
             await SupabaseService.saveChatMessage(threadId, 'user', text);
 
-            // 2. Get AI Response
-            // Pass the category to the ChatService for more efficient/specialized prompting
-            const response = await ChatService.sendMessage(user.id, text, messages, fullName, category);
+            // 2. Get AI Response — pass therapy context if in therapy mode
+            const response = await ChatService.sendMessage(
+                user.id,
+                text,
+                messages,
+                fullName,
+                category,
+                isTherapyMode,
+                entryContext
+            );
             
             const aiText = response.parts[0].text;
             const aiMsg: ChatMessage = {
@@ -197,12 +205,16 @@ const ChatScreen = () => {
 
             {/* Header */}
             <View style={styles.header}>
-                <TO onPress={() => navigation.goBack()} style={styles.backBtn}>
+                <TO onPress={() => isTherapyMode ? navigation.navigate('Home') : navigation.goBack()} style={styles.backBtn}>
                     <CL color="white" size={28} />
                 </TO>
                 <View style={styles.headerTitleContainer}>
-                    <Text style={styles.headerTitle} numberOfLines={1}>{title?.toUpperCase() || 'CHAT'}</Text>
-                    <Text style={styles.categoryLabel}>{category}</Text>
+                    <Text style={styles.headerTitle} numberOfLines={1}>{title?.toUpperCase() || 'SESIÓN'}</Text>
+                    {isTherapyMode ? (
+                        <Text style={[styles.categoryLabel, { color: '#a855f7' }]}>🧠 SESIÓN ESTRATÉGICA</Text>
+                    ) : (
+                        <Text style={styles.categoryLabel}>{category}</Text>
+                    )}
                 </View>
                 <View style={{ width: 44 }} />
             </View>
@@ -275,7 +287,7 @@ const ChatScreen = () => {
                 <View style={styles.inputArea}>
                     <TI
                         style={styles.input}
-                        placeholder="Escribe un mensaje..."
+                        placeholder={isTherapyMode ? "¿Cómo te hace sentir eso?" : "Escribe un mensaje..."}
                         placeholderTextColor="#64748b"
                         value={inputText}
                         onChangeText={setInputText}

@@ -89,7 +89,7 @@ const NewEntryScreen = () => {
 
       await SupabaseService.createEntry({
         user_id: user.id,
-        title: analysis.title, // <--- AI Bautiza la entrada
+        title: analysis.title,
         content: analysis.original_text || content,
         sentiment_score: analysis.sentiment_score,
         mood_label: analysis.mood_label,
@@ -102,28 +102,62 @@ const NewEntryScreen = () => {
         category: analysis.category || 'PERSONAL'
       });
 
-      // NEW: Aggressive Follow-up Trigger (Local)
+      // Schedule follow-up notifications for HIGH priority loops
       if (Array.isArray(analysis.action_items)) {
         const highPriorities = analysis.action_items.filter((ai: any) => ai.priority === 'HIGH');
         for (const hp of highPriorities) {
-          await NotificationService.scheduleStrategicFollowup(hp.description);
+          await NotificationService.scheduleStrategicFollowup(hp.task || hp.description);
         }
       }
 
-      Alert.alert('Análisis de BLACKBOX', `${analysis.summary}`, [
-        {
-          text: 'Finalizar', onPress: () => {
-            navigation.navigate('Home');
-          }
-        }
-      ]);
+      // ── Therapy Chat: create thread and pre-seed with full diagnostic ──────
+      const thread = await SupabaseService.createChatThread(
+        user.id,
+        analysis.title,
+        analysis.category || 'PERSONAL'
+      );
+
+      const loopsText = Array.isArray(analysis.action_items) && analysis.action_items.length > 0
+        ? `\n\n⚡ **${analysis.action_items.length} loop(s) detectado(s):**\n${analysis.action_items.map((a: any) => `• [${a.priority ?? 'MEDIA'}] ${a.task}`).join('\n')}`
+        : '';
+
+      const sentimentSign = (analysis.sentiment_score ?? 0) >= 0 ? '+' : '';
+      const firstMessage =
+        `He procesado tu registro. Aquí está mi diagnóstico:\n\n` +
+        `🧠 **Estado emocional:** ${analysis.mood_label} (${sentimentSign}${(analysis.sentiment_score ?? 0).toFixed(1)})\n\n` +
+        `💡 **Insight estratégico:** ${analysis.strategic_insight}\n\n` +
+        `🔄 **Recomendación:** ${analysis.wellness_recommendation}` +
+        `${loopsText}\n\n` +
+        `¿Qué parte de tu situación quieres explorar ahora?`;
+
+      await SupabaseService.saveChatMessage(thread.id, 'model', firstMessage);
+
+      // Navigate to therapy chat — no Alert, conversation continúa
+      navigation.replace('Chat', {
+        threadId: thread.id,
+        category: analysis.category || 'PERSONAL',
+        title: analysis.title,
+        isTherapyMode: true,
+        initialMessage: firstMessage,
+        entryContext: {
+          originalText: content,
+          summary: analysis.summary,
+          moodLabel: analysis.mood_label,
+          sentimentScore: analysis.sentiment_score ?? 0,
+          strategicInsight: analysis.strategic_insight,
+          wellnessRecommendation: analysis.wellness_recommendation,
+          actionItems: analysis.action_items || [],
+        },
+      });
+
     } catch (err) {
       console.error('Save Error:', err);
-      Alert.alert('Error', 'No se pudo guardar la entrada.');
+      Alert.alert('Error', 'No se pudo guardar la entrada. Intenta de nuevo.');
     } finally {
       setLoading(false);
     }
   };
+
 
   const toggleRecording = async () => {
     if (isRecording) {

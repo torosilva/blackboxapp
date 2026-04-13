@@ -107,12 +107,12 @@ const HomeScreen = () => {
     const initNotifications = async () => {
       const hasPermission = await NotificationService.registerForPushNotificationsAsync();
       if (hasPermission) {
-        // We'll schedule it every time for now, the service handles avoiding duplicates
-        await NotificationService.scheduleDailyReminder();
+        await NotificationService.scheduleEngagementNotifications();
       }
     };
     initNotifications();
   }, []);
+
 
   const animatedBrainStyle = useAnimatedStyle(() => ({
     transform: [{ scale: brainPulse.value }],

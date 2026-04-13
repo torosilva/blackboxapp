@@ -125,5 +125,44 @@ export const NotificationService = {
     async cancelAllNotifications() {
         await Notifications.cancelAllScheduledNotificationsAsync();
         console.log('Notification Service: All notifications cancelled');
-    }
-};
+    },
+
+    /**
+     * Schedule all engagement notifications (9AM + 9PM).
+     * Safe to call multiple times — checks for duplicates first.
+     */
+    async scheduleEngagementNotifications() {
+        try {
+            const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+            const titles = scheduled.map(n => n.content.title);
+
+            // 9:00 AM — Morning kick
+            const morningTitle = '⚡ BLACKBOX te desafía';
+            if (!titles.includes(morningTitle)) {
+                await Notifications.scheduleNotificationAsync({
+                    content: {
+                        title: morningTitle,
+                        body: '¿Qué está bloqueando tu progreso hoy? 30 segundos. Eso es todo.',
+                        sound: true,
+                        priority: Notifications.AndroidNotificationPriority.HIGH,
+                        data: { type: 'MORNING_CHALLENGE' },
+                    },
+                    trigger: {
+                        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+                        hour: 9,
+                        minute: 0,
+                    },
+                });
+                console.log('Notification Service: 9AM challenge notification scheduled');
+            }
+
+            // 9:00 PM — Evening reflection (already may exist as scheduleDailyReminder)
+            const eveningTitle = 'Momento de reflexión 🌙';
+            if (!titles.includes(eveningTitle)) {
+                await this.scheduleDailyReminder();
+            }
+        } catch (error) {
+            console.warn('NOTIFICATION_SERVICE: Failed to schedule engagement notifications', error);
+        }
+    },
+

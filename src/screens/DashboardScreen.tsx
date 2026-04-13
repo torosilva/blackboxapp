@@ -41,6 +41,7 @@ import { useAuth } from '../context/AuthContext';
 import { SupabaseService } from '../services/SupabaseService';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import WhatsNewModal from '../components/WhatsNewModal';
 import Animated, { 
     useSharedValue, 
     useAnimatedStyle, 
@@ -485,6 +486,7 @@ const DashboardScreen = () => {
                 </View>
             </ScrollView>
         </SAV>
+        <WhatsNewModal />
     );
 };
 

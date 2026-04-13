@@ -10,7 +10,22 @@ export type RootStackParamList = {
     WeeklyReport: { reportEndDate?: string };
     Settings: { initialViewMode?: 'hub' | 'pending' | 'completed' | 'biases' };
     ChatHub: undefined;
-    Chat: { threadId: string; category: string; title: string };
+    Chat: {
+        threadId: string;
+        category: string;
+        title: string;
+        isTherapyMode?: boolean;
+        initialMessage?: string;
+        entryContext?: {
+            originalText: string;
+            summary: string;
+            moodLabel: string;
+            sentimentScore: number;
+            strategicInsight: string;
+            wellnessRecommendation: string;
+            actionItems: any[];
+        };
+    };
     FeedbackHistory: undefined;
     QuickCapture: undefined;
     Terms: { isMandatory?: boolean };
