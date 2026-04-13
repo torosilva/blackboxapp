@@ -253,7 +253,7 @@ const DashboardScreen = () => {
                         </View>
                         
                         <TouchableOpacity 
-                            onPress={() => !profile?.is_pro && navigation.navigate('InvitationCode')}
+                            onPress={() => !profile?.is_pro && navigation.navigate('Paywall')}
                             activeOpacity={0.7}
                             style={[
                                 styles.membershipBadge, 

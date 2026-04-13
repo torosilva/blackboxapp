@@ -1,48 +1,37 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../services/SupabaseService';
 import { useAuth } from '../context/AuthContext';
+import { SupabaseService } from '../services/SupabaseService';
+import { useState, useEffect } from 'react';
 
-export const useSubscription = () => {
-    const { user } = useAuth();
-    const [isPro, setIsPro] = useState(false);
-    const [auditCount, setAuditCount] = useState(0);
-    const [loading, setLoading] = useState(true);
+export interface SubscriptionStatus {
+  isPro: boolean;
+  monthlyEntryCount: number;
+  entryLimitReached: boolean;
+  isLoading: boolean;
+}
 
-    const checkSubscription = async () => {
-        if (!user) return;
-        try {
-            setLoading(true);
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('is_pro, audit_count')
-                .eq('id', user.id)
-                .maybeSingle();
+export const FREE_ENTRY_LIMIT = 5;
 
-            if (data) {
-                setIsPro(data.is_pro);
-                setAuditCount(data.audit_count);
-            }
-        } catch (error) {
-            console.error('HOOK_SUBSCRIPTION_ERROR:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+export function useSubscription(): SubscriptionStatus {
+  const { user, profile } = useAuth();
+  const [monthlyEntryCount, setMonthlyEntryCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        checkSubscription();
-    }, [user]);
+  const isPro = Boolean(profile?.is_pro);
 
-    const canCreateAudit = () => {
-        if (isPro) return true;
-        return auditCount < 3;
-    };
+  useEffect(() => {
+    if (!user || isPro) {
+      setIsLoading(false);
+      return;
+    }
+    SupabaseService.getMonthlyEntryCount(user.id)
+      .then(setMonthlyEntryCount)
+      .finally(() => setIsLoading(false));
+  }, [user, isPro]);
 
-    return {
-        isPro,
-        auditCount,
-        canCreateAudit,
-        loading,
-        refresh: checkSubscription
-    };
-};
+  return {
+    isPro,
+    monthlyEntryCount,
+    entryLimitReached: !isPro && monthlyEntryCount >= FREE_ENTRY_LIMIT,
+    isLoading,
+  };
+}

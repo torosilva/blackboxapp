@@ -6,7 +6,9 @@ import { useNavigation } from '@react-navigation/native';
 import { aiService } from '../services/ai';
 import { SupabaseService } from '../services/SupabaseService';
 import { useAuth } from '../context/AuthContext';
+import { useSubscription } from '../hooks/useSubscription';
 import AILoadingOverlay from '../components/AILoadingOverlay';
+import { Crown } from 'lucide-react-native';
 
 /**
  * A simple, zero-dependency Markdown renderer for the strategic report.
@@ -63,6 +65,8 @@ const SimpleMarkdown = ({ content }: { content: string }) => {
 const WeeklyReportScreen = ({ route }: any) => {
     const navigation = useNavigation<any>();
     const { user } = useAuth();
+    const { isPro } = useSubscription();
+    const Cr = Crown as any;
 
     const SAV = SafeAreaView as any;
     const TO = TouchableOpacity as any;
@@ -181,6 +185,34 @@ const WeeklyReportScreen = ({ route }: any) => {
             [{ text: "Entendido", style: "default" }]
         );
     };
+
+    // Gate: FREE users cannot access Weekly Reports
+    if (!isPro) {
+        return (
+            <SAV style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 30 }]}>
+                <View style={{ backgroundColor: '#151B33', padding: 30, borderRadius: 30, width: '100%', borderWidth: 1, borderColor: '#6366f1' }}>
+                    <Cr size={60} color="#facc15" style={{ alignSelf: 'center', marginBottom: 20 }} />
+                    <Text style={{ color: 'white', fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 12 }}>
+                        Reporte Semanal PRO
+                    </Text>
+                    <Text style={{ color: '#94a3b8', fontSize: 15, textAlign: 'center', marginBottom: 30, lineHeight: 24 }}>
+                        El <Text style={{ color: '#818cf8', fontWeight: 'bold' }}>Análisis Estratégico Semanal</Text> es exclusivo de usuarios{' '}
+                        <Text style={{ color: '#a855f7', fontWeight: 'bold' }}>PRO</Text>.{'\n\n'}
+                        Recibe un diagnóstico profundo de tus metas, loops y estado mental cada semana.
+                    </Text>
+                    <TO
+                        style={{ backgroundColor: '#4f46e5', height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}
+                        onPress={() => navigation.navigate('Paywall')}
+                    >
+                        <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>VER PLANES PRO</Text>
+                    </TO>
+                    <TO onPress={() => navigation.goBack()} style={{ alignSelf: 'center', paddingTop: 8 }}>
+                        <Text style={{ color: '#475569', fontSize: 14 }}>Volver</Text>
+                    </TO>
+                </View>
+            </SAV>
+        );
+    }
 
     if (loading) {
         return (

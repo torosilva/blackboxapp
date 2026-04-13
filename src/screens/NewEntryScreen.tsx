@@ -25,11 +25,13 @@ import { useAuth } from '../context/AuthContext';
 import { RootStackParamList } from '../navigation/types';
 import VoiceVisualizer from '../components/VoiceVisualizer';
 import AILoadingOverlay from '../components/AILoadingOverlay';
-import { NotificationService } from '../services/notificationService';
+import { useSubscription, FREE_ENTRY_LIMIT } from '../hooks/useSubscription';
+import { Crown, Lock } from 'lucide-react-native';
 
 const NewEntryScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { user } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
+  const { isPro, monthlyEntryCount, entryLimitReached } = useSubscription();
 
   const SAV = SafeAreaView as any;
   const TO = TouchableOpacity as any;
@@ -38,6 +40,8 @@ const NewEntryScreen = () => {
   const Xi = X as any;
   const Ca = Camera as any;
   const II = ImageIcon as any;
+  const Cr = Crown as any;
+  const Lk = Lock as any;
 
   const [content, setContent] = useState('');
   const [title, setTitle] = useState('');
@@ -45,10 +49,8 @@ const NewEntryScreen = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [lastRecordingUri, setLastRecordingUri] = useState<string | null>(null);
   const [metering, setMetering] = useState(-160);
-  const [isLimitReached, setIsLimitReached] = useState(false);
-  const [inviteCode, setInviteCode] = useState('');
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
-  const { profile, refreshProfile } = useAuth();
+
 
   React.useEffect(() => {
     Animated.loop(
@@ -57,37 +59,7 @@ const NewEntryScreen = () => {
         Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
       ])
     ).start();
-    
-    checkLimits();
   }, []);
-
-  const checkLimits = async () => {
-    if (user && profile && !profile.is_pro) {
-      const usage = await SupabaseService.getTodayUsage(user.id);
-      if (usage.entriesCount >= 1) {
-        setIsLimitReached(true);
-      }
-    }
-  };
-
-  const handleApplyCode = async () => {
-    if (!inviteCode.trim() || !user) return;
-    setLoading(true);
-    try {
-        const success = await SupabaseService.applyInvitationCode(user.id, `BB-${inviteCode.trim().toUpperCase()}`);
-        if (success) {
-            await refreshProfile();
-            setIsLimitReached(false);
-            Alert.alert("¡Éxito!", "Ahora eres PRO. Puedes crear memorias ilimitadas.");
-        } else {
-            Alert.alert("Error", "Código inválido o ya utilizado.");
-        }
-    } catch (e) {
-        Alert.alert("Error", "Hubo un problema al aplicar el código.");
-    } finally {
-        setLoading(false);
-    }
-  };
 
   // Buffer for Android status bar
   const androidPadding = (StatusBar.currentHeight || 0) + 40;
@@ -175,45 +147,33 @@ const NewEntryScreen = () => {
     }
   };
 
-  if (isLimitReached) {
+  // Gate: FREE users limited to 5 entries/month
+  if (entryLimitReached) {
     return (
-        <SAV style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 30 }]}>
-            <View style={{ backgroundColor: '#1e293b', padding: 30, borderRadius: 30, width: '100%', borderWidth: 1, borderColor: '#6366f1' }}>
-                <Brain size={60} color="#6366f1" style={{ alignSelf: 'center', marginBottom: 20 }} />
-                <Text style={{ color: 'white', fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 }}>
-                    Límite Diario Alcanzado
-                </Text>
-                <Text style={{ color: '#94a3b8', fontSize: 16, textAlign: 'center', marginBottom: 30, lineHeight: 24 }}>
-                    Como usuario <Text style={{ color: '#6366f1', fontWeight: 'bold' }}>FREE</Text> solo puedes registrar una memoria por día.
-                    {"\n\n"}Si quieres agregar más memorias, activa tu suscripción a <Text style={{ color: '#a855f7', fontWeight: 'bold' }}>PRO</Text>.
-                </Text>
-
-                <View style={{ flexDirection: 'row', backgroundColor: '#0f172a', borderRadius: 15, paddingHorizontal: 15, paddingVertical: 5, marginBottom: 20, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
-                    <Text style={{ color: '#6366f1', fontWeight: 'bold', fontSize: 18 }}>BB-</Text>
-                    <TI
-                        style={{ flex: 1, height: 50, color: 'white', fontSize: 18, fontWeight: '600', letterSpacing: 2 }}
-                        placeholder="CÓDIGO"
-                        placeholderTextColor="#475569"
-                        autoCapitalize="characters"
-                        value={inviteCode}
-                        onChangeText={setInviteCode}
-                        maxLength={6}
-                    />
-                </View>
-
-                <TO 
-                    style={{ backgroundColor: '#6366f1', height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center' }}
-                    onPress={handleApplyCode}
-                    disabled={loading}
-                >
-                    {loading ? <ActivityIndicator color="white" /> : <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>ACTIVAR PRO</Text>}
-                </TO>
-
-                <TO onPress={() => navigation.goBack()} style={{ marginTop: 25, alignSelf: 'center' }}>
-                    <Text style={{ color: '#475569', fontSize: 14, fontWeight: '500' }}>Volver al inicio</Text>
-                </TO>
-            </View>
-        </SAV>
+      <SAV style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 30 }]}>
+        <View style={{ backgroundColor: '#1e293b', padding: 30, borderRadius: 30, width: '100%', borderWidth: 1, borderColor: '#6366f1' }}>
+          <Cr size={60} color="#facc15" style={{ alignSelf: 'center', marginBottom: 20 }} />
+          <Text style={{ color: 'white', fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 }}>
+            Límite Mensual Alcanzado
+          </Text>
+          <Text style={{ color: '#94a3b8', fontSize: 16, textAlign: 'center', marginBottom: 8, lineHeight: 24 }}>
+            Has usado {monthlyEntryCount}/{FREE_ENTRY_LIMIT} registros este mes como usuario{' '}
+            <Text style={{ color: '#6366f1', fontWeight: 'bold' }}>FREE</Text>.
+          </Text>
+          <Text style={{ color: '#94a3b8', fontSize: 16, textAlign: 'center', marginBottom: 30, lineHeight: 24 }}>
+            Hazte <Text style={{ color: '#a855f7', fontWeight: 'bold' }}>PRO</Text> para registros ilimitados, chat estratégico y reportes semanales.
+          </Text>
+          <TO
+            style={{ backgroundColor: '#6366f1', height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}
+            onPress={() => navigation.navigate('Paywall')}
+          >
+            <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>VER PLANES PRO</Text>
+          </TO>
+          <TO onPress={() => navigation.goBack()} style={{ alignSelf: 'center' }}>
+            <Text style={{ color: '#475569', fontSize: 14, fontWeight: '500' }}>Volver al inicio</Text>
+          </TO>
+        </View>
+      </SAV>
     );
   }
 
@@ -264,13 +224,27 @@ const NewEntryScreen = () => {
             <Ca size={24} color="#94a3b8" />
           </TO>
 
+          {/* Voice button — blocked for FREE */}
           <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
             <TO
-              onPress={toggleRecording}
+              onPress={() => {
+                if (!isPro) {
+                  Alert.alert(
+                    'Función PRO',
+                    'La grabación de voz es exclusiva de usuarios PRO.',
+                    [
+                      { text: 'Cancelar', style: 'cancel' },
+                      { text: 'Ver planes', onPress: () => navigation.navigate('Paywall') },
+                    ]
+                  );
+                  return;
+                }
+                toggleRecording();
+              }}
               style={[styles.recordBtn, isRecording && styles.recordBtnActive]}
             >
-              <View style={[styles.innerRecord, isRecording && styles.innerRecordActive]}>
-                {isRecording ? <View style={styles.stopIcon} /> : <Mi size={28} color="white" />}
+              <View style={[styles.innerRecord, isRecording && styles.innerRecordActive, !isPro && { backgroundColor: '#334155' }]}>
+                {isRecording ? <View style={styles.stopIcon} /> : isPro ? <Mi size={28} color="white" /> : <Lk size={22} color="#64748b" />}
               </View>
             </TO>
           </Animated.View>

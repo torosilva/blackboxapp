@@ -10,12 +10,16 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { ChatService, ChatMessage } from '../services/ChatService';
 import { useAuth } from '../context/AuthContext';
 import { SupabaseService } from '../services/SupabaseService';
+import { useSubscription } from '../hooks/useSubscription';
+import { Crown } from 'lucide-react-native';
 
 const ChatScreen = () => {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const { threadId, category, title } = route.params || {};
     const { user, profile, refreshProfile } = useAuth();
+    const { isPro } = useSubscription();
+    const Cr = Crown as any;
 
     const SAV = SafeAreaView as any;
     const TO = TouchableOpacity as any;
@@ -71,48 +75,21 @@ const ChatScreen = () => {
     const predefinedQuestions = getPredefinedQuestions();
 
     const [isLimitReached, setIsLimitReached] = useState(false);
-    const [inviteCode, setInviteCode] = useState('');
-
-    const handleApplyCode = async () => {
-        if (!inviteCode.trim() || !user) return;
-        setLoading(true);
-        try {
-            const success = await SupabaseService.applyInvitationCode(user.id, `BB-${inviteCode.trim().toUpperCase()}`);
-            if (success) {
-                await refreshProfile();
-                setIsLimitReached(false);
-                Alert.alert("¡Éxito!", "Ahora eres PRO. Chat ilimitado activado.");
-            } else {
-                Alert.alert("Error", "Código inválido o ya utilizado.");
-            }
-        } catch (e) {
-            Alert.alert("Error", "Hubo un problema al aplicar el código.");
-        } finally {
-            setLoading(false);
-        }
-    };
 
     useEffect(() => {
         if (threadId) {
-            setMessages([]); // Clear previous state to avoid cross-thread leaks
+            setMessages([]);
             setFetchingHistory(true);
             loadHistory();
         } else {
             setFetchingHistory(false);
             navigation.goBack();
         }
-        checkLimits();
-    }, [threadId]);
-
-    const checkLimits = async () => {
-        if (user && profile && !profile.is_pro) {
-            const usage = await SupabaseService.getTodayUsage(user.id);
-            // If they already started a chat today and this is a new thread (no messages)
-            if (usage.chatsCount >= 1 && messages.length === 0) {
-                setIsLimitReached(true);
-            }
+        // Chat is fully blocked for FREE users
+        if (!isPro) {
+            setIsLimitReached(true);
         }
-    };
+    }, [threadId, isPro]);
 
     const loadHistory = async () => {
         try {
@@ -184,39 +161,23 @@ const ChatScreen = () => {
         return (
             <SAV style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 30 }]}>
                 <View style={{ backgroundColor: '#1e293b', padding: 30, borderRadius: 30, width: '100%', borderWidth: 1, borderColor: '#6366f1' }}>
-                    <Brain size={60} color="#6366f1" style={{ alignSelf: 'center', marginBottom: 20 }} />
-                    <Text style={{ color: 'white', fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 }}>
-                        Límite de Consultas
+                    <Cr size={60} color="#facc15" style={{ alignSelf: 'center', marginBottom: 20 }} />
+                    <Text style={{ color: 'white', fontSize: 26, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 }}>
+                        Función PRO
                     </Text>
                     <Text style={{ color: '#94a3b8', fontSize: 16, textAlign: 'center', marginBottom: 30, lineHeight: 24 }}>
-                        Como usuario <Text style={{ color: '#6366f1', fontWeight: 'bold' }}>FREE</Text> solo puedes iniciar un chat estratégico por día.
-                        {"\n\n"}Para consultas ilimitadas con la IA, activa tu suscripción a <Text style={{ color: '#a855f7', fontWeight: 'bold' }}>PRO</Text>.
+                        El <Text style={{ color: '#6366f1', fontWeight: 'bold' }}>Chat Estratégico BLACKBOX</Text> es exclusivo de usuarios PRO.{"\n\n"}
+                        Accede a consultas ilimitadas con tu asesor de IA.
                     </Text>
-
-                    <View style={{ flexDirection: 'row', backgroundColor: '#0f172a', borderRadius: 15, paddingHorizontal: 15, paddingVertical: 5, marginBottom: 20, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
-                        <Text style={{ color: '#6366f1', fontWeight: 'bold', fontSize: 18 }}>BB-</Text>
-                        <TI
-                            style={{ flex: 1, height: 50, color: 'white', fontSize: 18, fontWeight: '600', letterSpacing: 2 }}
-                            placeholder="CÓDIGO"
-                            placeholderTextColor="#475569"
-                            autoCapitalize="characters"
-                            value={inviteCode}
-                            onChangeText={setInviteCode}
-                            maxLength={6}
-                        />
-                    </View>
-
-                    <TO 
-                        style={{ backgroundColor: '#6366f1', height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center' }}
-                        onPress={handleApplyCode}
-                        disabled={loading}
+                    <TouchableOpacity
+                        style={{ backgroundColor: '#6366f1', height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}
+                        onPress={() => navigation.navigate('Paywall')}
                     >
-                        {loading ? <ActivityIndicator color="white" /> : <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>ACTIVAR PRO</Text>}
-                    </TO>
-
-                    <TO onPress={() => navigation.goBack()} style={{ marginTop: 25, alignSelf: 'center' }}>
-                        <Text style={{ color: '#475569', fontSize: 14, fontWeight: '500' }}>Volver</Text>
-                    </TO>
+                        <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>VER PLANES PRO</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={{ alignSelf: 'center', paddingTop: 10 }}>
+                        <Text style={{ color: '#475569', fontSize: 14 }}>Volver</Text>
+                    </TouchableOpacity>
                 </View>
             </SAV>
         );

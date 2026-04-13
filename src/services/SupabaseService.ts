@@ -778,6 +778,26 @@ export const SupabaseService = {
         return data as boolean;
     },
 
+    /**
+     * Count entries created in the current calendar month (for FREE tier gate).
+     */
+    async getMonthlyEntryCount(userId: string): Promise<number> {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+        const { count, error } = await supabase
+            .from('entries')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .gte('created_at', startOfMonth);
+
+        if (error) {
+            console.error('SUPABASE_SERVICE: getMonthlyEntryCount error:', error.message);
+            return 0;
+        }
+        return count || 0;
+    },
+
     async getTodayUsage(userId: string) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
