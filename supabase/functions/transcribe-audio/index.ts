@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { withRetry, fetchWithStatus } from "../_shared/retry.ts";
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
 const MODEL_NAME = 'gemini-2.0-flash';
@@ -40,23 +41,21 @@ serve(async (req) => {
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${GEMINI_API_KEY}`;
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: "Verbatim transcription of this audio. Return ONLY the spoken text or '[No speech detected]'." },
-            { inline_data: { mime_type: mimeType, data: audioBase64 } }
-          ]
-        }]
+    const response = await withRetry(
+      () => fetchWithStatus(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: "Verbatim transcription of this audio. Return ONLY the spoken text or '[No speech detected]'." },
+              { inline_data: { mime_type: mimeType, data: audioBase64 } }
+            ]
+          }]
+        }),
       }),
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`Gemini error ${response.status}: ${err}`);
-    }
+      { maxAttempts: 3, baseDelayMs: 800 }  // Slightly longer base for audio payloads
+    );
 
     const data: any = await response.json();
 

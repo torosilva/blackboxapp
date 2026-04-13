@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withRetry, fetchWithStatus } from "../_shared/retry.ts";
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -108,18 +109,17 @@ serve(async (req) => {
       },
     };
 
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Gemini error ${res.status}: ${err}`);
-    }
+    const res = await withRetry(
+      () => fetchWithStatus(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }),
+      { maxAttempts: 3, baseDelayMs: 600 }
+    );
 
     const data: any = await res.json();
+
     const content = data?.candidates?.[0]?.content;
 
     if (!content) throw new Error('No response from Gemini');

@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { withRetry, fetchWithStatus } from "../_shared/retry.ts";
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
 const MODEL_NAME = 'gemini-2.0-flash';
@@ -77,16 +78,17 @@ Datos: ${JSON.stringify(entries)}
 
 async function callGemini(payload: unknown): Promise<unknown> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${GEMINI_API_KEY}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Gemini error ${res.status}: ${err}`);
-  }
-  return res.json();
+  return withRetry(
+    async () => {
+      const res = await fetchWithStatus(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      return res.json();
+    },
+    { maxAttempts: 3, baseDelayMs: 600 }
+  );
 }
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
