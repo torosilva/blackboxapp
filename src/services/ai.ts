@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { SupabaseService } from './SupabaseService';
 import { WellnessRecommendation, DiaryEntry, StrategicInsight, ActionItem } from '../core-types';
 
 export interface AIAnalysis {
@@ -18,10 +19,16 @@ export interface AIAnalysis {
 export const aiService = {
     generateDailySummary: async (
         entries: (string | { title?: string; content: string })[],
-        historicalContext?: string,
+        _legacyHistoricalContext?: string,  // kept for call-site compat, ignored
         entryId?: string,
         userId?: string
     ): Promise<AIAnalysis> => {
+
+        // Build structured historical context when we have a userId
+        const historicalContext = userId
+            ? await SupabaseService.getHistoricalContext(userId)
+            : null;
+
         const { data, error } = await supabase.functions.invoke('analyze-entry', {
             body: { entries, historicalContext, entryId, userId },
         });

@@ -14,14 +14,72 @@ const corsHeaders = {
 
 // ─── Prompts ────────────────────────────────────────────────────────────────
 
-function buildAnalysisPrompt(userText: string, historicalContext?: string): string {
-  return `
+// ─── Structured context builder ───────────────────────────────────────────────
+
+interface HistoricalContext {
+  recentMoods?: { date: string; score: number; label: string }[];
+  dominantCategories?: { category: string; count: number }[];
+  recurringBiases?: { bias: string; count: number }[];
+  openLoopsCount?: number;
+  avgSentimentLast7Days?: number | null;
+  totalEntries?: number;
+  dataMaturity?: 'none' | 'building' | 'ready';
+}
+
+function buildContextBlock(ctx: HistoricalContext | string | null | undefined): string {
+  // Legacy: plain string passed directly
+  if (typeof ctx === 'string') return ctx || 'Sin historial previo.';
+  if (!ctx) return 'Sin historial previo.';
+
+  const { dataMaturity, avgSentimentLast7Days, openLoopsCount, recurringBiases,
+          dominantCategories, recentMoods, totalEntries } = ctx;
+
+  if (dataMaturity === 'none' || !totalEntries) {
+    return `[PRIMER ANÁLISIS] Este es el primer registro del usuario. No hay patrones previos disponibles. Enfócate exclusivamente en el contenido actual.`;
+  }
+
+  if (dataMaturity === 'building') {
+    const needed = 5 - (totalEntries ?? 0);
+    return `[HISTORIAL EN CONSTRUCCIÓN — ${totalEntries} de 5 entradas mínimas]
+El usuario está construyendo su perfil. Faltan ${needed} entrada(s) para activar el análisis de patrones completo.
+Datos parciales disponibles:
+- Categoría dominante: ${dominantCategories?.[0]?.category ?? 'N/A'}
+- Últimos registros de ánimo: ${(recentMoods ?? []).slice(0, 3).map(m => `${m.label}(${m.score > 0 ? '+' : ''}${m.score.toFixed(1)})`).join(', ') || 'N/A'}
+Analiza solo el contenido actual sin inferir patrones longitudinales.`;
+  }
+
+  // dataMaturity === 'ready'
+  const avgStr = avgSentimentLast7Days !== null && avgSentimentLast7Days !== undefined
+    ? avgSentimentLast7Days.toFixed(2)
+    : 'N/A';
+  const topBias = (recurringBiases ?? []).slice(0, 2).map(b => `${b.bias} (×${b.count})`).join(', ') || 'Ninguno identificado aún';
+  const topCats = (dominantCategories ?? []).slice(0, 2).map(c => `${c.category}(${c.count})`).join(', ') || 'N/A';
+  const moodHistory = (recentMoods ?? []).slice(0, 5).map(m => `[${m.date}] ${m.label} ${m.score > 0 ? '+' : ''}${m.score.toFixed(1)}`).join(' | ') || 'N/A';
+
+  return `[ANÁLISIS DE PATRONES — ${totalEntries} entradas]
+▸ Sentimiento promedio (últimos 7 días): ${avgStr} (-1.0 negativo → +1.0 positivo)
+▸ Loops abiertos sin cerrar: ${openLoopsCount ?? 0}
+▸ Sesgo cognitivo más recurrente: ${topBias}
+▸ Áreas de enfoque dominantes: ${topCats}
+▸ Historial de estado anímico: ${moodHistory}
+
+INSTRUCCIÓN DE INTEGRACIÓN:
+- Si el sentimiento promedio es negativo (< -0.2), el insight debe priorizar recuperación y no solo ejecución.
+- Si hay más de 3 loops abiertos, el insight debe cuestionar si el usuario está sobre-comprometiendo.
+- Si el sesgo recurrente es el mismo que detectas hoy, señálalo explícitamente como patrón persistente.`;
+}
+
+function buildAnalysisPrompt(userText: string, historicalContext?: HistoricalContext | string | null): string {
+  const contextBlock = buildContextBlock(historicalContext);
+
 ROL:
 Eres BLACKBOX, un Consultor Estratégico Senior (Ex-McKinsey), Auditor de Decisiones y Coach de Alto Rendimiento.
 Tu objetivo es convertir el caos o las metas del usuario en CLARIDAD TÁCTICA.
 
-CONTEXTO HISTÓRICO:
-${historicalContext ?? 'Sin contexto previo.'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONTEXTO HISTÓRICO DEL USUARIO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${contextBlock}
 
 REGLAS DE OPERACIÓN:
 1. CERO OBVIEDADES: Si el usuario plantea una meta, dile CÓMO (embudos, canales, CAC).
@@ -30,6 +88,7 @@ REGLAS DE OPERACIÓN:
 4. TITULACIÓN AUTOMÁTICA: Genera un título militar, clínico y directo basado en el contenido (máx 5 palabras). No uses emojis. Ej: 'Falla Operativa: Proveedor' o 'Auditoría: Expansión Q3'.
 5. TONO: Directo, clínico, objetivo. No busques consolar, busca dar ventaja competitiva.
 6. VALORACIÓN DE METAS: Analiza si el usuario plantea un objetivo de largo alcance (ej: "Lanzar producto", "Duplicar ventas", "Correr maratón"). Si es así, lístalo en 'suggested_goals'.
+7. USA EL CONTEXTO HISTÓRICO: Si hay patrones disponibles, intégralos en el insight — nombra el patrón, no lo ignores.
 
 FORMATO DE RESPUESTA (JSON ESTRICTO):
 {
@@ -44,7 +103,7 @@ FORMATO DE RESPUESTA (JSON ESTRICTO):
     "counter_thought": "MOVIMIENTO TÁCTICO: La directiva exacta para resolver el cuello de botella o neutralizar el sesgo."
   },
   "action_items": [
-    { "description": "Verbo + Resultado", "priority": "HIGH | MEDIUM | LOW", "category": "BUSINESS | PERSONAL | HEALTH" }
+    { "task": "Verbo + Resultado", "priority": "HIGH | MEDIUM | LOW", "category": "BUSINESS | PERSONAL | DEVELOPMENT | WELLNESS" }
   ],
   "wellness_recommendation": {
     "type": "FOCUS_TOOL | MEDITATION | EXERCISE",
@@ -59,6 +118,7 @@ Analiza esta entrada del usuario:
 ${userText}
   `.trim();
 }
+
 
 function buildWeeklyReportPrompt(entries: unknown[]): string {
   return `

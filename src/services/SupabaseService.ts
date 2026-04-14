@@ -168,7 +168,8 @@ export const SupabaseService = {
     },
 
     /**
-     * Fetch recent AI summaries for historical context
+     * Fetch recent AI summaries for historical context (legacy string format).
+     * Kept for internal backwards compatibility — prefer getHistoricalContext().
      */
     async getRecentInsights(userId: string, limit: number = 10): Promise<string> {
         try {
@@ -189,6 +190,119 @@ export const SupabaseService = {
         } catch (error) {
             console.error('SUPABASE_SERVICE: Error fetching recent insights', error);
             return "";
+        }
+    },
+
+    /**
+     * Build a structured historical context object for the AI analysis prompt.
+     * Includes mood trends, category patterns, bias recurrence, open loops,
+     * and a dataMaturity signal so the prompt can adapt its tone.
+     */
+    async getHistoricalContext(userId: string): Promise<{
+        recentMoods: { date: string; score: number; label: string }[];
+        dominantCategories: { category: string; count: number }[];
+        recurringBiases: { bias: string; count: number }[];
+        openLoopsCount: number;
+        avgSentimentLast7Days: number | null;
+        totalEntries: number;
+        dataMaturity: 'none' | 'building' | 'ready';
+    }> {
+        const empty = {
+            recentMoods: [],
+            dominantCategories: [],
+            recurringBiases: [],
+            openLoopsCount: 0,
+            avgSentimentLast7Days: null,
+            totalEntries: 0,
+            dataMaturity: 'none' as const,
+        };
+
+        try {
+            // ── 1. Fetch the last 15 entries ──────────────────────────────────
+            const { data: entries, error: entriesErr } = await supabase
+                .from('entries')
+                .select('id, sentiment_score, mood_label, category, strategic_insight, created_at')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false })
+                .limit(15);
+
+            if (entriesErr || !entries || entries.length === 0) return empty;
+
+            const totalEntries = entries.length;
+            const dataMaturity: 'none' | 'building' | 'ready' =
+                totalEntries === 0 ? 'none' : totalEntries < 5 ? 'building' : 'ready';
+
+            // ── 2. Recent moods ───────────────────────────────────────────────
+            const recentMoods = entries
+                .filter(e => e.sentiment_score !== null)
+                .map(e => ({
+                    date: e.created_at?.slice(0, 10) ?? '',
+                    score: e.sentiment_score,
+                    label: e.mood_label ?? 'Desconocido',
+                }));
+
+            // ── 3. Dominant categories ────────────────────────────────────────
+            const catCount: Record<string, number> = {};
+            for (const e of entries) {
+                const cat = e.category || 'PERSONAL';
+                catCount[cat] = (catCount[cat] || 0) + 1;
+            }
+            const dominantCategories = Object.entries(catCount)
+                .map(([category, count]) => ({ category, count }))
+                .sort((a, b) => b.count - a.count);
+
+            // ── 4. Recurring biases ───────────────────────────────────────────
+            const biasCount: Record<string, number> = {};
+            for (const e of entries) {
+                let bias: string | null = null;
+                try {
+                    if (typeof e.strategic_insight === 'string') {
+                        const parsed = JSON.parse(e.strategic_insight);
+                        bias = parsed?.detected_bias ?? null;
+                    } else if (e.strategic_insight?.detected_bias) {
+                        bias = e.strategic_insight.detected_bias;
+                    }
+                } catch { /* ignore parse errors */ }
+                if (bias) biasCount[bias] = (biasCount[bias] || 0) + 1;
+            }
+            const recurringBiases = Object.entries(biasCount)
+                .map(([bias, count]) => ({ bias, count }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 3);
+
+            // ── 5. Open loops count ───────────────────────────────────────────
+            let openLoopsCount = 0;
+            try {
+                const { count } = await supabase
+                    .from('action_items')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('user_id', userId)
+                    .eq('is_completed', false);
+                openLoopsCount = count || 0;
+            } catch { /* table may not exist yet, ignore */ }
+
+            // ── 6. Avg sentiment last 7 days ──────────────────────────────────
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+            const recent7 = entries.filter(
+                e => e.created_at && new Date(e.created_at) >= sevenDaysAgo && e.sentiment_score !== null
+            );
+            const avgSentimentLast7Days = recent7.length > 0
+                ? recent7.reduce((sum, e) => sum + (e.sentiment_score ?? 0), 0) / recent7.length
+                : null;
+
+            return {
+                recentMoods,
+                dominantCategories,
+                recurringBiases,
+                openLoopsCount,
+                avgSentimentLast7Days,
+                totalEntries,
+                dataMaturity,
+            };
+        } catch (err: any) {
+            console.error('SUPABASE_SERVICE: getHistoricalContext failed:', err.message);
+            return empty;
         }
     },
 
