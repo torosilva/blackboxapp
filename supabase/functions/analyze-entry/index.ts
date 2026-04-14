@@ -71,7 +71,7 @@ INSTRUCCIÓN DE INTEGRACIÓN:
 
 function buildAnalysisPrompt(userText: string, historicalContext?: HistoricalContext | string | null): string {
   const contextBlock = buildContextBlock(historicalContext);
-
+  return `
 ROL:
 Eres BLACKBOX, un Consultor Estratégico Senior (Ex-McKinsey), Auditor de Decisiones y Coach de Alto Rendimiento.
 Tu objetivo es convertir el caos o las metas del usuario en CLARIDAD TÁCTICA.
