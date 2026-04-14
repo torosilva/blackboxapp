@@ -35,7 +35,9 @@ import {
     ShieldAlert,
     Stethoscope,
     Box,
-    Calendar
+    Calendar,
+    TrendingUp,
+    Activity
 } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { SupabaseService } from '../services/SupabaseService';
@@ -68,6 +70,7 @@ const DashboardScreen = () => {
     });
     const [recentThreads, setRecentThreads] = useState<any[]>([]);
     const [interventions, setInterventions] = useState<any[]>([]);
+    const [patterns, setPatterns] = useState<any[]>([]);
     const [onboardingChecked, setOnboardingChecked] = useState(false);
     const [appointmentDate, setAppointmentDate] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
@@ -174,6 +177,12 @@ const DashboardScreen = () => {
             if (threads) {
                 setRecentThreads(threads.slice(0, 3));
             }
+
+            // Fetch detected patterns (silently, non-blocking)
+            try {
+                const pats = await SupabaseService.getUserPatterns(user.id);
+                setPatterns(pats || []);
+            } catch { /* patterns table may not exist yet */ }
         } catch (error) {
             console.error('DASHBOARD_FETCH_ERROR:', error);
             // Ensure we stop loading even on error
@@ -457,6 +466,108 @@ const DashboardScreen = () => {
                             </LG>
                         </TO>
                     </LG>
+                </View>
+
+                {/* ── Patrones Detectados ────────────────────────────────── */}
+                <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>PATRONES DETECTADOS</Text>
+                        <Activity size={14} color="#6366f1" />
+                    </View>
+
+                    {patterns.length === 0 ? (
+                        // Progress state — building profile
+                        <View style={{
+                            backgroundColor: '#0f172a',
+                            borderRadius: 20,
+                            padding: 20,
+                            borderWidth: 1,
+                            borderColor: 'rgba(99,102,241,0.2)'
+                        }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                                <Brain size={18} color="#6366f1" />
+                                <Text style={{ color: '#c7d2fe', fontWeight: '700', fontSize: 13, letterSpacing: 0.5, marginLeft: 8 }}>
+                                    Analizando tu perfil cognitivo...
+                                </Text>
+                            </View>
+                            <Text style={{ color: '#64748b', fontSize: 13, lineHeight: 20, marginBottom: 16 }}>
+                                Necesitamos{' '}
+                                <Text style={{ color: '#818cf8', fontWeight: '700' }}>
+                                    {Math.max(0, 5 - stats.totalMemories)} entrada(s) más
+                                </Text>
+                                {' '}para detectar patrones en tu comportamiento y cognición.
+                            </Text>
+                            <View style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 8, height: 6, overflow: 'hidden' }}>
+                                <View style={{
+                                    backgroundColor: '#6366f1',
+                                    height: '100%',
+                                    width: `${Math.min(100, (stats.totalMemories / 5) * 100)}%`,
+                                    borderRadius: 8
+                                }} />
+                            </View>
+                            <Text style={{ color: '#475569', fontSize: 11, marginTop: 6, textAlign: 'right' }}>
+                                {Math.min(stats.totalMemories, 5)}/5 entradas
+                            </Text>
+                        </View>
+                    ) : (
+                        // Pattern cards
+                        patterns.map((pat) => {
+                            const typeConfig: Record<string, { color: string; label: string; icon: any }> = {
+                                emotional:      { color: '#f59e0b', label: 'Emocional',     icon: Heart },
+                                procrastination:{ color: '#ef4444', label: 'Procrastinación', icon: Zap },
+                                cognitive_bias: { color: '#6366f1', label: 'Sesgo Cognitivo', icon: Brain },
+                                productivity:   { color: '#10b981', label: 'Productividad',  icon: TrendingUp },
+                            };
+                            const cfg = typeConfig[pat.pattern_type] ?? { color: '#94a3b8', label: pat.pattern_type, icon: Activity };
+                            const IconComp = cfg.icon as any;
+
+                            return (
+                                <View key={pat.id} style={{
+                                    backgroundColor: '#0f172a',
+                                    borderRadius: 16,
+                                    padding: 16,
+                                    marginBottom: 12,
+                                    borderWidth: 1,
+                                    borderLeftWidth: 3,
+                                    borderColor: 'rgba(255,255,255,0.05)',
+                                    borderLeftColor: cfg.color,
+                                }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                                        <View style={{
+                                            backgroundColor: `${cfg.color}20`,
+                                            borderRadius: 8,
+                                            padding: 6,
+                                            marginRight: 10
+                                        }}>
+                                            <IconComp size={14} color={cfg.color} />
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={{ color: cfg.color, fontSize: 10, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' }}>
+                                                {cfg.label}
+                                            </Text>
+                                            <Text style={{ color: 'white', fontSize: 14, fontWeight: '700', marginTop: 1 }} numberOfLines={1}>
+                                                {pat.title}
+                                            </Text>
+                                        </View>
+                                        <View style={{
+                                            backgroundColor: `${cfg.color}15`,
+                                            borderRadius: 10,
+                                            paddingHorizontal: 8,
+                                            paddingVertical: 3
+                                        }}>
+                                            <Text style={{ color: cfg.color, fontSize: 11, fontWeight: '700' }}>×{pat.frequency}</Text>
+                                        </View>
+                                    </View>
+                                    <Text style={{ color: '#94a3b8', fontSize: 13, lineHeight: 20 }} numberOfLines={3}>
+                                        {pat.description}
+                                    </Text>
+                                    <Text style={{ color: '#475569', fontSize: 11, marginTop: 8 }}>
+                                        Última vez: {new Date(pat.last_seen_at).toLocaleDateString()}
+                                    </Text>
+                                </View>
+                            );
+                        })
+                    )}
                 </View>
 
                 {/* Strategic Guide moved to bottom */}

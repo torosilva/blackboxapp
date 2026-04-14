@@ -1030,5 +1030,49 @@ export const SupabaseService = {
             return [];
         }
     },
+
+    // ─── User Patterns ───────────────────────────────────────────────────────
+
+    /**
+     * Fetch all active AI-detected patterns for a user,
+     * ordered by most recently updated (most relevant first).
+     */
+    async getUserPatterns(userId: string) {
+        try {
+            const { data, error } = await supabase
+                .from('user_patterns')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('is_active', true)
+                .order('last_seen_at', { ascending: false });
+
+            if (error) throw error;
+            return data || [];
+        } catch (err: any) {
+            console.error('SUPABASE_SERVICE: getUserPatterns failed:', err.message);
+            return [];
+        }
+    },
+
+    /**
+     * Fire-and-forget invocation of the analyze-patterns Edge Function.
+     * Does not block — errors are logged but not thrown.
+     */
+    async triggerPatternAnalysis(userId: string): Promise<void> {
+        try {
+            console.log('SUPABASE_SERVICE: Triggering pattern analysis for:', userId);
+            const { error } = await supabase.functions.invoke('analyze-patterns', {
+                body: { userId },
+            });
+            if (error) {
+                console.warn('SUPABASE_SERVICE: Pattern analysis invoke error:', error.message);
+            } else {
+                console.log('SUPABASE_SERVICE: Pattern analysis triggered successfully');
+            }
+        } catch (err: any) {
+            console.warn('SUPABASE_SERVICE: triggerPatternAnalysis failed (non-blocking):', err.message);
+        }
+    },
 };
+
 

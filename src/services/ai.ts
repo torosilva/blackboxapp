@@ -29,6 +29,22 @@ export const aiService = {
             ? await SupabaseService.getHistoricalContext(userId)
             : null;
 
+        // ── Auto-trigger pattern analysis every 5 entries ─────────────────────
+        // Fires AFTER the current entry will be the 5th, 10th, 15th...
+        // (totalEntries is the count BEFORE this save, so +1 = after save)
+        if (
+            userId &&
+            historicalContext?.dataMaturity === 'ready' &&
+            historicalContext.totalEntries > 0 &&
+            (historicalContext.totalEntries + 1) % 5 === 0
+        ) {
+            console.log(`AI_SERVICE: Entry #${historicalContext.totalEntries + 1} milestone — triggering pattern analysis`);
+            // Fire-and-forget: does not block or throw
+            SupabaseService.triggerPatternAnalysis(userId).catch(e =>
+                console.warn('AI_SERVICE: Pattern trigger failed (silent):', e.message)
+            );
+        }
+
         const { data, error } = await supabase.functions.invoke('analyze-entry', {
             body: { entries, historicalContext, entryId, userId },
         });
@@ -61,6 +77,7 @@ export const aiService = {
             category: parsed.category || 'PERSONAL',
         };
     },
+
 
 
     generateWeeklyReport: async (entries: any[]): Promise<string> => {
