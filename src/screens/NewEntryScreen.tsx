@@ -85,9 +85,17 @@ const NewEntryScreen = () => {
       const historicalContext = await SupabaseService.getRecentInsights(user.id);
 
       // AI generates the title, summary, and strategic insights
-      const analysis = await aiService.generateDailySummary([content], historicalContext);
+      // entryId/userId are passed so the Edge Function can insert
+      // action_items directly into the normalized table.
+      const analysis = await aiService.generateDailySummary(
+        [content],
+        historicalContext,
+        undefined,   // entryId — not yet known; Edge Function skips insert
+        user.id
+      );
 
-      await SupabaseService.createEntry({
+      // Save the entry to the DB and get its ID
+      const savedEntry = await SupabaseService.createEntry({
         user_id: user.id,
         title: analysis.title,
         content: analysis.original_text || content,
@@ -101,6 +109,21 @@ const NewEntryScreen = () => {
         original_text: analysis.original_text || content,
         category: analysis.category || 'PERSONAL'
       });
+
+      // Now that we have the entryId, insert action_items into the
+      // normalized table directly from the client (without a second AI call).
+      if (savedEntry?.id && analysis.action_items?.length > 0) {
+        const { supabase: sb } = await import('../services/supabase');
+        const rows = analysis.action_items.map((item: any) => ({
+          user_id: user.id,
+          entry_id: savedEntry.id,
+          task: item.task || item.description || 'Tarea sin descripción',
+          priority: (item.priority || 'MEDIUM').toUpperCase(),
+          category: (item.category || 'PERSONAL').toUpperCase(),
+        }));
+        const { error: aiErr } = await sb.from('action_items').insert(rows);
+        if (aiErr) console.warn('NewEntryScreen: action_items insert warn:', aiErr.message);
+      }
 
       // Schedule follow-up notifications for HIGH priority loops
       if (Array.isArray(analysis.action_items)) {
@@ -163,6 +186,7 @@ const NewEntryScreen = () => {
   };
 
 
+
   const toggleRecording = async () => {
     if (isRecording) {
       const uri = await voiceService.stopRecording();
@@ -171,9 +195,15 @@ const NewEntryScreen = () => {
       setMetering(-160);
       if (uri) {
         setLoading(true);
-        const trans = await voiceService.transcribeAudio(uri);
-        setContent(prev => prev + (prev ? " " : "") + trans);
-        setLoading(false);
+        try {
+          const trans = await voiceService.transcribeAudio(uri);
+          setContent(prev => prev + (prev ? " " : "") + trans);
+        } catch (err: any) {
+          console.error('Transcription error handling:', err);
+          Alert.alert('Error de transcripción', 'No se pudo convertir el audio a texto. Intenta de nuevo.');
+        } finally {
+          setLoading(false);
+        }
       }
     } else {
       await voiceService.startRecording((status) => {

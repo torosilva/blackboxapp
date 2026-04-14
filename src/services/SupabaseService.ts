@@ -846,5 +846,75 @@ export const SupabaseService = {
 
         if (error) throw error;
         return data;
-    }
+    },
+
+    // ─── Normalized Action Items ─────────────────────────────────────────────
+
+    /**
+     * Mark a single action item as completed (or toggle it back to open).
+     */
+    async completeActionItem(id: string, completed: boolean = true): Promise<boolean> {
+        try {
+            const { error } = await supabase
+                .from('action_items')
+                .update({
+                    is_completed: completed,
+                    completed_at: completed ? new Date().toISOString() : null,
+                })
+                .eq('id', id);
+
+            if (error) throw error;
+            console.log(`SUPABASE_SERVICE: action_item ${id} marked completed=${completed}`);
+            return true;
+        } catch (err: any) {
+            console.error('SUPABASE_SERVICE: completeActionItem failed:', err.message);
+            return false;
+        }
+    },
+
+    /**
+     * Fetch all open (not completed) action items for a user,
+     * ordered by priority (HIGH first) then creation date.
+     */
+    async getOpenActionItems(userId: string) {
+        try {
+            const { data, error } = await supabase
+                .from('action_items')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('is_completed', false)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            // Sort in-memory: HIGH > MEDIUM > LOW
+            const priorityOrder: Record<string, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+            return (data || []).sort(
+                (a, b) => (priorityOrder[a.priority] ?? 1) - (priorityOrder[b.priority] ?? 1)
+            );
+        } catch (err: any) {
+            console.error('SUPABASE_SERVICE: getOpenActionItems failed:', err.message);
+            return [];
+        }
+    },
+
+    /**
+     * Fetch all action items (open and completed) for a specific entry.
+     */
+    async getActionItemsByEntry(entryId: string) {
+        try {
+            const { data, error } = await supabase
+                .from('action_items')
+                .select('*')
+                .eq('entry_id', entryId)
+                .order('created_at', { ascending: true });
+
+            if (error) throw error;
+            return data || [];
+        } catch (err: any) {
+            console.error('SUPABASE_SERVICE: getActionItemsByEntry failed:', err.message);
+            return [];
+        }
+    },
 };
+

@@ -18,10 +18,12 @@ export interface AIAnalysis {
 export const aiService = {
     generateDailySummary: async (
         entries: (string | { title?: string; content: string })[],
-        historicalContext?: string
+        historicalContext?: string,
+        entryId?: string,
+        userId?: string
     ): Promise<AIAnalysis> => {
         const { data, error } = await supabase.functions.invoke('analyze-entry', {
-            body: { entries, historicalContext },
+            body: { entries, historicalContext, entryId, userId },
         });
 
         if (error) {

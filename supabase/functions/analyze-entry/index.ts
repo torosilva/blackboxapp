@@ -1,7 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry, fetchWithStatus } from "../_shared/retry.ts";
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const MODEL_NAME = 'gemini-3.1-flash-lite';
 
 const corsHeaders = {
@@ -153,6 +156,34 @@ serve(async (req) => {
     const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}';
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : rawText);
+
+    // ── Insert action_items into normalized table (fire-and-forget) ──────────
+    // We extract entry_id and user_id from the Authorization JWT to associate
+    // items correctly. This runs after the main response is built so it doesn't
+    // block the client. Errors are logged but do not fail the request.
+    (async () => {
+      try {
+        const body2 = await req.clone ? (await req.clone().json().catch(() => body)) : body;
+        const { entryId, userId } = body2 || body;
+
+        const actionItems: any[] = parsed.action_items || [];
+        if (entryId && userId && actionItems.length > 0) {
+          const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+          const rows = actionItems.map((item: any) => ({
+            user_id: userId,
+            entry_id: entryId,
+            task: item.task || item.description || 'Tarea sin descripción',
+            priority: (item.priority || 'MEDIUM').toUpperCase(),
+            category: (item.category || 'PERSONAL').toUpperCase(),
+          }));
+          const { error: insertErr } = await supabase.from('action_items').insert(rows);
+          if (insertErr) console.error('[analyze-entry] action_items insert error:', insertErr.message);
+          else console.log(`[analyze-entry] Inserted ${rows.length} action_items for entry ${entryId}`);
+        }
+      } catch (bgErr: any) {
+        console.error('[analyze-entry] Background action_items insert failed:', bgErr.message);
+      }
+    })();
 
     return new Response(JSON.stringify({ analysis: parsed }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
