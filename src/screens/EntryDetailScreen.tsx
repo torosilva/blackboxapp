@@ -46,12 +46,19 @@ const EntryDetailScreen = () => {
   const [editedTitle, setEditedTitle] = useState('');
   const [editedContent, setEditedContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [actionItems, setActionItems] = useState<any[]>([]);
 
   useEffect(() => {
     const loadEntry = async () => {
       try {
-        const data = await SupabaseService.getEntryById(entryId);
+        const [data, items] = await Promise.all([
+          SupabaseService.getEntryById(entryId),
+          SupabaseService.getActionItemsByEntry(entryId)
+        ]);
+        
         setEntry(data);
+        setActionItems(items || []);
+        
         if (data) {
           setEditedTitle(data.title || '');
           setEditedContent(data.content || '');
@@ -123,7 +130,7 @@ const EntryDetailScreen = () => {
     try {
       console.log('RE-PROCESSING AI INSIGHTS...');
       // Re-process AI Insights based on new content
-      const analysis = await aiService.generateDailySummary([editedContent]);
+      const analysis = await aiService.generateDailySummary([editedContent], user.id, entryId);
 
       const updatedPayload = {
         title: editedTitle,
@@ -318,8 +325,8 @@ const EntryDetailScreen = () => {
         <BiasWarningCard insight={entry.strategic_insight} />
 
         {/* 2. PLAN DE ATAQUE (ACTIVE LOOPS) */}
-        {entry.action_items && entry.action_items.length > 0 && (
-          <ActionList actions={entry.action_items} entryId={entry.id} />
+        {actionItems && actionItems.length > 0 && (
+          <ActionList actions={actionItems} entryId={entry.id} />
         )}
 
         {/* 3. BLACKBOX STRATEGIC INSIGHT & WELLNESS */}

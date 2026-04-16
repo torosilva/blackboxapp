@@ -4,8 +4,9 @@ import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DiaryEntry, WellnessRecommendation } from '../core-types';
+import { getGlobalAccessToken } from '../context/AuthContext';
 
-WebBrowser.maybeCompleteAuthSession(); // Required for web-based auth flows
+// WebBrowser.maybeCompleteAuthSession() is already called in index.ts
 
 // Native base64 decoder compatible with React Native
 const decode = (base64: string): ArrayBuffer => {
@@ -41,7 +42,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
         storage: AsyncStorage,
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: false, // Required for mobile OAuth flows to prevent conflicts
+        detectSessionInUrl: true, // Enabled: captures session even if app reloads on return
     },
 });
 
@@ -105,6 +106,57 @@ export const SupabaseService = {
     },
 
     /**
+     * 1.5 Upload Image to Supabase Storage (for Feedback)
+     */
+    async uploadImage(uri: string, userId: string): Promise<string | null> {
+        try {
+            console.log(`SUPABASE_SERVICE: Starting image upload for user ${userId}. URI: ${uri.substring(0, 50)}...`);
+            
+            const fileExt = uri.split('.').pop()?.toLowerCase() || 'jpg';
+            const fileName = `${userId}/${Date.now()}.${fileExt}`;
+            const filePath = `${fileName}`;
+            const contentType = fileExt === 'png' ? 'image/png' : 'image/jpeg';
+
+            // Check if file exists and read it
+            const fileInfo = await FileSystem.getInfoAsync(uri);
+            if (!fileInfo.exists) {
+                throw new Error(`File does not exist at URI: ${uri}`);
+            }
+            console.log(`SUPABASE_SERVICE: File size: ${fileInfo.size} bytes`);
+
+            // Read file as Base64
+            const base64 = await FileSystem.readAsStringAsync(uri, {
+                encoding: 'base64',
+            });
+
+            console.log('SUPABASE_SERVICE: Uploading to bucket: feedback_attachments');
+            const { data, error } = await supabase.storage
+                .from('feedback_attachments')
+                .upload(filePath, decode(base64), {
+                    contentType,
+                    upsert: false,
+                });
+
+            if (error) {
+                console.error('SUPABASE_SERVICE: Storage upload error details:', JSON.stringify(error, null, 2));
+                throw error;
+            }
+
+            const { data: publicUrlData } = supabase.storage.from('feedback_attachments').getPublicUrl(filePath);
+            console.log('SUPABASE_SERVICE: Upload successful. Public URL:', publicUrlData.publicUrl);
+            return publicUrlData.publicUrl;
+
+        } catch (error: any) {
+            console.error('SUPABASE_SERVICE: Image upload fatal error:', error.message || error);
+            // Hint for the user if it's a 404/403 (bucket issues)
+            if (error.status === 404 || error.message?.includes('bucket')) {
+                console.warn('HINT: Check if the "feedback_attachments" bucket exists in Supabase and has public access.');
+            }
+            return null;
+        }
+    },
+
+    /**
      * 2. Save the Entry & AI Analysis to Database
      */
     async createEntry(entry: {
@@ -147,7 +199,6 @@ export const SupabaseService = {
                         sentiment_score: entry.sentiment_score,
                         wellness_recommendation: entry.wellness_recommendation,
                         strategic_insight: entry.strategic_insight,
-                        action_items: entry.action_items,
                         mood: entry.mood_label, // Alias for 'mood' column in old schema
                         category: entry.category || 'PERSONAL'
                     },
@@ -218,7 +269,17 @@ export const SupabaseService = {
         };
 
         try {
-            // ── 1. Fetch the last 15 entries ──────────────────────────────────
+            // ── 1. Fetch total count so we can determine dataMaturity ──────────
+            const { count: totalEntriesFromDB } = await supabase
+                .from('entries')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', userId);
+
+            const totalEntries = totalEntriesFromDB || 0;
+            const dataMaturity: 'none' | 'building' | 'ready' =
+                totalEntries === 0 ? 'none' : totalEntries < 5 ? 'building' : 'ready';
+
+            // ── 2. Fetch the last 15 entries for actual analysis ──────────────
             const { data: entries, error: entriesErr } = await supabase
                 .from('entries')
                 .select('id, sentiment_score, mood_label, category, strategic_insight, created_at')
@@ -226,11 +287,9 @@ export const SupabaseService = {
                 .order('created_at', { ascending: false })
                 .limit(15);
 
-            if (entriesErr || !entries || entries.length === 0) return empty;
-
-            const totalEntries = entries.length;
-            const dataMaturity: 'none' | 'building' | 'ready' =
-                totalEntries === 0 ? 'none' : totalEntries < 5 ? 'building' : 'ready';
+            if (entriesErr || !entries || entries.length === 0) {
+                return { ...empty, totalEntries: totalEntries, dataMaturity };
+            }
 
             // ── 2. Recent moods ───────────────────────────────────────────────
             const recentMoods = entries
@@ -238,7 +297,7 @@ export const SupabaseService = {
                 .map(e => ({
                     date: e.created_at?.slice(0, 10) ?? '',
                     score: e.sentiment_score,
-                    label: e.mood_label ?? 'Desconocido',
+                    label: e.mood_label ?? 'Neutral',
                 }));
 
             // ── 3. Dominant categories ────────────────────────────────────────
@@ -256,11 +315,12 @@ export const SupabaseService = {
             for (const e of entries) {
                 let bias: string | null = null;
                 try {
-                    if (typeof e.strategic_insight === 'string') {
-                        const parsed = JSON.parse(e.strategic_insight);
-                        bias = parsed?.detected_bias ?? null;
-                    } else if (e.strategic_insight?.detected_bias) {
-                        bias = e.strategic_insight.detected_bias;
+                    const insight = e.strategic_insight;
+                    if (typeof insight === 'string') {
+                        const parsed = JSON.parse(insight);
+                        bias = parsed?.detected_bias || parsed?.bias || null;
+                    } else if (insight && (insight.detected_bias || insight.bias)) {
+                        bias = insight.detected_bias || insight.bias;
                     }
                 } catch { /* ignore parse errors */ }
                 if (bias) biasCount[bias] = (biasCount[bias] || 0) + 1;
@@ -272,14 +332,12 @@ export const SupabaseService = {
 
             // ── 5. Open loops count ───────────────────────────────────────────
             let openLoopsCount = 0;
-            try {
-                const { count } = await supabase
-                    .from('action_items')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('user_id', userId)
-                    .eq('is_completed', false);
-                openLoopsCount = count || 0;
-            } catch { /* table may not exist yet, ignore */ }
+            const { count: loopsCount } = await supabase
+                .from('action_items')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', userId)
+                .eq('is_completed', false);
+            openLoopsCount = loopsCount || 0;
 
             // ── 6. Avg sentiment last 7 days ──────────────────────────────────
             const sevenDaysAgo = new Date();
@@ -297,7 +355,7 @@ export const SupabaseService = {
                 recurringBiases,
                 openLoopsCount,
                 avgSentimentLast7Days,
-                totalEntries,
+                totalEntries: totalEntriesCount,
                 dataMaturity,
             };
         } catch (err: any) {
@@ -484,7 +542,13 @@ export const SupabaseService = {
         try {
             console.log('SUPABASE_SERVICE: Syncing profile for:', userId);
 
-            // Payload: Use fullName if provided, otherwise fallback to email prefix
+            // Fetch current profile to preserve fields like is_pro
+            const { data: current } = await supabase
+                .from('profiles')
+                .select('is_pro')
+                .eq('id', userId)
+                .maybeSingle();
+
             const payload = {
                 id: userId,
                 email: email,
@@ -576,57 +640,19 @@ export const SupabaseService = {
      * 7. Social Authentication (Google)
      */
     async signInWithGoogle() {
-        try {
-            // Simplified redirect for better compatibility in Expo Go
-            const redirectUrl = AuthSession.makeRedirectUri({
-                path: 'auth/callback'
-            });
-            
-            console.log('SUPABASE_SERVICE: Generated Google Redirect URI:', redirectUrl);
-            console.log('SUPABASE_SERVICE: Starting Google OAuth...');
-            
-            // Helpful note for the developer
-            if (redirectUrl.startsWith('exp://')) {
-                console.log('SUPABASE_SERVICE: NOTE: Using Expo Go scheme. Ensure this exact URI is whitelisted in Supabase Dashboard.');
-            }
-
-            const { data, error } = await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: redirectUrl,
-                    skipBrowserRedirect: true,
-                },
-            });
-
-            if (data?.url) {
-                const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
-                if (result.type === 'success' && result.url) {
-                    // Check for both hash (implicit) and query (PKCE) params
-                    const urlObj = new URL(result.url.replace('#', '?'));
-                    const params = urlObj.searchParams;
-
-                    const code = params.get('code');
-                    const accessToken = params.get('access_token');
-                    const refreshToken = params.get('refresh_token');
-
-                    if (code) {
-                        console.log('SUPABASE_SERVICE: Exchanging code for session...');
-                        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-                        if (exchangeError) throw exchangeError;
-                    } else if (accessToken && refreshToken) {
-                        console.log('SUPABASE_SERVICE: Setting session from tokens...');
-                        await supabase.auth.setSession({
-                            access_token: accessToken,
-                            refresh_token: refreshToken,
-                        });
-                    }
-                }
-            }
-
-            if (error) throw error;
-        } catch (error: any) {
-            console.error('SUPABASE_SERVICE: Google Sign-In Failed:', error.message);
-            throw error;
+        const redirectUrl = AuthSession.makeRedirectUri();
+        const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: redirectUrl,
+                skipBrowserRedirect: true,
+            },
+        });
+        
+        if (error) throw error;
+        if (data?.url) {
+            // Using openBrowserAsync instead of openAuthSessionAsync to prevent reboots in some Expo Go versions
+            await WebBrowser.openBrowserAsync(data.url);
         }
     },
 
@@ -635,13 +661,7 @@ export const SupabaseService = {
      */
     async signInWithApple() {
         try {
-            const redirectUrl = AuthSession.makeRedirectUri({
-                scheme: 'blackbox',
-                path: 'auth/callback'
-            });
-            console.log('SUPABASE_SERVICE: Generated Apple Redirect URI:', redirectUrl);
-            console.log('SUPABASE_SERVICE: Starting Apple OAuth...');
-
+            const redirectUrl = AuthSession.makeRedirectUri();
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider: 'apple',
                 options: {
@@ -650,31 +670,10 @@ export const SupabaseService = {
                 },
             });
 
-            if (data?.url) {
-                const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
-                if (result.type === 'success' && result.url) {
-                    const urlObj = new URL(result.url.replace('#', '?'));
-                    const params = urlObj.searchParams;
-
-                    const code = params.get('code');
-                    const accessToken = params.get('access_token');
-                    const refreshToken = params.get('refresh_token');
-
-                    if (code) {
-                        console.log('SUPABASE_SERVICE: Exchanging code for session (Apple)...');
-                        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-                        if (exchangeError) throw exchangeError;
-                    } else if (accessToken && refreshToken) {
-                        console.log('SUPABASE_SERVICE: Setting session from tokens (Apple)...');
-                        await supabase.auth.setSession({
-                            access_token: accessToken,
-                            refresh_token: refreshToken,
-                        });
-                    }
-                }
-            }
-
             if (error) throw error;
+            if (data?.url) {
+                await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+            }
         } catch (error: any) {
             console.error('SUPABASE_SERVICE: Apple Sign-In Failed:', error.message);
             throw error;
@@ -1061,16 +1060,27 @@ export const SupabaseService = {
     async triggerPatternAnalysis(userId: string): Promise<void> {
         try {
             console.log('SUPABASE_SERVICE: Triggering pattern analysis for:', userId);
-            const { error } = await supabase.functions.invoke('analyze-patterns', {
-                body: { userId },
+            const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/analyze-patterns`;
+            const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+            
+            const token = getGlobalAccessToken();
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': anonKey,
+                    'Authorization': `Bearer ${token || anonKey}`
+                },
+                body: JSON.stringify({ userId }),
             });
-            if (error) {
-                console.warn('SUPABASE_SERVICE: Pattern analysis invoke error:', error.message);
-            } else {
-                console.log('SUPABASE_SERVICE: Pattern analysis triggered successfully');
+
+            if (!response.ok) {
+                const errText = await response.text();
+                console.warn('SUPABASE_SERVICE: Pattern analysis invoke error:', errText);
+                throw new Error(`HTTP ${response.status}: ${errText}`);
             }
         } catch (err: any) {
-            console.warn('SUPABASE_SERVICE: triggerPatternAnalysis failed (non-blocking):', err.message);
+            console.error('SUPABASE_SERVICE: FATAL - triggerPatternAnalysis crashed:', err.message);
         }
     },
 };

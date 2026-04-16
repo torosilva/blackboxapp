@@ -66,12 +66,14 @@ export const QuickCaptureScreen = () => {
         }
 
         try {
-            await voiceService.startRecording();
-            setIsRecording(true);
+            const started = await voiceService.startRecording();
+            if (started) {
+                setIsRecording(true);
+            }
         } catch (err: any) {
             console.error('QuickCapture: Recording error:', err);
             setIsRecording(false);
-            Alert.alert('Error de Grabación', err.message);
+            Alert.alert('Error de Grabación', 'No se pudo iniciar el micrófono. Verifica los permisos.');
         }
     };
 
@@ -86,14 +88,27 @@ export const QuickCaptureScreen = () => {
 
             // 1. Transcribe
             const transcription = await voiceService.transcribeAudio(uri);
-            if (!transcription.trim()) throw new Error('Empty transcription');
+            const cleanTranscription = transcription.trim();
+
+            // Waste text detector: Prevent short/test entries from consuming AI tokens
+            const wordCount = cleanTranscription.split(/\s+/).length;
+            if (cleanTranscription.length < 40 || wordCount < 8) {
+                setIsAnalyzing(false);
+                Alert.alert(
+                    'Captura Insuficiente',
+                    'Detectamos un audio demasiado breve que no generará Metas ni Active Loops útiles. \n\nPara un análisis estratégico real, intenta realizar grabaciones de al menos un párrafo de extensión.',
+                    [{ text: 'Entendido' }]
+                );
+                return;
+            }
+
+            if (!cleanTranscription) throw new Error('Empty transcription');
 
             // 2. Upload Audio
             const audioUrl = await SupabaseService.uploadAudio(uri, user.id);
 
             // 3. AI Analysis (Zero-Click Titling included)
-            const historicalContext = await SupabaseService.getRecentInsights(user.id);
-            const analysis = await aiService.generateDailySummary([transcription], historicalContext);
+            const analysis = await aiService.generateDailySummary([transcription], user.id);
 
             // 4. Create Entry
             await SupabaseService.createEntry({

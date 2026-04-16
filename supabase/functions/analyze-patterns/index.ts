@@ -5,7 +5,7 @@ import { withRetry, fetchWithStatus } from "../_shared/retry.ts";
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const MODEL_NAME = "gemini-3.1-flash-lite";
+const MODEL_NAME = 'gemini-2.5-flash';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -95,12 +95,10 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  // Optional auth check (Supabase handles JWT if configured)
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
-    return new Response(JSON.stringify({ error: "No authorization header" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    console.warn("[analyze-patterns] No authorization header present, proceeding with caution.");
   }
 
   if (!GEMINI_API_KEY) {

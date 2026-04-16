@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from '../context/AuthContext';
 import { TabProvider } from '../context/TabContext';
 import { ActivityIndicator, View, AppState, AppStateStatus, StyleSheet } from 'react-native';
 import LockScreen from '../components/LockScreen';
+import { LockService } from '../services/LockService';
 
 // Importa tus pantallas
 import HomeScreen from '../screens/HomeScreen';
@@ -42,12 +43,23 @@ function AppNavigator() {
 
     React.useEffect(() => {
         const subscription = AppState.addEventListener('change', nextAppState => {
+            console.log(`[NAVIGATOR] AppState Change: ${appState.current} -> ${nextAppState}`);
+            
+            // SECURITY CHANGE: Only lock when moving to background.
+            // Ignore 'inactive' (system dialogs, notification tray) to avoid conflicts with native pickers.
             if (
-                appState.current.match(/active/) &&
-                nextAppState.match(/inactive|background/)
+                appState.current.match(/active|inactive/) &&
+                nextAppState === 'background'
             ) {
-                // App moved to background, re-lock
-                setIsLocked(true);
+                const isBypass = LockService.isBypassActive();
+                console.log(`[NAVIGATOR] Background detected. Bypass active: ${isBypass}`);
+                
+                if (isBypass) {
+                    console.log('[NAVIGATOR] Skipping lock because bypass is active');
+                } else {
+                    console.log('[NAVIGATOR] LOCKING APP');
+                    setIsLocked(true);
+                }
             }
             appState.current = nextAppState;
         });

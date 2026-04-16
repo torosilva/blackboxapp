@@ -11,7 +11,8 @@ CREATE TABLE IF NOT EXISTS public.action_items (
     entry_id     uuid NOT NULL REFERENCES public.entries(id) ON DELETE CASCADE,
     task         text NOT NULL,
     priority     text NOT NULL DEFAULT 'MEDIUM' CHECK (priority IN ('HIGH', 'MEDIUM', 'LOW')),
-    category     text NOT NULL DEFAULT 'PERSONAL' CHECK (category IN ('BUSINESS', 'PERSONAL', 'DEVELOPMENT', 'WELLNESS')),
+    -- Accepts both current values AND legacy 'HEALTH' from old JSONB data
+    category     text NOT NULL DEFAULT 'PERSONAL' CHECK (category IN ('BUSINESS', 'PERSONAL', 'DEVELOPMENT', 'WELLNESS', 'HEALTH')),
     is_completed boolean NOT NULL DEFAULT false,
     completed_at timestamptz,
     created_at   timestamptz NOT NULL DEFAULT now()
@@ -25,6 +26,8 @@ CREATE INDEX IF NOT EXISTS idx_action_items_open     ON public.action_items(user
 -- RLS: Users can only see and modify their own action items
 ALTER TABLE public.action_items ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users manage own action items" ON public.action_items;
+
 CREATE POLICY "Users manage own action items"
     ON public.action_items
     FOR ALL
@@ -32,15 +35,17 @@ CREATE POLICY "Users manage own action items"
     WITH CHECK (auth.uid() = user_id);
 
 -- 2. Migrate existing JSONB data from entries.action_items
--- This reads each entry's action_items JSONB array and inserts
--- one row per item into the new table.
+-- Maps legacy 'HEALTH' → 'WELLNESS' so future queries use a single value.
 INSERT INTO public.action_items (user_id, entry_id, task, priority, category)
 SELECT
     e.user_id,
     e.id AS entry_id,
     COALESCE(item->>'task', item->>'description', 'Sin descripción') AS task,
-    UPPER(COALESCE(item->>'priority', 'MEDIUM'))::text              AS priority,
-    UPPER(COALESCE(item->>'category', 'PERSONAL'))::text            AS category
+    UPPER(COALESCE(item->>'priority', 'MEDIUM'))::text AS priority,
+    CASE UPPER(COALESCE(item->>'category', 'PERSONAL'))
+        WHEN 'HEALTH' THEN 'WELLNESS'   -- normalize legacy value
+        ELSE UPPER(COALESCE(item->>'category', 'PERSONAL'))
+    END AS category
 FROM
     public.entries e,
     jsonb_array_elements(

@@ -2,14 +2,14 @@ import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Alert, Linking } from 'react-native';
 import { supabase } from './supabase';
+import { getGlobalAccessToken } from '../context/AuthContext';
 
 export class VoiceService {
     private recording: Audio.Recording | null = null;
 
-    async startRecording(onStatusUpdate?: (status: Audio.RecordingStatus) => void) {
+    async startRecording(onStatusUpdate?: (status: Audio.RecordingStatus) => void): Promise<boolean> {
         const permission = await Audio.requestPermissionsAsync();
         if (permission.status !== 'granted') {
-            // If denied, guide the user directly to system settings instead of a dead-end error
             Alert.alert(
                 'Micrófono bloqueado',
                 'Blackbox necesita acceso al micrófono para grabar tu voz. Actívalo en Configuración.',
@@ -21,15 +21,14 @@ export class VoiceService {
                     },
                 ]
             );
-            // Return without throwing so the UI can recover cleanly
-            return;
+            return false;
         }
 
         try {
             await Audio.setAudioModeAsync({
                 allowsRecordingIOS: true,
                 playsInSilentModeIOS: true,
-                staysActiveInBackground: false, // Ensures it doesn't try to activate as background
+                staysActiveInBackground: false,
             });
 
             const { recording } = await Audio.Recording.createAsync(
@@ -38,6 +37,7 @@ export class VoiceService {
                 100 
             );
             this.recording = recording;
+            return true;
         } catch (err: any) {
             console.error('VoiceService: Failed to create recording:', err);
             throw new Error(`Error al iniciar grabación: ${err.message}`);
@@ -62,11 +62,27 @@ export class VoiceService {
                 encoding: 'base64',
             });
 
-            const { data, error } = await supabase.functions.invoke('transcribe-audio', {
-                body: { audioBase64, mimeType: 'audio/mp4' },
+            const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/transcribe-audio`;
+            const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+            
+            const token = getGlobalAccessToken();
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': anonKey,
+                    'Authorization': `Bearer ${token || anonKey}`
+                },
+                body: JSON.stringify({ audioBase64, mimeType: 'audio/mp4' }),
             });
 
-            if (error) throw error;
+            if (!response.ok) {
+                const errText = await response.text();
+                console.error("VOICE RAW ERROR:", response.status, errText);
+                throw new Error(`Error ${response.status}: ${errText}`);
+            }
+            
+            const data = await response.json();
 
             const transcription = data?.transcription;
             if (!transcription) {

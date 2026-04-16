@@ -10,7 +10,9 @@ export interface RetryOptions {
   retryOn?: number[];     // HTTP status codes to retry (default: 429, 500, 502, 503)
 }
 
-const DEFAULT_RETRY_STATUS_CODES = [429, 500, 502, 503, 504];
+// Note: 429 is intentionally NOT retried - it burns more quota and the user gets
+// a misleading wait. Let it surface immediately so the app shows a clear error.
+const DEFAULT_RETRY_STATUS_CODES = [500, 502, 503, 504];
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

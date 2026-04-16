@@ -81,6 +81,8 @@ const HomeScreen = () => {
   const [showSearch, setShowSearch] = useState(false); // NEW: Independent search visibility
   const searchInputRef = useRef<TextInput>(null);
   const isFocused = useIsFocused();
+  // Lock to prevent duplicate concurrent Gemini calls
+  const summaryLockRef = useRef(false);
 
   // Auto-refresh when screen comes into focus
   useEffect(() => {
@@ -185,6 +187,12 @@ const HomeScreen = () => {
 
   const generateSummary = async (contentArray: (string | { title: string, content: string })[], fingerprint: string) => {
     if (!user) return;
+    // Prevent duplicate concurrent calls (they cause 429 rate limit burns)
+    if (summaryLockRef.current) {
+      console.log('HOME_DEBUG: generateSummary already in progress, skipping duplicate call.');
+      return;
+    }
+    summaryLockRef.current = true;
     setSummaryLoading(true);
     try {
       // 1. Check persistent cache first
@@ -200,8 +208,7 @@ const HomeScreen = () => {
       }
 
       // 2. Generate with Gemini
-      console.log('HOME_DEBUG: Cache miss or placeholder found. Calling Gemini API...');
-      const res = await aiService.generateDailySummary(contentArray);
+      const res = await aiService.generateDailySummary(contentArray, undefined, undefined, user.id);
       setSummary(res);
 
       // 3. Save to cache ONLY IF it's a real result (not the fallback)
@@ -213,6 +220,7 @@ const HomeScreen = () => {
     } catch (error) {
       setSummary({ summary: 'Could not generate summary at this time.', recommendation: null });
     } finally {
+      summaryLockRef.current = false;
       setSummaryLoading(false);
     }
   };

@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { SupabaseService } from './SupabaseService';
 import { WellnessRecommendation, DiaryEntry, StrategicInsight, ActionItem } from '../core-types';
+import { getGlobalAccessToken } from '../context/AuthContext';
 
 export interface AIAnalysis {
     title: string;
@@ -19,9 +20,8 @@ export interface AIAnalysis {
 export const aiService = {
     generateDailySummary: async (
         entries: (string | { title?: string; content: string })[],
-        _legacyHistoricalContext?: string,  // kept for call-site compat, ignored
-        entryId?: string,
-        userId?: string
+        userId?: string,
+        entryId?: string
     ): Promise<AIAnalysis> => {
 
         // Build structured historical context when we have a userId
@@ -30,11 +30,10 @@ export const aiService = {
             : null;
 
         // ── Auto-trigger pattern analysis every 5 entries ─────────────────────
-        // Fires AFTER the current entry will be the 5th, 10th, 15th...
-        // (totalEntries is the count BEFORE this save, so +1 = after save)
         if (
             userId &&
-            historicalContext?.dataMaturity === 'ready' &&
+            historicalContext &&
+            historicalContext.dataMaturity === 'ready' &&
             historicalContext.totalEntries > 0 &&
             (historicalContext.totalEntries + 1) % 5 === 0
         ) {
@@ -45,14 +44,30 @@ export const aiService = {
             );
         }
 
-        const { data, error } = await supabase.functions.invoke('analyze-entry', {
-            body: { entries, historicalContext, entryId, userId },
+        const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/analyze-entry`;
+        const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+        
+        const token = getGlobalAccessToken();
+        const authHeader = `Bearer ${token || anonKey}`;
+        console.log(`[AI_SERVICE DEBUG] Sending request to ${url}. Auth Header Length:`, authHeader.length, 'Token Preview:', authHeader.substring(0, 20) + '...');
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': anonKey,
+                'Authorization': authHeader
+            },
+            body: JSON.stringify({ entries, historicalContext, entryId, userId }),
         });
 
-        if (error) {
-            console.error('AI_SERVICE: Edge function error:', error.message);
-            throw new Error(`El análisis de IA falló: ${error.message}`);
+        if (!response.ok) {
+            const errText = await response.text();
+            console.error(`AI_SERVICE HTTP ${response.status}:`, errText);
+            throw new Error(`Edge Function returned a non-2xx status code`); // Keep standard SDK wording to not surprise user
         }
+        
+        const data = await response.json();
 
         const parsed = data?.analysis;
         if (!parsed) {
@@ -83,11 +98,25 @@ export const aiService = {
     generateWeeklyReport: async (entries: any[]): Promise<string> => {
         if (entries.length === 0) return "Datos insuficientes.";
         try {
-            const { data, error } = await supabase.functions.invoke('analyze-entry', {
-                body: { entries, mode: 'weekly' },
+            const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/analyze-entry`;
+            const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+            
+            const token = getGlobalAccessToken();
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': anonKey,
+                    'Authorization': `Bearer ${token || anonKey}`
+                },
+                body: JSON.stringify({ entries, mode: 'weekly' }),
             });
 
-            if (error) throw error;
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errText}`);
+            }
+            const data = await response.json();
             return data?.report || "No se pudo generar el reporte.";
         } catch (e: any) {
             console.error('AI_SERVICE: generateWeeklyReport failed:', e.message);

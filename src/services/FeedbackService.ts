@@ -5,6 +5,7 @@ export interface Feedback {
     user_id: string;
     content: string;
     type: 'bug' | 'improvement' | 'other';
+    attachment_url?: string | null;
     created_at?: string;
 }
 
@@ -12,7 +13,7 @@ export const FeedbackService = {
     /**
      * Submit user feedback to Supabase
      */
-    async submitFeedback(userId: string, content: string, type: 'bug' | 'improvement' | 'other' = 'other') {
+    async submitFeedback(userId: string, content: string, type: 'bug' | 'improvement' | 'other' = 'other', attachmentUrl?: string | null) {
         try {
             const { data, error } = await supabase
                 .from('feedback')
@@ -21,6 +22,7 @@ export const FeedbackService = {
                         user_id: userId,
                         content,
                         type,
+                        attachment_url: attachmentUrl
                     }
                 ])
                 .select();

@@ -11,16 +11,23 @@ interface AuthContextProps {
     refreshProfile: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextProps>({} as AuthContextProps);
+let _globalAccessToken: string | null = null;
+export const getGlobalAccessToken = () => _globalAccessToken;
+
+export const AuthContext = createContext<AuthContextProps>({} as AuthContextProps);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [session, setSession] = useState<Session | null>(null);
+
+    // Sync active session with global variable
+    useEffect(() => {
+        _globalAccessToken = session?.access_token || null;
+    }, [session]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         console.log('AUTH: Initializing session check...');
-        // 1. Verificar sesión actual al abrir la app
         supabase.auth.getSession().then(({ data: { session }, error }) => {
             if (error) {
                 console.error('AUTH_CONTEXT: getSession error:', error.message);
@@ -31,15 +38,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 return;
             }
             console.log('AUTH: Session check complete. Session exists:', !!session);
+            _globalAccessToken = session?.access_token || null;
             setSession(session);
             setUser(session?.user ?? null);
             setIsLoading(false);
         });
 
-        // 2. Escuchar cambios (Login, Logout, Auto-refresh)
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
             console.log('AUTH_CONTEXT: Auth event type:', _event);
-            
+            _globalAccessToken = session?.access_token || null;
             if (_event === 'SIGNED_OUT') {
                 console.log('AUTH_CONTEXT: User signed out, clearing state.');
                 setSession(null);

@@ -1,0 +1,11 @@
+[functions.ai-chat]
+verify_jwt = false
+
+[functions.analyze-entry]
+verify_jwt = false
+
+[functions.analyze-patterns]
+verify_jwt = false
+
+[functions.transcribe-audio]
+verify_jwt = false

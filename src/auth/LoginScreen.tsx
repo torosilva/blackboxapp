@@ -89,10 +89,13 @@ export default function LoginScreen() {
     };
 
     const handleGoogleLogin = async () => {
+        console.log('UI_DEBUG: Google button pressed');
         try {
             setLoading(true);
             await SupabaseService.signInWithGoogle();
+            console.log('UI_DEBUG: Google service call finished');
         } catch (error: any) {
+            console.error('UI_DEBUG: Google Login Error:', error.message);
             Alert.alert("Error de acceso Google", error.message);
         } finally {
             setLoading(false);

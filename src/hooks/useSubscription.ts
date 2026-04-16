@@ -11,21 +11,31 @@ export interface SubscriptionStatus {
 
 export const FREE_ENTRY_LIMIT = 5;
 
-export function useSubscription(): SubscriptionStatus {
+export function useSubscription(): SubscriptionStatus & { canCreateAudit: () => boolean, refresh: () => Promise<void> } {
   const { user, profile } = useAuth();
   const [monthlyEntryCount, setMonthlyEntryCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   const isPro = Boolean(profile?.is_pro);
 
+  const fetchCount = async () => {
+    if (!user) return;
+    try {
+      const count = await SupabaseService.getMonthlyEntryCount(user.id);
+      setMonthlyEntryCount(count);
+    } catch (e) {
+      console.warn('useSubscription: Failed to fetch count', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    if (!user || isPro) {
+    if (isPro) {
       setIsLoading(false);
       return;
     }
-    SupabaseService.getMonthlyEntryCount(user.id)
-      .then(setMonthlyEntryCount)
-      .finally(() => setIsLoading(false));
+    fetchCount();
   }, [user, isPro]);
 
   return {
@@ -33,5 +43,10 @@ export function useSubscription(): SubscriptionStatus {
     monthlyEntryCount,
     entryLimitReached: !isPro && monthlyEntryCount >= FREE_ENTRY_LIMIT,
     isLoading,
+    canCreateAudit: () => {
+      if (isPro) return true;
+      return monthlyEntryCount < FREE_ENTRY_LIMIT;
+    },
+    refresh: fetchCount,
   };
 }

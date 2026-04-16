@@ -27,6 +27,7 @@ import VoiceVisualizer from '../components/VoiceVisualizer';
 import AILoadingOverlay from '../components/AILoadingOverlay';
 import { useSubscription, FREE_ENTRY_LIMIT } from '../hooks/useSubscription';
 import { Crown, Lock } from 'lucide-react-native';
+import { NotificationService } from '../services/notificationService';
 
 const NewEntryScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -46,6 +47,7 @@ const NewEntryScreen = () => {
   const [content, setContent] = useState('');
   const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [lastRecordingUri, setLastRecordingUri] = useState<string | null>(null);
   const [metering, setMetering] = useState(-160);
@@ -74,6 +76,17 @@ const NewEntryScreen = () => {
       return;
     }
 
+    // Waste text detector: Prevent short/test entries from consuming AI tokens
+    const wordCount = content.trim().split(/\s+/).length;
+    if (content.length < 40 || wordCount < 8) {
+      Alert.alert(
+        'Contenido Insuficiente',
+        'Detectamos un texto demasiado corto que no permitirá generar Metas ni Active Loops eficaces. \n\nEs importante enviar mensajes estructurados de al menos un párrafo para que el Coach Estratégico pueda darte un análisis profundo.',
+        [{ text: 'Entendido' }]
+      );
+      return;
+    }
+
     setLoading(true);
     try {
       let audioUrl = null;
@@ -81,16 +94,9 @@ const NewEntryScreen = () => {
         audioUrl = await SupabaseService.uploadAudio(lastRecordingUri, user.id);
       }
 
-      // Fetch historical context for "Long-Term Memory"
-      const historicalContext = await SupabaseService.getRecentInsights(user.id);
-
       // AI generates the title, summary, and strategic insights
-      // entryId/userId are passed so the Edge Function can insert
-      // action_items directly into the normalized table.
       const analysis = await aiService.generateDailySummary(
         [content],
-        historicalContext,
-        undefined,   // entryId — not yet known; Edge Function skips insert
         user.id
       );
 
@@ -110,20 +116,8 @@ const NewEntryScreen = () => {
         category: analysis.category || 'PERSONAL'
       });
 
-      // Now that we have the entryId, insert action_items into the
-      // normalized table directly from the client (without a second AI call).
-      if (savedEntry?.id && analysis.action_items?.length > 0) {
-        const { supabase: sb } = await import('../services/supabase');
-        const rows = analysis.action_items.map((item: any) => ({
-          user_id: user.id,
-          entry_id: savedEntry.id,
-          task: item.task || item.description || 'Tarea sin descripción',
-          priority: (item.priority || 'MEDIUM').toUpperCase(),
-          category: (item.category || 'PERSONAL').toUpperCase(),
-        }));
-        const { error: aiErr } = await sb.from('action_items').insert(rows);
-        if (aiErr) console.warn('NewEntryScreen: action_items insert warn:', aiErr.message);
-      }
+      // Note: action_items are inserted server-side by the Edge Function
+      // using SERVICE_ROLE_KEY, so no client-side insert needed here.
 
       // Schedule follow-up notifications for HIGH priority loops
       if (Array.isArray(analysis.action_items)) {
@@ -133,45 +127,8 @@ const NewEntryScreen = () => {
         }
       }
 
-      // ── Therapy Chat: create thread and pre-seed with full diagnostic ──────
-      const thread = await SupabaseService.createChatThread(
-        user.id,
-        analysis.title,
-        analysis.category || 'PERSONAL'
-      );
-
-      const loopsText = Array.isArray(analysis.action_items) && analysis.action_items.length > 0
-        ? `\n\n⚡ **${analysis.action_items.length} loop(s) detectado(s):**\n${analysis.action_items.map((a: any) => `• [${a.priority ?? 'MEDIA'}] ${a.task}`).join('\n')}`
-        : '';
-
-      const sentimentSign = (analysis.sentiment_score ?? 0) >= 0 ? '+' : '';
-      const firstMessage =
-        `He procesado tu registro. Aquí está mi diagnóstico:\n\n` +
-        `🧠 **Estado emocional:** ${analysis.mood_label} (${sentimentSign}${(analysis.sentiment_score ?? 0).toFixed(1)})\n\n` +
-        `💡 **Insight estratégico:** ${analysis.strategic_insight}\n\n` +
-        `🔄 **Recomendación:** ${analysis.wellness_recommendation}` +
-        `${loopsText}\n\n` +
-        `¿Qué parte de tu situación quieres explorar ahora?`;
-
-      await SupabaseService.saveChatMessage(thread.id, 'model', firstMessage);
-
-      // Navigate to therapy chat — no Alert, conversation continúa
-      navigation.replace('Chat', {
-        threadId: thread.id,
-        category: analysis.category || 'PERSONAL',
-        title: analysis.title,
-        isTherapyMode: true,
-        initialMessage: firstMessage,
-        entryContext: {
-          originalText: content,
-          summary: analysis.summary,
-          moodLabel: analysis.mood_label,
-          sentimentScore: analysis.sentiment_score ?? 0,
-          strategicInsight: analysis.strategic_insight,
-          wellnessRecommendation: analysis.wellness_recommendation,
-          actionItems: analysis.action_items || [],
-        },
-      });
+      // Entry saved successfully — go back to Home where the memory will appear
+      navigation.goBack();
 
     } catch (err: any) {
       console.error('Save Error:', err);
@@ -194,7 +151,7 @@ const NewEntryScreen = () => {
       setIsRecording(false);
       setMetering(-160);
       if (uri) {
-        setLoading(true);
+        setIsTranscribing(true);
         try {
           const trans = await voiceService.transcribeAudio(uri);
           setContent(prev => prev + (prev ? " " : "") + trans);
@@ -202,16 +159,18 @@ const NewEntryScreen = () => {
           console.error('Transcription error handling:', err);
           Alert.alert('Error de transcripción', 'No se pudo convertir el audio a texto. Intenta de nuevo.');
         } finally {
-          setLoading(false);
+          setIsTranscribing(false);
         }
       }
     } else {
-      await voiceService.startRecording((status) => {
+      const started = await voiceService.startRecording((status) => {
         if (status.metering !== undefined) {
           setMetering(status.metering);
         }
       });
-      setIsRecording(true);
+      if (started) {
+        setIsRecording(true);
+      }
     }
   };
 
@@ -292,27 +251,15 @@ const NewEntryScreen = () => {
             <Ca size={24} color="#94a3b8" />
           </TO>
 
-          {/* Voice button — blocked for FREE */}
           <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
             <TO
               onPress={() => {
-                if (!isPro) {
-                  Alert.alert(
-                    'Función PRO',
-                    'La grabación de voz es exclusiva de usuarios PRO.',
-                    [
-                      { text: 'Cancelar', style: 'cancel' },
-                      { text: 'Ver planes', onPress: () => navigation.navigate('Paywall') },
-                    ]
-                  );
-                  return;
-                }
                 toggleRecording();
               }}
               style={[styles.recordBtn, isRecording && styles.recordBtnActive]}
             >
-              <View style={[styles.innerRecord, isRecording && styles.innerRecordActive, !isPro && { backgroundColor: '#334155' }]}>
-                {isRecording ? <View style={styles.stopIcon} /> : isPro ? <Mi size={28} color="white" /> : <Lk size={22} color="#64748b" />}
+              <View style={[styles.innerRecord, isRecording && styles.innerRecordActive]}>
+                {isRecording ? <View style={styles.stopIcon} /> : <Mi size={28} color="white" />}
               </View>
             </TO>
           </Animated.View>
@@ -323,7 +270,7 @@ const NewEntryScreen = () => {
         </View>
       </KeyboardAvoidingView>
 
-      <AILoadingOverlay visible={loading} message="Consultando a tu Coach Estratégico..." />
+      <AILoadingOverlay visible={loading || isTranscribing} message={isTranscribing ? "Transcribiendo audio..." : "Consultando a tu Coach Estratégico..."} />
     </SAV>
   );
 };

@@ -121,71 +121,59 @@ const DashboardScreen = () => {
         if (!user) return;
         setRefreshing(true);
         try {
-            console.log('DASHBOARD: Fetching stats for user:', user.id);
-            const data = await SupabaseService.getEntries(user.id);
-            let pending = 0;
-            if (data) {
-                console.log('DASHBOARD: Data received, count:', data.length);
-                pending = data.reduce((acc: number, entry: any) => {
-                    const tasks = entry.action_items || [];
-                    return acc + tasks.filter((t: any) => !t.is_completed).length;
-                }, 0);
-            }
-
-            // Fetch real goals from separate table
+            console.log('DASHBOARD: Fetching strategic stats for user:', user.id);
+            
+            // ── 1. Fetch Consolidated Historical Context (New Standard) ──────
+            const history = await SupabaseService.getHistoricalContext(user.id);
+            
+            // ── 2. Fetch real goals from separate table ────────────────────────
             const goals = await SupabaseService.getGoals(user.id);
             const totalGoals = goals ? goals.length : 0;
             const completedGoals = goals ? goals.filter((g: any) => g.is_completed).length : 0;
             const goalPercent = totalGoals > 0 ? Math.round((completedGoals / totalGoals) * 100) : 0;
 
-            const latestEntry = data && data.length > 0 ? data[0] : null;
+            // ── 3. Fetch entries for Interventions list ────────────────────────
+            const entries = await SupabaseService.getEntries(user.id);
+            
             setStats({
-                totalMemories: data ? data.length : 0,
-                activeLoops: pending,
+                totalMemories: history.totalEntries,
+                activeLoops: history.openLoopsCount,
                 completedGoals: completedGoals,
                 totalGoals: totalGoals,
                 goalPercentage: goalPercent,
-                latestEntry: latestEntry
+                latestEntry: entries && entries.length > 0 ? entries[0] : null
             });
 
-            // Calculate Interventions (HIGH priority > 72h)
-            if (data) {
-                const now = new Date().getTime();
-                const overdues: any[] = [];
-                data.forEach((entry: any) => {
-                    const entryDate = new Date(entry.created_at).getTime();
-                    const diffDays = (now - entryDate) / (1000 * 60 * 60 * 24);
-                    
-                    if (diffDays >= 3 && Array.isArray(entry.action_items)) {
-                        entry.action_items.forEach((item: any) => {
-                            if (item.priority === 'HIGH' && !item.is_completed) {
-                                overdues.push({ 
-                                    ...item, 
-                                    entryId: entry.id,
-                                    entryTitle: entry.title,
-                                    days: Math.floor(diffDays)
-                                });
-                            }
-                        });
-                    }
-                });
-                setInterventions(overdues.slice(0, 2)); // Show top 2 interventions
-            }
+            // ── 4. Calculate Interventions (HIGH priority > 72h) ───────────────
+            // We fetch from original normalized table for interventions
+            const openItems = await SupabaseService.getOpenActionItems(user.id);
+            const now = new Date().getTime();
+            const overdues = openItems
+                .filter(item => {
+                    if (item.priority !== 'HIGH') return false;
+                    const itemDate = new Date(item.created_at).getTime();
+                    const diffDays = (now - itemDate) / (1000 * 60 * 60 * 24);
+                    return diffDays >= 3;
+                })
+                .map(item => ({
+                    ...item,
+                    days: Math.floor((now - new Date(item.created_at).getTime()) / (1000 * 60 * 60 * 24))
+                }));
+            
+            setInterventions(overdues.slice(0, 2));
 
-            // Fetch recent threads
+            // ── 5. Fetch recent threads ────────────────────────────────────────
             const threads = await SupabaseService.getChatThreads(user.id);
             if (threads) {
                 setRecentThreads(threads.slice(0, 3));
             }
 
-            // Fetch detected patterns (silently, non-blocking)
-            try {
-                const pats = await SupabaseService.getUserPatterns(user.id);
-                setPatterns(pats || []);
-            } catch { /* patterns table may not exist yet */ }
+            // ── 6. Fetch detected patterns ──────────────────────────────────────
+            const pats = await SupabaseService.getUserPatterns(user.id);
+            setPatterns(pats || []);
+
         } catch (error) {
             console.error('DASHBOARD_FETCH_ERROR:', error);
-            // Ensure we stop loading even on error
             setLoading(false);
         } finally {
             setLoading(false);

@@ -4,14 +4,15 @@ import {
     ChevronLeft, ShieldCheck, Clock, Database, AlertCircle, Brain,
     Zap, Stethoscope, Calendar, Target, AlertTriangle, ArrowRight,
     LogOut, Trash2, MessageSquareText, Send, X, ChevronDown, ChevronUp, User,
-    CheckCircle2, Sparkles, Plus
+    CheckCircle2, Sparkles, Plus, Paperclip, Camera, Trash2 as TrashIcon
 } from 'lucide-react-native';
 import * as WebBrowser from 'expo-web-browser';
+import * as ImagePicker from 'expo-image-picker';
 import {
     View, Text, StyleSheet, TouchableOpacity,
     ScrollView, StatusBar, Platform, Modal, TextInput,
     ActivityIndicator, Alert, LayoutAnimation, UIManager,
-    KeyboardAvoidingView
+    KeyboardAvoidingView, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -19,6 +20,7 @@ import { SupabaseService } from '../services/SupabaseService';
 import { useAuth } from '../context/AuthContext';
 import { ActionItem } from '../core-types';
 import { FeedbackService } from '../services/FeedbackService';
+import { LockService } from '../services/LockService';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -52,10 +54,15 @@ const SettingsScreen = () => {
     const LO = LogOut as any;
     const T2 = Trash2 as any;
     const Sen = Send as any;
+    const PC = Paperclip as any;
+    const Cam = Camera as any;
+    const TIc = TrashIcon as any;
+    const Img = Image as any;
 
     const [entries, setEntries] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [appointmentDate, setAppointmentDate] = useState(new Date());
+    const [feedbackImage, setFeedbackImage] = useState<string | null>(null);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [viewMode, setViewMode] = useState<'hub' | 'pending' | 'completed' | 'biases'>('hub');
     const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -171,6 +178,29 @@ const SettingsScreen = () => {
         }
     };
 
+    const pickImage = async () => {
+        // Disable lock screen temporarily
+        LockService.setBypass(true);
+        
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [16, 9],
+                quality: 0.7,
+            });
+
+            if (!result.canceled) {
+                setFeedbackImage(result.assets[0].uri);
+            }
+        } catch (error) {
+            console.error('[SETTINGS] Image pick error:', error);
+        } finally {
+            // Re-enable lock screen after a small delay to handle final state transitions
+            setTimeout(() => LockService.setBypass(false), 1000);
+        }
+    };
+
     const handleSendFeedback = async () => {
         if (!feedbackContent.trim()) {
             Alert.alert('Error', 'Por favor escribe tu comentario antes de enviar.');
@@ -179,11 +209,17 @@ const SettingsScreen = () => {
 
         setIsSubmittingFeedback(true);
         try {
-            const { error } = await FeedbackService.submitFeedback(user!.id, feedbackContent, feedbackType);
+            let attachmentUrl = null;
+            if (feedbackImage) {
+                attachmentUrl = await SupabaseService.uploadImage(feedbackImage, user!.id);
+            }
+
+            const { error } = await FeedbackService.submitFeedback(user!.id, feedbackContent, feedbackType, attachmentUrl);
             if (error) throw error;
 
             Alert.alert('¡Gracias!', 'Tu feedback ha sido recibido. ¡Gracias por ayudarnos a mejorar BLACKBOX!');
             setFeedbackContent('');
+            setFeedbackImage(null);
             setShowFeedbackModal(false);
         } catch (error) {
             console.error('FEEDBACK: Error submitting', error);
@@ -939,6 +975,21 @@ const SettingsScreen = () => {
                             textAlignVertical="top"
                         />
 
+                        {/* Image Attachment Preview */}
+                        {feedbackImage ? (
+                            <View style={styles.imagePreviewContainer}>
+                                <Img source={{ uri: feedbackImage }} style={styles.previewImage} />
+                                <TO style={styles.removeImageBtn} onPress={() => setFeedbackImage(null)}>
+                                    <TIc size={16} color="white" />
+                                </TO>
+                            </View>
+                        ) : (
+                            <TO style={styles.attachButton} onPress={pickImage}>
+                                <PC size={18} color="#6366f1" style={{ marginRight: 8 }} />
+                                <Text style={styles.attachButtonText}>Adjuntar Imagen</Text>
+                            </TO>
+                        )}
+
                         <TO
                             style={[styles.sendButton, isSubmittingFeedback && styles.sendButtonDisabled]}
                             onPress={handleSendFeedback}
@@ -1433,6 +1484,49 @@ const styles = StyleSheet.create({
         color: '#ffffff',
         fontSize: 12,
         fontWeight: 'bold'
+    },
+    attachButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+        borderRadius: 12,
+        marginBottom: 24,
+        alignSelf: 'flex-start',
+    },
+    attachButtonText: {
+        color: '#818cf8',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    imagePreviewContainer: {
+        width: '100%',
+        height: 180,
+        borderRadius: 16,
+        overflow: 'hidden',
+        marginBottom: 24,
+        backgroundColor: '#1e293b',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    previewImage: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover',
+    },
+    removeImageBtn: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.2)',
     },
 });
 

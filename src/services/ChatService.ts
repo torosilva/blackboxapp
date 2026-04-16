@@ -1,4 +1,5 @@
 import { supabase } from './SupabaseService';
+import { getGlobalAccessToken } from '../context/AuthContext';
 
 export interface ChatMessage {
     role: 'user' | 'model';
@@ -25,8 +26,18 @@ export const ChatService = {
         therapyMode?: boolean,
         entryContext?: EntryContext
     ) {
-        const { data, error } = await supabase.functions.invoke('ai-chat', {
-            body: {
+        const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/ai-chat`;
+        const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+        const token = getGlobalAccessToken();
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': anonKey,
+                'Authorization': `Bearer ${token || anonKey}`
+            },
+            body: JSON.stringify({
                 userMessage,
                 chatHistory,
                 userId,
@@ -34,13 +45,16 @@ export const ChatService = {
                 category: category ?? 'General',
                 therapyMode: therapyMode ?? false,
                 entryContext: entryContext ?? null,
-            },
+            }),
         });
 
-        if (error) {
-            console.error('CHAT_SERVICE: Edge function error', error);
-            throw error;
+        if (!response.ok) {
+            const errText = await response.text();
+            console.error('CHAT_SERVICE HTTP Error:', response.status, errText);
+            throw new Error(`Chat Edge Function falló: HTTP ${response.status}`);
         }
+
+        const data = await response.json();
 
         if (!data?.content) {
             throw new Error('No response from AI');

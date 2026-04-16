@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import {
     View, Text, StyleSheet, FlatList,
     TouchableOpacity, ActivityIndicator, StatusBar,
-    RefreshControl
+    RefreshControl, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, MessageSquare, AlertCircle, Sparkles, User } from 'lucide-react-native';
+import { ChevronLeft, MessageSquare, AlertCircle, Sparkles, User, ExternalLink } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { FeedbackService } from '../services/FeedbackService';
 
@@ -95,6 +95,20 @@ export default function FeedbackHistoryScreen() {
                         
                         <Text style={styles.content}>{item.content}</Text>
                         
+                        {item.attachment_url && (
+                            <View style={styles.attachmentContainer}>
+                                <Image 
+                                    source={{ uri: item.attachment_url }} 
+                                    style={styles.attachmentImage}
+                                    resizeMode="cover"
+                                />
+                                <View style={styles.attachmentOverlay}>
+                                    <ExternalLink size={12} color="white" />
+                                    <Text style={styles.attachmentText}>Adjunto</Text>
+                                </View>
+                            </View>
+                        )}
+                        
                         <View style={styles.cardBottom}>
                             <User size={14} color="#475569" />
                             <Text style={styles.userEmail}>
@@ -139,5 +153,36 @@ const styles = StyleSheet.create({
     cardBottom: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     userEmail: { color: '#475569', fontSize: 12 },
     emptyState: { alignItems: 'center', marginTop: 100, gap: 16 },
-    emptyText: { color: '#475569', fontSize: 16 }
+    emptyText: { color: '#475569', fontSize: 16 },
+    attachmentContainer: {
+        width: '100%',
+        height: 150,
+        borderRadius: 12,
+        overflow: 'hidden',
+        marginBottom: 16,
+        backgroundColor: '#020617',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.05)'
+    },
+    attachmentImage: {
+        width: '100%',
+        height: '100%'
+    },
+    attachmentOverlay: {
+        position: 'absolute',
+        bottom: 8,
+        right: 8,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        gap: 4
+    },
+    attachmentText: {
+        color: 'white',
+        fontSize: 10,
+        fontWeight: 'bold'
+    }
 });
