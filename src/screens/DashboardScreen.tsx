@@ -249,17 +249,24 @@ const DashboardScreen = () => {
                 }
             }, 800);
 
-            const success = await SupabaseService.triggerPatternAnalysis(user.id);
+            const result = await SupabaseService.triggerPatternAnalysis(user.id);
             clearInterval(progressInterval);
 
-            if (success) {
+            if (result.success && result.count > 0) {
                 setAnalysisProgress(100);
-                // Refresh data
                 await fetchStats();
                 Alert.alert(
                     "¡Perfil Sincronizado!",
-                    "Tu memoria estratégica ha sido consolidada. Los patrones y sesgos detectados ya están disponibles.",
-                    [{ text: "Ver Resultados", onPress: fetchStats }]
+                    `Se detectaron ${result.count} patrón(es) cognitivo(s). Ya están disponibles abajo.`,
+                    [{ text: "Ver Resultados" }]
+                );
+            } else if (result.success && result.count === 0) {
+                setAnalysisProgress(0);
+                await fetchStats();
+                Alert.alert(
+                    "Análisis Incompleto",
+                    "La auditoría se ejecutó pero no detectó patrones nuevos. Esto puede deberse a que la función no está actualizada. Contacta soporte.",
+                    [{ text: "Entendido" }]
                 );
             } else {
                 setAnalysisProgress(0);

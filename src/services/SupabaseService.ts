@@ -1089,12 +1089,12 @@ export const SupabaseService = {
      * Fire-and-forget invocation of the analyze-patterns Edge Function.
      * Does not block — errors are logged but not thrown.
      */
-    async triggerPatternAnalysis(userId: string): Promise<boolean> {
+    async triggerPatternAnalysis(userId: string): Promise<{ success: boolean; count: number }> {
         try {
             console.log('SUPABASE_SERVICE: Triggering pattern analysis for:', userId);
             const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/analyze-patterns`;
             const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
-            
+
             const token = getGlobalAccessToken();
             const response = await fetch(url, {
                 method: 'POST',
@@ -1109,12 +1109,15 @@ export const SupabaseService = {
             if (!response.ok) {
                 const errText = await response.text();
                 console.warn('SUPABASE_SERVICE: Pattern analysis invoke error:', errText);
-                return false;
+                return { success: false, count: 0 };
             }
-            return true;
+            const data = await response.json();
+            const count = data?.count ?? 0;
+            console.log(`SUPABASE_SERVICE: Pattern analysis done — ${count} patterns saved`);
+            return { success: true, count };
         } catch (err: any) {
             console.error('SUPABASE_SERVICE: FATAL - triggerPatternAnalysis crashed:', err.message);
-            return false;
+            return { success: false, count: 0 };
         }
     },
 
