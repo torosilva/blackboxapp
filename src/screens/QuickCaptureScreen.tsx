@@ -253,7 +253,7 @@ export const QuickCaptureScreen = () => {
               </TouchableOpacity>
             )}
 
-            <AILoadingOverlay visible={isAnalyzing} message="Consultando a tu Coach Estratégico..." />
+            <AILoadingOverlay visible={isAnalyzing} message="Ingresando a tu BlackboxMind..." />
         </View>
     );
 };

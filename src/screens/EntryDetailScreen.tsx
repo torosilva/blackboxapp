@@ -366,7 +366,7 @@ const EntryDetailScreen = () => {
         </TO>
       </ScrollView>
 
-      <AILoadingOverlay visible={isSaving} message="Consultando a tu Coach Estratégico..." />
+      <AILoadingOverlay visible={isSaving} message="Procesando tu BlackBoxMind.ai..." />
     </SAV>
   );
 };

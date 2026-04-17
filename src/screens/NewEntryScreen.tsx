@@ -270,7 +270,7 @@ const NewEntryScreen = () => {
         </View>
       </KeyboardAvoidingView>
 
-      <AILoadingOverlay visible={loading || isTranscribing} message={isTranscribing ? "Transcribiendo audio..." : "Consultando a tu Coach Estratégico..."} />
+      <AILoadingOverlay visible={loading || isTranscribing} message={isTranscribing ? "Transcribiendo audio..." : "Ingresando a tu BlackboxMind..."} />
     </SAV>
   );
 };

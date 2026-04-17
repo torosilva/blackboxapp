@@ -376,7 +376,7 @@ const HomeScreen = () => {
       {/* Premium AI Loading Overlay */}
       <Overlay
         visible={summaryLoading}
-        message="Consultando a tu Coach de Rendimiento..."
+        message="Procesando tu BlackBoxMind.ai..."
       />
 
       <View style={styles.header}>
