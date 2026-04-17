@@ -24,6 +24,13 @@ interface EntrySnapshot {
   summary: string | null;
 }
 
+interface StrategicProfile {
+  cognitive_summary: string;
+  recurring_themes: string[];
+  key_goals: string[];
+  identified_biases: string[];
+}
+
 interface GeminiPattern {
   pattern_type: "emotional" | "procrastination" | "cognitive_bias" | "productivity";
   title: string;
@@ -36,7 +43,8 @@ interface GeminiPattern {
 
 function buildPatternPrompt(
   entries: EntrySnapshot[],
-  openLoopsCount: number
+  openLoopsCount: number,
+  strategicProfile?: StrategicProfile | null
 ): string {
   const entrySummaries = entries.map((e, i) => {
     let bias = "N/A";
@@ -52,39 +60,42 @@ function buildPatternPrompt(
 
   return `
 ROL:
-Eres un analista de patrones cognitivos y conductuales. Tu trabajo es leer el historial de un usuario y detectar patrones reales, repetidos y accionables. No inventes patrones — solo confirma lo que los datos muestran claramente.
+Eres un analista de patrones cognitivos y conductuales de élite. Tu trabajo es leer el historial longitudinal de un usuario y hacer dos cosas:
+1. Detectar patrones reales, repetidos y accionables.
+2. Sintetizar el Perfil Estratégico de largo plazo del usuario basado en todas estas entradas.
 
 DATOS DEL USUARIO (últimas ${entries.length} entradas):
 ${entrySummaries}
 
 LOOPS ABIERTOS SIN CERRAR: ${openLoopsCount}
 
+RESUMEN ESTRATÉGICO ACTUAL (MEMORIA): ${strategicProfile?.cognitive_summary || 'N/A'}
+TEMAS RECURRENTES ACTUALES: ${(strategicProfile?.recurring_themes ?? []).join(', ') || 'N/A'}
+
 INSTRUCCIÓN:
-Identifica entre 2 y 5 patrones concretos. Cada patrón debe:
-- Basarse en al menos 2 entradas del historial.
-- Ser accionable (el usuario puede hacer algo al respecto).
-- Tener un título corto y directo (máx 6 palabras, sin emojis).
-- Tener una descripción en 2-3 oraciones, en segunda persona, directa y clínica.
-- Incluir los IDs de las entradas que lo evidencian en supporting_entry_ids.
+- Identifica entre 2 y 5 patrones concretos.
+- Cruza toda la información para actualizar el Perfil Estratégico. Si notas que el usuario es resiliente, tiene miedo al fracaso o es excelente delegando, regístralo en el resumen cognitivo.
 
-TIPOS VÁLIDOS DE PATRÓN:
-- "emotional": patrones en el estado emocional o mood recurrente.
-- "procrastination": loops que se acumulan o tareas que nunca se cierran.
-- "cognitive_bias": sesgo cognitivo que aparece en múltiples entradas.
-- "productivity": caídas o picos de rendimiento en categorías específicas.
-
-FORMATO DE RESPUESTA (JSON ESTRICTO, array de objetos):
-[
-  {
-    "pattern_type": "cognitive_bias",
-    "title": "Sesgo de Confirmación Recurrente",
-    "description": "En 4 de tus últimas 8 sesiones el análisis detectó Sesgo de Confirmación. Tiendes a buscar evidencia que valide tus decisiones en lugar de cuestionarlas. Esto limita tu capacidad de detectar riesgos ocultos.",
-    "frequency": 4,
-    "supporting_entry_ids": ["uuid-1", "uuid-2", "uuid-3", "uuid-4"]
+FORMATO DE RESPUESTA (JSON ESTRICTO):
+{
+  "patterns": [
+    {
+      "pattern_type": "cognitive_bias",
+      "title": "Título directo",
+      "description": "Descripción clínica y directa.",
+      "frequency": 4,
+      "supporting_entry_ids": ["uuid-1", "uuid-2"]
+    }
+  ],
+  "strategic_profile_update": {
+    "cognitive_summary": "Sintetiza quién es este usuario, sus fortalezas evolutivas y sus mayores bloqueos psicológicos detectados a lo largo de estas ${entries.length} memorias.",
+    "recurring_themes": ["Lista de 3-5 temas que dominan su narrativa a largo plazo"],
+    "key_goals": ["Objetivos de alta escala detectados"],
+    "identified_biases": ["Lista de sesgos que aparecen repetidamente"]
   }
-]
+}
 
-Responde SOLO con el JSON array. Sin texto adicional.
+Responde SOLO con el JSON. Sin texto adicional.
 `.trim();
 }
 
@@ -141,8 +152,15 @@ serve(async (req) => {
       .eq("user_id", userId)
       .eq("is_completed", false);
 
-    // 3. Build prompt and call Gemini
-    const prompt = buildPatternPrompt(entries as EntrySnapshot[], openLoopsCount ?? 0);
+    // 3. Fetch Strategic Profile
+    const { data: profile } = await supabase
+      .from("strategic_profiles")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    // 4. Build prompt and call Gemini
+    const prompt = buildPatternPrompt(entries as EntrySnapshot[], openLoopsCount ?? 0, profile);
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${GEMINI_API_KEY}`;
 
     const geminiRes = await withRetry(
@@ -162,26 +180,51 @@ serve(async (req) => {
     );
 
     const geminiData: any = await geminiRes.json();
-    const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "[]";
+    const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
 
     let patterns: GeminiPattern[] = [];
+    let profileUpdate: any = null;
+
     try {
-      const arrayMatch = rawText.match(/\[[\s\S]*\]/);
-      patterns = JSON.parse(arrayMatch ? arrayMatch[0] : rawText);
-      if (!Array.isArray(patterns)) patterns = [];
+      const match = rawText.match(/\{[\s\S]*\}/);
+      const parsed = JSON.parse(match ? match[0] : rawText);
+      patterns = Array.isArray(parsed.patterns) ? parsed.patterns : [];
+      profileUpdate = parsed.strategic_profile_update || null;
     } catch (parseErr) {
       console.error("[analyze-patterns] JSON parse error:", parseErr);
-      patterns = [];
     }
 
-    // 4. Upsert patterns into user_patterns table
-    const now = new Date().toISOString();
-    const upsertResults = [];
+    // 5. Update Strategic Profile (The Deep Memory)
+    if (userId && profileUpdate) {
+      try {
+        const { data: current } = await supabase
+          .from('strategic_profiles')
+          .select('data_points_count')
+          .eq('user_id', userId)
+          .maybeSingle();
 
+        const newCount = (current?.data_points_count ?? 0) + 1;
+        
+        await supabase.from('strategic_profiles').upsert({
+          user_id: userId,
+          cognitive_summary: profileUpdate.cognitive_summary,
+          recurring_themes: profileUpdate.recurring_themes,
+          key_goals: profileUpdate.key_goals,
+          identified_biases: profileUpdate.identified_biases,
+          data_points_count: newCount,
+          last_updated_at: now
+        });
+        console.log(`[analyze-patterns] Global Strategic Profile synchronized for ${userId}`);
+      } catch (profileErr) {
+        console.error("[analyze-patterns] Profile sync error:", profileErr);
+      }
+    }
+
+    // 6. Upsert individual patterns into user_patterns table
+    const upsertResults = [];
     for (const p of patterns.slice(0, 5)) {
       if (!p.pattern_type || !p.title || !p.description) continue;
 
-      // Try to find existing pattern for upsert
       const { data: existing } = await supabase
         .from("user_patterns")
         .select("id, frequency, first_seen_at")
@@ -196,7 +239,7 @@ serve(async (req) => {
         title: p.title,
         description: p.description,
         frequency: existing ? existing.frequency + 1 : (p.frequency ?? 1),
-        first_seen_at: existing ? existing.first_seen_at : now,
+        first_seen_at: existing ? existing.first_seen_at : (existing?.first_seen_at || now),
         last_seen_at: now,
         supporting_entry_ids: p.supporting_entry_ids ?? [],
         is_active: true,
@@ -207,9 +250,7 @@ serve(async (req) => {
         ? await supabase.from("user_patterns").update(row).eq("id", existing.id).select().single()
         : await supabase.from("user_patterns").insert({ ...row, created_at: now }).select().single();
 
-      if (upsertErr) {
-        console.error("[analyze-patterns] upsert error:", upsertErr.message);
-      } else {
+      if (!upsertErr) {
         upsertResults.push(upserted);
       }
     }

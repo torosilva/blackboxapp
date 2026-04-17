@@ -9,10 +9,11 @@ export interface WellnessRecommendation {
 }
 
 export interface ActionItem {
-    description: string;
+    id?: string;
+    task: string;
     priority: 'HIGH' | 'MEDIUM' | 'LOW';
-    category: 'BUSINESS' | 'PERSONAL' | 'HEALTH';
-    is_completed?: boolean; // Lo manejaremos en la UI (checkbox)
+    category: 'BUSINESS' | 'PERSONAL' | 'HEALTH' | 'DEVELOPMENT' | 'WELLNESS';
+    is_completed?: boolean;
 }
 
 export interface StrategicInsight {

@@ -94,14 +94,19 @@ const LockScreen: React.FC<LockScreenProps> = ({ onUnlock, onSignOut }) => {
 
         const subscription = AppState.addEventListener('change', (nextState) => {
             if (appStateRef.current !== 'active' && nextState === 'active') {
-                handleAuth();
+                // Return to active -> wait slightly for UI to settle
+                setTimeout(handleAuth, 500);
             }
             appStateRef.current = nextState;
         });
 
-        handleAuth();
+        // Initial mount -> wait slightly for UI to settle before triggering system prompt
+        const timer = setTimeout(handleAuth, 600);
 
-        return () => subscription.remove();
+        return () => {
+            subscription.remove();
+            clearTimeout(timer);
+        };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [biometricAvailable]);
 
@@ -118,12 +123,19 @@ const LockScreen: React.FC<LockScreenProps> = ({ onUnlock, onSignOut }) => {
                     <View style={styles.actions}>
                         {/* Primary: biometric */}
                         <TouchableOpacity
-                            style={styles.authButton}
+                            style={[styles.authButton, loading && styles.authButtonDisabled]}
                             onPress={handleAuth}
                             activeOpacity={0.8}
+                            disabled={loading}
                         >
-                            <Fingerprint size={24} color="white" />
-                            <Text style={styles.authText}>Desbloquear con Biometría</Text>
+                            {loading ? (
+                                <ActivityIndicator size="small" color="white" />
+                            ) : (
+                                <Fingerprint size={24} color="white" />
+                            )}
+                            <Text style={styles.authText}>
+                                {loading ? 'Validando...' : 'Desbloquear con Biometría'}
+                            </Text>
                         </TouchableOpacity>
 
                         {/* Fallback: device PIN (only shown after 1st failure) */}
@@ -223,6 +235,10 @@ const styles = StyleSheet.create({
         borderColor: '#334155',
         width: '100%',
         justifyContent: 'center',
+    },
+    authButtonDisabled: {
+        opacity: 0.7,
+        backgroundColor: '#0f172a',
     },
     authText: {
         color: 'white',

@@ -23,13 +23,16 @@ export const BioAuthService = {
      */
     async authenticateAsync(reason: string = 'Accede a tu diario de forma segura'): Promise<boolean> {
         try {
+            console.log('BIO_AUTH_SERVICE: Starting authentication prompt...');
             const results = await LocalAuthentication.authenticateAsync({
                 promptMessage: reason,
                 fallbackLabel: 'Usar código',
                 disableDeviceFallback: false,
                 cancelLabel: 'Cancelar',
+                requireConfirmation: false, // More fluid on iOS FaceID
             });
 
+            console.log('BIO_AUTH_SERVICE: Authentication result ->', results.success ? 'SUCCESS' : 'FAILED', results.error);
             return results.success;
         } catch (error) {
             console.error('BIO_AUTH_SERVICE: Error during authentication', error);

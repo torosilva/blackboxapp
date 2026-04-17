@@ -80,6 +80,7 @@ const WeeklyReportScreen = ({ route }: any) => {
     const [loading, setLoading] = useState(true);
     const [report, setReport] = useState('');
     const [metrics, setMetrics] = useState({ avgSentiment: 0, totalEntries: 0 });
+    const [strategicProfile, setStrategicProfile] = useState<any>(null);
 
     const reportEndDate = route.params?.reportEndDate ? new Date(route.params.reportEndDate) : new Date();
 
@@ -135,7 +136,15 @@ const WeeklyReportScreen = ({ route }: any) => {
                 const currentMetrics = { avgSentiment: avg, totalEntries: total };
                 setMetrics(currentMetrics);
 
-                const markdown = await aiService.generateWeeklyReport(entries);
+                // 4. Fetch Deep Strategic Memory as Context
+                const profile = await SupabaseService.getStrategicProfile(user.id);
+                const historicalContext = await SupabaseService.getHistoricalContext(user.id);
+                setStrategicProfile(profile);
+
+                const markdown = await aiService.generateWeeklyReport(entries, {
+                    ...historicalContext,
+                    strategic_profile: profile
+                });
                 setReport(markdown);
 
                 // 4. Save to persistent cache ONLY IF it's a real report
@@ -269,6 +278,31 @@ const WeeklyReportScreen = ({ route }: any) => {
                     </View>
                 </View>
 
+                {/* DEEP STRATEGIC IDENTITY (MEMORIA LARGO PLAZO) */}
+                {strategicProfile && (
+                    <View style={styles.strategicCard}>
+                        <View style={styles.strategicHeader}>
+                            <View style={styles.brainIconBox}>
+                                <Text style={{ fontSize: 18 }}>🧠</Text>
+                            </View>
+                            <Text style={styles.strategicTitle}>IDENTIDAD COGNITIVA GLOBAL</Text>
+                        </View>
+                        <Text style={styles.cognitiveSummary}>
+                            "{strategicProfile.cognitive_summary || 'Consolidando tu trayectoria estratégica...'}"
+                        </Text>
+                        <View style={styles.tagsRow}>
+                            {(strategicProfile.recurring_themes || []).map((t: string, i: number) => (
+                                <View key={i} style={styles.tag}>
+                                    <Text style={styles.tagText}>#{t.toUpperCase()}</Text>
+                                </View>
+                            ))}
+                        </View>
+                        <Text style={styles.memoryFooter}>
+                            Basado en {strategicProfile.data_points_count || 0} análisis históricos.
+                        </Text>
+                    </View>
+                )}
+
                 {/* CLINICAL REPORT CONTENT */}
                 <View style={styles.reportCard}>
                     <View style={styles.reportHeader}>
@@ -357,6 +391,23 @@ const styles = StyleSheet.create({
     },
     medicalIconContainer: { backgroundColor: 'rgba(129, 140, 248, 0.1)', padding: 10, borderRadius: 12, marginRight: 12 },
     reportCategory: { color: '#818cf8', fontSize: 11, fontWeight: '900', letterSpacing: 1.5 },
+    strategicCard: {
+        backgroundColor: 'rgba(99, 102, 241, 0.08)',
+        padding: 24,
+        borderRadius: 28,
+        marginBottom: 24,
+        borderWidth: 1,
+        borderColor: 'rgba(99, 102, 241, 0.2)',
+        borderStyle: 'dashed'
+    },
+    strategicHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+    brainIconBox: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(99, 102, 241, 0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    strategicTitle: { color: '#fff', fontSize: 13, fontWeight: '800', letterSpacing: 1 },
+    cognitiveSummary: { color: '#c7d2fe', fontSize: 14, lineHeight: 22, fontStyle: 'italic', marginBottom: 16 },
+    tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+    tag: { backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
+    tagText: { color: '#94a3b8', fontSize: 10, fontWeight: '700' },
+    memoryFooter: { color: '#475569', fontSize: 10, fontWeight: '600', textAlign: 'right' },
     footer: { position: 'absolute', bottom: 30, left: 20, right: 20 },
     exportButton: {
         backgroundColor: '#4f46e5',

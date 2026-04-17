@@ -33,14 +33,13 @@ export const aiService = {
         if (
             userId &&
             historicalContext &&
-            historicalContext.dataMaturity === 'ready' &&
-            historicalContext.totalEntries > 0 &&
+            historicalContext.totalEntries + 1 >= 5 && // Ensure we have reached the first milestone
             (historicalContext.totalEntries + 1) % 5 === 0
         ) {
-            console.log(`AI_SERVICE: Entry #${historicalContext.totalEntries + 1} milestone — triggering pattern analysis`);
+            console.log(`[AI_SERVICE] Milestone Trigger: Entry #${historicalContext.totalEntries + 1} reached. Invoking background pattern audit for user: ${userId}`);
             // Fire-and-forget: does not block or throw
             SupabaseService.triggerPatternAnalysis(userId).catch(e =>
-                console.warn('AI_SERVICE: Pattern trigger failed (silent):', e.message)
+                console.warn('[AI_SERVICE] Auto-trigger pattern analysis failed:', e.message)
             );
         }
 
@@ -95,7 +94,7 @@ export const aiService = {
 
 
 
-    generateWeeklyReport: async (entries: any[]): Promise<string> => {
+    generateWeeklyReport: async (entries: any[], historicalContext?: any): Promise<string> => {
         if (entries.length === 0) return "Datos insuficientes.";
         try {
             const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/analyze-entry`;
@@ -109,7 +108,7 @@ export const aiService = {
                     'apikey': anonKey,
                     'Authorization': `Bearer ${token || anonKey}`
                 },
-                body: JSON.stringify({ entries, mode: 'weekly' }),
+                body: JSON.stringify({ entries, mode: 'weekly', historicalContext }),
             });
 
             if (!response.ok) {

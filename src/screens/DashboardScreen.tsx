@@ -9,7 +9,8 @@ import {
     ActivityIndicator,
     Image,
     Platform,
-    RefreshControl
+    RefreshControl,
+    Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -74,6 +75,10 @@ const DashboardScreen = () => {
     const [onboardingChecked, setOnboardingChecked] = useState(false);
     const [appointmentDate, setAppointmentDate] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
+    const [isAnalyzingPatterns, setIsAnalyzingPatterns] = useState(false);
+    const [analysisPhase, setAnalysisPhase] = useState("");
+    const [analysisProgress, setAnalysisProgress] = useState(0);
+    const [strategicProfile, setStrategicProfile] = useState<any>(null);
     
     // Animation shared values
     const floatValue = useSharedValue(0);
@@ -172,6 +177,10 @@ const DashboardScreen = () => {
             const pats = await SupabaseService.getUserPatterns(user.id);
             setPatterns(pats || []);
 
+            // ── 7. Fetch Strategic Profile (Long-term Memory) ───────────────────
+            const profile = await SupabaseService.getStrategicProfile(user.id);
+            setStrategicProfile(profile);
+
         } catch (error) {
             console.error('DASHBOARD_FETCH_ERROR:', error);
             setLoading(false);
@@ -199,6 +208,61 @@ const DashboardScreen = () => {
         if (hour < 12) return 'Buenos días';
         if (hour < 18) return 'Buenas tardes';
         return 'Buenas noches';
+    };
+
+    const handleManualPatternAnalysis = async () => {
+        if (!user || isAnalyzingPatterns) return;
+        
+        Alert.alert(
+            "Auditoría Estratégica",
+            `Analizaremos tus ${stats.totalMemories} memorias para consolidar tu perfil cognitivo de largo plazo.`,
+            [{ text: "Iniciar Auditoría" }]
+        );
+
+        setIsAnalyzingPatterns(true);
+        setAnalysisProgress(0);
+        setAnalysisPhase("Iniciando conexión con núcleo estratégico...");
+        
+        try {
+            console.log('DASHBOARD: Strategic audit loop started...');
+            
+            // Real-feel progress animation (0-90% while EF works)
+            let currentProgress = 0;
+            const progressInterval = setInterval(() => {
+                currentProgress += Math.random() * 5;
+                if (currentProgress > 92) {
+                    clearInterval(progressInterval);
+                } else {
+                    setAnalysisProgress(currentProgress);
+                    if (currentProgress < 30) setAnalysisPhase("Fase 1/3: Recuperando histórico militar...");
+                    else if (currentProgress < 70) setAnalysisPhase("Fase 2/3: Detectando sesgos y loops abiertos...");
+                    else setAnalysisPhase("Fase 3/3: Sincronizando Perfil Longitudinal...");
+                }
+            }, 800);
+
+            const success = await SupabaseService.triggerPatternAnalysis(user.id);
+            clearInterval(progressInterval);
+
+            if (success) {
+                setAnalysisProgress(100);
+                // Refresh data
+                await fetchStats();
+                Alert.alert(
+                    "¡Perfil Sincronizado!",
+                    "Tu memoria estratégica ha sido consolidada. Los patrones y sesgos detectados ya están disponibles.",
+                    [{ text: "Ver Resultados", onPress: fetchStats }]
+                );
+            } else {
+                setAnalysisProgress(0);
+                Alert.alert("Error Técnico", "No pudimos completar la auditoría. Verifica tu conexión.");
+            }
+        } catch (err) {
+            console.error('DASHBOARD: Deep audit failed:', err);
+        } finally {
+            setIsAnalyzingPatterns(false);
+            setAnalysisPhase("");
+            setAnalysisProgress(0);
+        }
     };
     
     const onDateChange = (event: any, selectedDate?: Date) => {
@@ -456,6 +520,39 @@ const DashboardScreen = () => {
                     </LG>
                 </View>
 
+                    {/* ─── PERFIL ESTRATÉGICO (COGNITIVE IDENTITY) ────────────────── */}
+                    {strategicProfile && (
+                        <View style={{
+                            marginHorizontal: 16,
+                            marginBottom: 20,
+                            padding: 20,
+                            borderRadius: 24,
+                            backgroundColor: 'rgba(99, 102, 241, 0.08)',
+                            borderWidth: 1,
+                            borderColor: 'rgba(99, 102, 241, 0.2)',
+                            borderStyle: 'dashed'
+                        }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(99, 102, 241, 0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                                    <Text style={{ fontSize: 16 }}>🧠</Text>
+                                </View>
+                                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.5 }}>
+                                    PERFIL ESTRATÉGICO
+                                </Text>
+                            </View>
+                            <Text style={{ color: '#c7d2fe', fontSize: 13, lineHeight: 20, fontStyle: 'italic' }}>
+                                "{strategicProfile.cognitive_summary || 'Analizando tu trayectoria...'}"
+                            </Text>
+                            <View style={{ flexDirection: 'row', marginTop: 12, flexWrap: 'wrap' }}>
+                                {(strategicProfile.recurring_themes || []).slice(0, 3).map((theme: string, idx: number) => (
+                                    <View key={idx} style={{ backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginRight: 8, marginBottom: 6 }}>
+                                        <Text style={{ color: '#94a3b8', fontSize: 10, fontWeight: '600' }}>#{theme.toUpperCase()}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
+                    )}
+
                 {/* ── Patrones Detectados ────────────────────────────────── */}
                 <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
                     <View style={styles.sectionHeader}>
@@ -464,39 +561,93 @@ const DashboardScreen = () => {
                     </View>
 
                     {patterns.length === 0 ? (
-                        // Progress state — building profile
-                        <View style={{
-                            backgroundColor: '#0f172a',
-                            borderRadius: 20,
-                            padding: 20,
-                            borderWidth: 1,
-                            borderColor: 'rgba(99,102,241,0.2)'
-                        }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                                <Brain size={18} color="#6366f1" />
-                                <Text style={{ color: '#c7d2fe', fontWeight: '700', fontSize: 13, letterSpacing: 0.5, marginLeft: 8 }}>
-                                    Analizando tu perfil cognitivo...
+                        stats.totalMemories >= 5 ? (
+                            // Stuck state: enough memories but NO analysis run yet
+                            <TouchableOpacity 
+                                onPress={handleManualPatternAnalysis}
+                                disabled={isAnalyzingPatterns}
+                                activeOpacity={0.8}
+                                style={{
+                                    backgroundColor: 'rgba(99,102,241,0.05)',
+                                    borderRadius: 20,
+                                    padding: 24,
+                                    borderWidth: 1,
+                                    borderColor: isAnalyzingPatterns ? 'rgba(99,102,241,0.5)' : 'rgba(99,102,241,0.3)',
+                                    borderStyle: 'dashed',
+                                    alignItems: 'center'
+                                }}
+                            >
+                                {isAnalyzingPatterns ? (
+                                    <View style={{ width: '100%', alignItems: 'center' }}>
+                                        <ActivityIndicator size="small" color="#6366f1" style={{ marginBottom: 12 }} />
+                                        <Text style={{ color: '#c7d2fe', fontWeight: '700', fontSize: 13, marginBottom: 8 }}>
+                                            Auditoría en Progreso... {Math.round(analysisProgress)}%
+                                        </Text>
+                                        <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 10, height: 6, width: '100%', overflow: 'hidden', marginBottom: 12 }}>
+                                            <View style={{
+                                                backgroundColor: '#818cf8',
+                                                height: '100%',
+                                                width: `${analysisProgress}%`,
+                                                borderRadius: 10
+                                            }} />
+                                        </View>
+                                        <Text style={{ color: '#64748b', fontSize: 11, textAlign: 'center', opacity: 0.8 }}>
+                                            {analysisPhase}
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    <>
+                                        <View style={{ 
+                                            backgroundColor: 'rgba(99,102,241,0.2)', 
+                                            width: 50, height: 50, borderRadius: 25, 
+                                            justifyContent: 'center', alignItems: 'center', marginBottom: 12 
+                                        }}>
+                                            <Brain size={28} color="#818cf8" />
+                                        </View>
+                                        <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>
+                                            Auditar Perfil Estratégico
+                                        </Text>
+                                        <Text style={{ color: '#94a3b8', fontSize: 13, marginTop: 6, textAlign: 'center', lineHeight: 18 }}>
+                                            Tienes 5+ memorias listas. Pulsa para detectar patrones cognitivos y conductuales.
+                                        </Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
+                        ) : (
+                            // Progress state — building profile (Initial phase)
+                            <View style={{
+                                backgroundColor: '#0f172a',
+                                borderRadius: 20,
+                                padding: 20,
+                                borderWidth: 1,
+                                borderColor: 'rgba(99,102,241,0.2)'
+                            }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                                    <Brain size={18} color="#6366f1" />
+                                    <Text style={{ color: '#c7d2fe', fontWeight: '700', fontSize: 13, letterSpacing: 0.5, marginLeft: 8 }}>
+                                        Analizando tu perfil cognitivo...
+                                    </Text>
+                                </View>
+                                <Text style={{ color: '#64748b', fontSize: 13, lineHeight: 20, marginBottom: 16 }}>
+                                    Necesitamos{' '}
+                                    <Text style={{ color: '#818cf8', fontWeight: '700' }}>
+                                        {Math.max(0, 5 - stats.totalMemories)} entrada(s) más
+                                    </Text>
+                                    {' '}para detectar patrones en tu comportamiento y cognición.
+                                </Text>
+                                <View style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 8, height: 6, overflow: 'hidden' }}>
+                                    <View style={{
+                                        backgroundColor: '#6366f1',
+                                        height: '100%',
+                                        width: `${Math.min(100, (stats.totalMemories / 5) * 100)}%`,
+                                        borderRadius: 8
+                                    }} />
+                                </View>
+                                <Text style={{ color: '#475569', fontSize: 11, marginTop: 6, textAlign: 'right' }}>
+                                    {Math.min(stats.totalMemories, 5)}/5 entradas
                                 </Text>
                             </View>
-                            <Text style={{ color: '#64748b', fontSize: 13, lineHeight: 20, marginBottom: 16 }}>
-                                Necesitamos{' '}
-                                <Text style={{ color: '#818cf8', fontWeight: '700' }}>
-                                    {Math.max(0, 5 - stats.totalMemories)} entrada(s) más
-                                </Text>
-                                {' '}para detectar patrones en tu comportamiento y cognición.
-                            </Text>
-                            <View style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 8, height: 6, overflow: 'hidden' }}>
-                                <View style={{
-                                    backgroundColor: '#6366f1',
-                                    height: '100%',
-                                    width: `${Math.min(100, (stats.totalMemories / 5) * 100)}%`,
-                                    borderRadius: 8
-                                }} />
-                            </View>
-                            <Text style={{ color: '#475569', fontSize: 11, marginTop: 6, textAlign: 'right' }}>
-                                {Math.min(stats.totalMemories, 5)}/5 entradas
-                            </Text>
-                        </View>
+                        )
                     ) : (
                         // Pattern cards
                         patterns.map((pat) => {

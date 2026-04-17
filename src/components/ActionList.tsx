@@ -16,26 +16,32 @@ export const ActionList: React.FC<Props> = ({ actions, entryId }) => {
     );
 
     const toggleAction = async (index: number) => {
+        const item = items[index];
+        if (!item.id) {
+            console.warn('ACTION_LIST: Cannot update item without ID');
+            return;
+        }
+
+        const newStatus = !item.is_completed;
         const newItems = [...items];
-        newItems[index].is_completed = !newItems[index].is_completed;
+        newItems[index].is_completed = newStatus;
 
         // Optimistic UI update
         setItems(newItems);
 
-        // Persistence
-        if (entryId) {
-            const success = await SupabaseService.updateEntryActions(entryId, newItems);
-            if (!success) {
-                // Rollback on failure
-                const rollbackItems = [...items];
-                setItems(rollbackItems);
-            }
+        // Persistence in new normalized table
+        const success = await SupabaseService.updateActionItemStatus(item.id, newStatus);
+        if (!success) {
+            // Rollback on failure
+            const rollbackItems = [...items];
+            rollbackItems[index].is_completed = !newStatus;
+            setItems(rollbackItems);
         }
     };
 
     const handleShare = async (item: ActionItem) => {
         try {
-            const message = `BLACKBOX DIRECTIVE:\n\n${item.description}\n\nPriority: ${item.priority}\nCategory: ${item.category}\n\nAction requested.`;
+            const message = `BLACKBOX DIRECTIVE:\n\n${item.task}\n\nPriority: ${item.priority}\nCategory: ${item.category}\n\nAction requested.`;
             await Share.share({
                 message,
                 title: 'Delegar Active Loop'
@@ -83,7 +89,7 @@ export const ActionList: React.FC<Props> = ({ actions, entryId }) => {
                                 styles.description,
                                 item.is_completed && styles.textCompleted
                             ]}>
-                                {item.description}
+                                {item.task}
                             </Text>
 
                             <View style={styles.badgeRow}>

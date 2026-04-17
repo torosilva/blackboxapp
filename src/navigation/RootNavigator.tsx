@@ -34,32 +34,46 @@ const Stack = createNativeStackNavigator();
 
 // Un componente wrapper para manejar la lógica de sesión
 function AppNavigator() {
-    const { user, profile, isLoading } = useAuth();
+    const { user, profile, isLoading, signOut } = useAuth();
     // Default to false for stability in Expo Go; can be re-enabled if needed
     const [isLocked, setIsLocked] = React.useState(false);
 
     // Re-lock app when it goes to background
     const appState = React.useRef(AppState.currentState);
+    const backgroundTimestamp = React.useRef<number | null>(null);
 
     React.useEffect(() => {
         const subscription = AppState.addEventListener('change', nextAppState => {
             console.log(`[NAVIGATOR] AppState Change: ${appState.current} -> ${nextAppState}`);
             
-            // SECURITY CHANGE: Only lock when moving to background.
-            // Ignore 'inactive' (system dialogs, notification tray) to avoid conflicts with native pickers.
-            if (
-                appState.current.match(/active|inactive/) &&
-                nextAppState === 'background'
-            ) {
-                const isBypass = LockService.isBypassActive();
-                console.log(`[NAVIGATOR] Background detected. Bypass active: ${isBypass}`);
+            // 1. Handling Background Transition
+            if (nextAppState === 'background') {
+                backgroundTimestamp.current = Date.now();
+                console.log('[NAVIGATOR] App moved to background at:', backgroundTimestamp.current);
+            }
+
+            // 2. Handling Return to Foreground
+            if (appState.current.match(/background|inactive/) && nextAppState === 'active') {
+                const now = Date.now();
+                const diff = backgroundTimestamp.current ? (now - backgroundTimestamp.current) / 1000 : 0;
                 
-                if (isBypass) {
-                    console.log('[NAVIGATOR] Skipping lock because bypass is active');
+                console.log(`[NAVIGATOR] App returned to active. Time in background: ${diff.toFixed(1)}s`);
+
+                // Only lock if we were away for > 15 seconds
+                if (diff > 15) {
+                    const isBypass = LockService.isBypassActive();
+                    if (!isBypass) {
+                        console.log('[NAVIGATOR] Exceeded grace period. LOCKING APP');
+                        setIsLocked(true);
+                    } else {
+                        console.log('[NAVIGATOR] Skipping lock (Bypass Active)');
+                    }
                 } else {
-                    console.log('[NAVIGATOR] LOCKING APP');
-                    setIsLocked(true);
+                    console.log('[NAVIGATOR] Within grace period. Skipping lock.');
                 }
+                
+                // Reset timestamp
+                backgroundTimestamp.current = null;
             }
             appState.current = nextAppState;
         });
@@ -142,7 +156,13 @@ function AppNavigator() {
             {/* Biometric Lock Overlay */}
             {user && isLocked && (
                 <View style={[StyleSheet.absoluteFill, { zIndex: 9999 }]}>
-                    <LockScreen onUnlock={() => setIsLocked(false)} />
+                    <LockScreen 
+                        onUnlock={() => setIsLocked(false)} 
+                        onSignOut={() => {
+                            setIsLocked(false);
+                            signOut();
+                        }}
+                    />
                 </View>
             )}
         </View>

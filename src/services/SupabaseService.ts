@@ -282,7 +282,7 @@ export const SupabaseService = {
             // ── 2. Fetch the last 15 entries for actual analysis ──────────────
             const { data: entries, error: entriesErr } = await supabase
                 .from('entries')
-                .select('id, sentiment_score, mood_label, category, strategic_insight, created_at')
+                .select('id, sentiment_score, mood_label, category, strategic_insight, created_at, action_items')
                 .eq('user_id', userId)
                 .order('created_at', { ascending: false })
                 .limit(15);
@@ -330,14 +330,25 @@ export const SupabaseService = {
                 .sort((a, b) => b.count - a.count)
                 .slice(0, 3);
 
-            // ── 5. Open loops count ───────────────────────────────────────────
-            let openLoopsCount = 0;
-            const { count: loopsCount } = await supabase
+            // ── 5. Open loops count (HYBRID: New Table + Legacy JSON) ─────────
+            // a. Count from NEW relational table
+            const { count: newLoopsCount } = await supabase
                 .from('action_items')
                 .select('*', { count: 'exact', head: true })
                 .eq('user_id', userId)
                 .eq('is_completed', false);
-            openLoopsCount = loopsCount || 0;
+
+            // b. Count from OLD JSON column (legacy support for historical data)
+            let legacyLoopsCount = 0;
+            for (const e of entries) {
+                // If the entry has the legacy action_items array
+                if (e.action_items && Array.isArray(e.action_items)) {
+                    const open = e.action_items.filter((item: any) => !item.is_completed).length;
+                    legacyLoopsCount += open;
+                }
+            }
+
+            const openLoopsCount = (newLoopsCount || 0) + legacyLoopsCount;
 
             // ── 6. Avg sentiment last 7 days ──────────────────────────────────
             const sevenDaysAgo = new Date();
@@ -355,7 +366,7 @@ export const SupabaseService = {
                 recurringBiases,
                 openLoopsCount,
                 avgSentimentLast7Days,
-                totalEntries: totalEntriesCount,
+                totalEntries,
                 dataMaturity,
             };
         } catch (err: any) {
@@ -1030,6 +1041,27 @@ export const SupabaseService = {
         }
     },
 
+    /**
+     * Update the completion status of a single action item.
+     */
+    async updateActionItemStatus(itemId: string, isCompleted: boolean) {
+        try {
+            const { error } = await supabase
+                .from('action_items')
+                .update({ 
+                    is_completed: isCompleted,
+                    completed_at: isCompleted ? new Date().toISOString() : null
+                })
+                .eq('id', itemId);
+
+            if (error) throw error;
+            return true;
+        } catch (err: any) {
+            console.error('SUPABASE_SERVICE: updateActionItemStatus failed:', err.message);
+            return false;
+        }
+    },
+
     // ─── User Patterns ───────────────────────────────────────────────────────
 
     /**
@@ -1057,7 +1089,7 @@ export const SupabaseService = {
      * Fire-and-forget invocation of the analyze-patterns Edge Function.
      * Does not block — errors are logged but not thrown.
      */
-    async triggerPatternAnalysis(userId: string): Promise<void> {
+    async triggerPatternAnalysis(userId: string): Promise<boolean> {
         try {
             console.log('SUPABASE_SERVICE: Triggering pattern analysis for:', userId);
             const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/analyze-patterns`;
@@ -1077,10 +1109,54 @@ export const SupabaseService = {
             if (!response.ok) {
                 const errText = await response.text();
                 console.warn('SUPABASE_SERVICE: Pattern analysis invoke error:', errText);
-                throw new Error(`HTTP ${response.status}: ${errText}`);
+                return false;
             }
+            return true;
         } catch (err: any) {
             console.error('SUPABASE_SERVICE: FATAL - triggerPatternAnalysis crashed:', err.message);
+            return false;
+        }
+    },
+
+    // ─── Strategic Memory (Long-term Context) ────────────────────────────────
+
+    /**
+     * Fetches the user's persistent strategic profile.
+     */
+    async getStrategicProfile(userId: string) {
+        try {
+            const { data, error } = await supabase
+                .from('strategic_profiles')
+                .select('*')
+                .eq('user_id', userId)
+                .maybeSingle();
+
+            if (error) throw error;
+            return data;
+        } catch (err: any) {
+            console.error('SUPABASE_SERVICE: getStrategicProfile failed:', err.message);
+            return null;
+        }
+    },
+
+    /**
+     * Updates or creates the user's persistent strategic profile.
+     */
+    async updateStrategicProfile(userId: string, updates: any) {
+        try {
+            const { error } = await supabase
+                .from('strategic_profiles')
+                .upsert({
+                    user_id: userId,
+                    ...updates,
+                    last_updated_at: new Date().toISOString()
+                });
+
+            if (error) throw error;
+            return true;
+        } catch (err: any) {
+            console.error('SUPABASE_SERVICE: updateStrategicProfile failed:', err.message);
+            return false;
         }
     },
 };
