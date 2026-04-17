@@ -29,6 +29,14 @@ export const aiService = {
             ? await SupabaseService.getHistoricalContext(userId)
             : null;
 
+        // Attach strategic profile (long-term memory) so the Edge Function can use it
+        if (historicalContext && userId) {
+            const strategicProfile = await SupabaseService.getStrategicProfile(userId);
+            if (strategicProfile) {
+                (historicalContext as any).strategic_profile = strategicProfile;
+            }
+        }
+
         // ── Auto-trigger pattern analysis every 5 entries ─────────────────────
         if (
             userId &&

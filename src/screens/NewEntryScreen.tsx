@@ -134,7 +134,7 @@ const NewEntryScreen = () => {
       console.error('Save Error:', err);
       Alert.alert(
         'No se pudo guardar',
-        err?.message || 'Error desconocido. Intenta de nuevo.',
+        'Hubo un problema al analizar tu entrada. Verifica tu conexión e intenta de nuevo.',
         [{ text: 'Entendido' }]
       );
     } finally {

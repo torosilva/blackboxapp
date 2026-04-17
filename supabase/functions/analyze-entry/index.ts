@@ -210,7 +210,12 @@ Sé directo, clínico y sin relleno. Máximo 400 palabras.
       generationConfig: { response_mime_type: 'application/json', temperature: 0.7 }
     });
 
-    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}';
+    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawText) {
+      const finishReason = data?.candidates?.[0]?.finishReason ?? 'unknown';
+      const promptFeedback = data?.promptFeedback?.blockReason ?? null;
+      throw new Error(`Gemini returned no content. finishReason=${finishReason}${promptFeedback ? `, blocked=${promptFeedback}` : ''}`);
+    }
     const parsed = JSON.parse(rawText);
 
     // ─── Sanitize Category (Avoid DB Constraints violation) ──────────────

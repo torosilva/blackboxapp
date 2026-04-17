@@ -129,6 +129,7 @@ serve(async (req) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const now = new Date().toISOString();
 
     // 1. Fetch last 20 entries
     const { data: entries, error: entriesErr } = await supabase

@@ -216,13 +216,22 @@ const DashboardScreen = () => {
         Alert.alert(
             "Auditoría Estratégica",
             `Analizaremos tus ${stats.totalMemories} memorias para consolidar tu perfil cognitivo de largo plazo.`,
-            [{ text: "Iniciar Auditoría" }]
+            [
+                { text: "Cancelar", style: "cancel" },
+                {
+                    text: "Iniciar Auditoría",
+                    onPress: () => runPatternAnalysis()
+                }
+            ]
         );
+    };
 
+    const runPatternAnalysis = async () => {
+        if (!user || isAnalyzingPatterns) return;
         setIsAnalyzingPatterns(true);
         setAnalysisProgress(0);
         setAnalysisPhase("Iniciando conexión con núcleo estratégico...");
-        
+
         try {
             console.log('DASHBOARD: Strategic audit loop started...');
             
