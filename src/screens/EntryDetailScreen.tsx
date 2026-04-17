@@ -50,6 +50,11 @@ const EntryDetailScreen = () => {
 
   useEffect(() => {
     const loadEntry = async () => {
+      if (!entryId || entryId === 'undefined') {
+        console.error('EntryDetailScreen: received invalid entryId:', entryId);
+        setLoading(false);
+        return;
+      }
       try {
         const [data, items] = await Promise.all([
           SupabaseService.getEntryById(entryId),

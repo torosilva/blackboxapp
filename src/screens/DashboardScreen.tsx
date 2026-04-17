@@ -438,7 +438,7 @@ const DashboardScreen = () => {
                             </Text>
                             <TO 
                                 style={styles.interventionBtn}
-                                onPress={() => navigation.navigate('EntryDetail', { entryId: interventions[0].entryId })}
+                                onPress={() => navigation.navigate('EntryDetail', { entryId: interventions[0].entry_id })}
                             >
                                 <Text style={styles.interventionBtnText}>Resolver Ahora</Text>
                                 <ChevronRight size={14} color="#000" />
