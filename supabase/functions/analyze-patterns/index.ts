@@ -172,8 +172,8 @@ serve(async (req) => {
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             response_mime_type: "application/json",
-            temperature: 0.4,  // Low temp for factual pattern detection
-            maxOutputTokens: 1500,
+            temperature: 0.4,
+            maxOutputTokens: 8192,
           },
         }),
       }),
