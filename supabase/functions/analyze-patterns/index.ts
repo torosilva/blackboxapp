@@ -222,11 +222,28 @@ serve(async (req) => {
     }
 
     // 6. Upsert individual patterns into user_patterns table
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const VALID_TYPES = ["emotional", "procrastination", "cognitive_bias", "productivity"];
+
+    console.log(`[analyze-patterns] Gemini returned ${patterns.length} patterns, starting upsert...`);
+
     const upsertResults = [];
     for (const p of patterns.slice(0, 5)) {
-      if (!p.pattern_type || !p.title || !p.description) continue;
+      if (!p.pattern_type || !p.title || !p.description) {
+        console.warn("[analyze-patterns] Skipping pattern — missing required fields:", JSON.stringify(p));
+        continue;
+      }
 
-      const { data: existing } = await supabase
+      // Sanitize pattern_type against DB CHECK constraint
+      if (!VALID_TYPES.includes(p.pattern_type)) {
+        console.warn(`[analyze-patterns] Invalid pattern_type '${p.pattern_type}', mapping to cognitive_bias`);
+        p.pattern_type = "cognitive_bias";
+      }
+
+      // Sanitize supporting_entry_ids — only keep valid UUIDs
+      const safeEntryIds = (p.supporting_entry_ids ?? []).filter((id: string) => UUID_REGEX.test(id));
+
+      const { data: existing, error: selectErr } = await supabase
         .from("user_patterns")
         .select("id, frequency, first_seen_at")
         .eq("user_id", userId)
@@ -234,15 +251,20 @@ serve(async (req) => {
         .eq("title", p.title)
         .maybeSingle();
 
+      if (selectErr) {
+        console.error("[analyze-patterns] Select error (table may not exist):", selectErr.message);
+        continue;
+      }
+
       const row = {
         user_id: userId,
         pattern_type: p.pattern_type,
         title: p.title,
         description: p.description,
         frequency: existing ? existing.frequency + 1 : (p.frequency ?? 1),
-        first_seen_at: existing ? existing.first_seen_at : (existing?.first_seen_at || now),
+        first_seen_at: existing ? existing.first_seen_at : now,
         last_seen_at: now,
-        supporting_entry_ids: p.supporting_entry_ids ?? [],
+        supporting_entry_ids: safeEntryIds,
         is_active: true,
         updated_at: now,
       };
@@ -251,12 +273,14 @@ serve(async (req) => {
         ? await supabase.from("user_patterns").update(row).eq("id", existing.id).select().single()
         : await supabase.from("user_patterns").insert({ ...row, created_at: now }).select().single();
 
-      if (!upsertErr) {
+      if (upsertErr) {
+        console.error(`[analyze-patterns] Upsert error for pattern '${p.title}':`, upsertErr.message);
+      } else {
         upsertResults.push(upserted);
       }
     }
 
-    console.log(`[analyze-patterns] Upserted ${upsertResults.length} patterns for user ${userId}`);
+    console.log(`[analyze-patterns] Done — ${upsertResults.length}/${patterns.length} patterns saved for ${userId}`);
 
     return new Response(JSON.stringify({ patterns: upsertResults, count: upsertResults.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
