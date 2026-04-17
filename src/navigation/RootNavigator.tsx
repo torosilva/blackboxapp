@@ -21,6 +21,7 @@ import TermsScreen from '../screens/TermsScreen';
 import PrivacyScreen from '../screens/PrivacyScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import ChatHubScreen from '../screens/ChatHubScreen';
+import MainTabNavigator from './MainTabNavigator';
 import ForgotPasswordScreen from '../auth/ForgotPasswordScreen';
 import FeedbackHistoryScreen from '../screens/FeedbackHistoryScreen';
 import QuickCaptureScreen from '../screens/QuickCaptureScreen';
@@ -100,6 +101,9 @@ function AppNavigator() {
             {user ? (
                 // === RUTAS PRIVADAS (Si está logueado) ===
                 <React.Fragment>
+                    {/* ── Main shell (tabs) — always first so it's the default route ── */}
+                    <Stack.Screen name="Main" component={MainTabNavigator as any} />
+                    {/* ── Detail screens pushed on top of tabs ── */}
                     <Stack.Screen name="Dashboard" component={DashboardScreen as any} />
                     <Stack.Screen name="QuickCapture" component={QuickCaptureScreen as any} />
                     <Stack.Screen name="Home" component={HomeScreen as any} />

@@ -2,6 +2,7 @@ export type RootStackParamList = {
     Login: undefined;
     SignUp: undefined;
     Onboarding: undefined;
+    Main: undefined;
     Dashboard: undefined;
     Home: undefined;
     MainTabs: undefined;
