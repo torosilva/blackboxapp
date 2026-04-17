@@ -212,7 +212,7 @@ const HomeScreen = () => {
       setSummary(res);
 
       // 3. Save to cache ONLY IF it's a real result (not the fallback)
-      const isNewFallback = res.summary.includes("Analizando rendimiento");
+      const isNewFallback = (res.summary || '').includes("Analizando rendimiento");
       if (!isNewFallback) {
         await SupabaseService.saveCachedInsight(user.id, 'daily', fingerprint, res);
       }

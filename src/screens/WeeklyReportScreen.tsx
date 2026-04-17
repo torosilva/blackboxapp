@@ -148,9 +148,9 @@ const WeeklyReportScreen = ({ route }: any) => {
                 setReport(markdown);
 
                 // 4. Save to persistent cache ONLY IF it's a real report
-                const isNewError = markdown.includes("Reseteando cuota") ||
-                    markdown.includes("Error al generar") ||
-                    markdown.includes("No se pudo generar");
+                const isNewError = (markdown || '').includes("Reseteando cuota") ||
+                    (markdown || '').includes("Error al generar") ||
+                    (markdown || '').includes("No se pudo generar");
                 if (!isNewError) {
                     await SupabaseService.saveCachedInsight(user.id, 'weekly', fingerprint, {
                         metrics: currentMetrics,

@@ -1,5 +1,4 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Edit3, LayoutDashboard, BarChart2, MessageCircle, ShieldAlert } from 'lucide-react-native';
 
@@ -10,12 +9,6 @@ import ChatHubScreen from '../screens/ChatHubScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 
 const Tab = createBottomTabNavigator();
-
-// WeeklyReport needs a date param — wrap with today's date as default
-const ReporteTab = () => <WeeklyReportScreen route={{ params: { reportEndDate: new Date().toISOString() } } as any} />;
-
-// Settings focused on interventions
-const IntervencionTab = () => <SettingsScreen route={{ params: { initialViewMode: 'biases' } } as any} />;
 
 const ACTIVE = '#818cf8';
 const INACTIVE = '#334155';
@@ -64,7 +57,7 @@ export default function MainTabNavigator() {
             />
             <Tab.Screen
                 name="Reporte"
-                component={ReporteTab}
+                component={WeeklyReportScreen as any}
                 options={{
                     tabBarLabel: 'Reporte',
                     tabBarIcon: ({ color }) => <BarChart2 size={20} color={color} strokeWidth={2} />,
@@ -80,7 +73,8 @@ export default function MainTabNavigator() {
             />
             <Tab.Screen
                 name="Intervencion"
-                component={IntervencionTab}
+                component={SettingsScreen as any}
+                initialParams={{ initialViewMode: 'biases' }}
                 options={{
                     tabBarLabel: 'Intervención',
                     tabBarIcon: ({ color }) => <ShieldAlert size={20} color={color} strokeWidth={2} />,
