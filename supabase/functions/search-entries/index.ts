@@ -5,12 +5,21 @@ import { withRetry, fetchWithStatus } from "../_shared/retry.ts";
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const EMBED_MODEL = "text-embedding-004";
+const EMBED_MODEL = "gemini-embedding-001";
+const EMBED_DIMS = 768;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+function l2normalize(v: number[]): number[] {
+  let sum = 0;
+  for (const x of v) sum += x * x;
+  const norm = Math.sqrt(sum);
+  if (norm === 0) return v;
+  return v.map((x) => x / norm);
+}
 
 async function embedQuery(text: string): Promise<number[]> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${EMBED_MODEL}:embedContent?key=${GEMINI_API_KEY}`;
@@ -21,7 +30,7 @@ async function embedQuery(text: string): Promise<number[]> {
       body: JSON.stringify({
         model: `models/${EMBED_MODEL}`,
         content: { parts: [{ text }] },
-        // Optional: bias the embedding for retrieval queries (vs storage)
+        outputDimensionality: EMBED_DIMS,
         taskType: "RETRIEVAL_QUERY",
       }),
     }),
@@ -30,7 +39,7 @@ async function embedQuery(text: string): Promise<number[]> {
   const data: any = await res.json();
   const values: number[] | undefined = data?.embedding?.values;
   if (!values || values.length === 0) throw new Error("No embedding values returned");
-  return values;
+  return l2normalize(values);
 }
 
 serve(async (req) => {

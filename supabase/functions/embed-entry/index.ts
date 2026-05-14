@@ -5,7 +5,16 @@ import { withRetry, fetchWithStatus } from "../_shared/retry.ts";
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const EMBED_MODEL = "text-embedding-004";
+const EMBED_MODEL = "gemini-embedding-001";
+const EMBED_DIMS = 768;
+
+function l2normalize(v: number[]): number[] {
+  let sum = 0;
+  for (const x of v) sum += x * x;
+  const norm = Math.sqrt(sum);
+  if (norm === 0) return v;
+  return v.map((x) => x / norm);
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,6 +33,7 @@ export async function embedText(text: string): Promise<number[]> {
       body: JSON.stringify({
         model: `models/${EMBED_MODEL}`,
         content: { parts: [{ text }] },
+        outputDimensionality: EMBED_DIMS,
       }),
     }),
     { maxAttempts: 3, baseDelayMs: 500 },
@@ -34,7 +44,7 @@ export async function embedText(text: string): Promise<number[]> {
   if (!values || values.length === 0) {
     throw new Error("Gemini returned no embedding values");
   }
-  return values;
+  return l2normalize(values);
 }
 
 // Builds a single text blob from an entry, prioritizing the user's own words.
