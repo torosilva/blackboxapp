@@ -211,10 +211,80 @@ export const SupabaseService = {
                 throw error;
             }
             console.log('SUPABASE_SERVICE: Entry created successfully');
+
+            // Fire-and-forget: generate semantic embedding for the new entry
+            if (data?.id) {
+                SupabaseService.triggerEntryEmbedding(data.id, entry.original_text || entry.content)
+                    .catch(e => console.warn('SUPABASE_SERVICE: embed-entry trigger failed:', e?.message));
+            }
+
             return data;
         } catch (error: any) {
             console.error('SUPABASE_SERVICE: Database Insert Failed:', error.message || error);
             throw error;
+        }
+    },
+
+    /**
+     * Fire-and-forget: invoke embed-entry to generate semantic embedding for a new entry.
+     * Called automatically from createEntry; safe to call manually for retries.
+     */
+    async triggerEntryEmbedding(entryId: string, text?: string): Promise<void> {
+        try {
+            const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/embed-entry`;
+            const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+            const token = getGlobalAccessToken();
+            await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': anonKey,
+                    'Authorization': `Bearer ${token || anonKey}`,
+                },
+                body: JSON.stringify({ entryId, text }),
+            });
+        } catch (e: any) {
+            // Swallow — embedding is non-critical, can be backfilled later
+            console.warn('SUPABASE_SERVICE: triggerEntryEmbedding error:', e?.message);
+        }
+    },
+
+    /**
+     * Semantic search over the user's entries using cosine similarity on embeddings.
+     * Returns entries ranked by relevance, not exact text match.
+     */
+    async semanticSearch(userId: string, query: string, opts?: { threshold?: number; limit?: number }): Promise<any[]> {
+        if (!query?.trim() || !userId) return [];
+        try {
+            const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/search-entries`;
+            const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+            const token = getGlobalAccessToken();
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': anonKey,
+                    'Authorization': `Bearer ${token || anonKey}`,
+                },
+                body: JSON.stringify({
+                    userId,
+                    query,
+                    threshold: opts?.threshold ?? 0.5,
+                    limit: opts?.limit ?? 20,
+                }),
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                console.warn(`SUPABASE_SERVICE: semantic search HTTP ${response.status}: ${errText}`);
+                return [];
+            }
+            const data = await response.json();
+            return data?.results ?? [];
+        } catch (e: any) {
+            console.warn('SUPABASE_SERVICE: semanticSearch error:', e?.message);
+            return [];
         }
     },
 

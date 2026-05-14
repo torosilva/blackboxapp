@@ -79,7 +79,10 @@ const HomeScreen = () => {
   const [lastEntriesFingerprint, setLastEntriesFingerprint] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [showSearch, setShowSearch] = useState(false); // NEW: Independent search visibility
+  const [semanticResults, setSemanticResults] = useState<any[] | null>(null);
+  const [semanticLoading, setSemanticLoading] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
+  const semanticDebounceRef = useRef<any>(null);
   const isFocused = useIsFocused();
   // Lock to prevent duplicate concurrent Gemini calls
   const summaryLockRef = useRef(false);
@@ -90,6 +93,32 @@ const HomeScreen = () => {
       fetchData();
     }
   }, [isFocused, user]);
+
+  // Semantic search — debounced. Fires when user types ≥3 chars and pauses 500ms.
+  useEffect(() => {
+    if (semanticDebounceRef.current) clearTimeout(semanticDebounceRef.current);
+
+    const q = searchQuery.trim();
+    if (!user || q.length < 3) {
+      setSemanticResults(null);
+      setSemanticLoading(false);
+      return;
+    }
+
+    setSemanticLoading(true);
+    semanticDebounceRef.current = setTimeout(async () => {
+      try {
+        const results = await SupabaseService.semanticSearch(user.id, q);
+        setSemanticResults(results);
+      } finally {
+        setSemanticLoading(false);
+      }
+    }, 500);
+
+    return () => {
+      if (semanticDebounceRef.current) clearTimeout(semanticDebounceRef.current);
+    };
+  }, [searchQuery, user]);
 
   // PULSING BRAIN ANIMATION
   const brainPulse = useSharedValue(1);
@@ -328,13 +357,27 @@ const HomeScreen = () => {
 
   const filterCounts = getFilteredCounts();
 
+  // Semantic search active when query ≥3 chars AND we have results back.
+  // Maps semanticResults (ids only) back to full entries so card UI works.
+  const semanticActive = searchQuery.trim().length >= 3 && semanticResults !== null;
+  const semanticIds = new Set((semanticResults ?? []).map((r: any) => r.id));
+
   const filteredEntries = entries.filter(e => {
-    const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = (e.title || '').toLowerCase().includes(searchLower) ||
-      (e.content || '').toLowerCase().includes(searchLower) ||
-      (e.mood_label || '').toLowerCase().includes(searchLower) ||
-      (e.category || '').toLowerCase().includes(searchLower) ||
-      (Array.isArray(e.action_items) && e.action_items.some((ai: any) => (ai.task || ai.description || '').toLowerCase().includes(searchLower)));
+    let matchesSearch = true;
+
+    if (semanticActive) {
+      // When semantic search is on, ignore substring match — trust embeddings.
+      matchesSearch = semanticIds.has(e.id);
+    } else {
+      // Fallback: substring match for short queries (<3 chars) or before semantic returns.
+      const searchLower = searchQuery.toLowerCase();
+      matchesSearch = !searchLower ||
+        (e.title || '').toLowerCase().includes(searchLower) ||
+        (e.content || '').toLowerCase().includes(searchLower) ||
+        (e.mood_label || '').toLowerCase().includes(searchLower) ||
+        (e.category || '').toLowerCase().includes(searchLower) ||
+        (Array.isArray(e.action_items) && e.action_items.some((ai: any) => (ai.task || ai.description || '').toLowerCase().includes(searchLower)));
+    }
 
     if (!matchesSearch) return false;
 
@@ -427,13 +470,28 @@ const HomeScreen = () => {
             <TextInput
               ref={searchInputRef}
               style={styles.searchInput}
-              placeholder="Explorar memorias..."
+              placeholder={semanticActive ? "Búsqueda semántica activa" : "Explorar memorias..."}
               placeholderTextColor="#94a3b8"
               value={searchQuery}
               onChangeText={(text: any) => {
                 setSearchQuery(text);
               }}
             />
+
+            {semanticLoading && (
+              <ActivityIndicator size="small" color="#a855f7" style={{ marginRight: 8 }} />
+            )}
+            {semanticActive && !semanticLoading && (
+              <View style={{
+                backgroundColor: 'rgba(168, 85, 247, 0.15)',
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+                borderRadius: 6,
+                marginRight: 8,
+              }}>
+                <Text style={{ color: '#a855f7', fontSize: 10, fontWeight: '700' }}>SEMÁNTICA</Text>
+              </View>
+            )}
 
             <TO
               style={[styles.miniFilterBtn, (activeFilter !== 'all' || showFilters) && styles.miniFilterBtnActive]}
