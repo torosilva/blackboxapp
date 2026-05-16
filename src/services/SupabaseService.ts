@@ -172,6 +172,7 @@ export const SupabaseService = {
         audio_url: string | null;
         original_text: string;
         category?: string;
+        suggested_goals?: string[];
     }) {
         try {
             console.log('SUPABASE_SERVICE: Inserting entry to DB with Active Loops...');
@@ -220,6 +221,10 @@ export const SupabaseService = {
                 // closeable and show up in the Loops inbox.
                 SupabaseService.syncEntryActionItems(entry.user_id, data.id, entry.action_items, 'create')
                     .catch(e => console.warn('SUPABASE_SERVICE: syncEntryActionItems failed:', e?.message));
+                if (entry.suggested_goals?.length) {
+                    SupabaseService.syncSuggestedGoals(entry.user_id, entry.suggested_goals, entry.title)
+                        .catch(e => console.warn('SUPABASE_SERVICE: syncSuggestedGoals failed:', e?.message));
+                }
             }
 
             return data;
@@ -915,6 +920,38 @@ export const SupabaseService = {
         } catch (error: any) {
             console.error('SUPABASE_SERVICE: Error fetching goals', error);
             return [];
+        }
+    },
+
+    // Centralized: turn analyze-entry's suggested_goals into Goal rows for
+    // ANY memoria (chat or journal). Dedupes against existing goals by
+    // lowercased title so re-summarizing a chat never duplicates.
+    async syncSuggestedGoals(userId: string, goals: any[], sourceTitle?: string) {
+        if (!userId || !Array.isArray(goals) || goals.length === 0) return 0;
+        try {
+            const existing = await SupabaseService.getGoals(userId);
+            const seen = new Set(
+                (existing || []).map((g: any) => String(g.title).trim().toLowerCase()),
+            );
+            const rows = goals
+                .map((g) => (typeof g === 'string' ? g : g?.title ?? '').toString().trim())
+                .filter((t) => t.length > 0 && !seen.has(t.toLowerCase()))
+                .map((title) => ({
+                    user_id: userId,
+                    title,
+                    description: sourceTitle ? `Detectada en: ${sourceTitle}` : 'Detectada automáticamente',
+                    category: 'PERSONAL',
+                }));
+            if (rows.length === 0) return 0;
+            const { error } = await supabase.from('goals').insert(rows);
+            if (error) {
+                console.warn('SUPABASE_SERVICE: syncSuggestedGoals insert failed:', error.message);
+                return 0;
+            }
+            return rows.length;
+        } catch (e: any) {
+            console.warn('SUPABASE_SERVICE: syncSuggestedGoals failed:', e?.message);
+            return 0;
         }
     },
 

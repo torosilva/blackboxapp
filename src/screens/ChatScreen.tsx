@@ -49,6 +49,7 @@ const ChatScreen = () => {
     // Message count included in the last memoria write — used to know when
     // there are new turns the user could push with "Actualizar".
     const [memorySyncedLen, setMemorySyncedLen] = useState(0);
+    const [memoryGoalsCount, setMemoryGoalsCount] = useState(0);
 
     const fullName = profile?.full_name || user?.email?.split('@')[0] || 'Explorador';
 
@@ -221,10 +222,12 @@ const ChatScreen = () => {
                 audio_url: null,
                 original_text: a.original_text || seedText,
                 category: a.category || 'PERSONAL',
+                suggested_goals: a.suggested_goals,
             });
             if (entry?.id) {
                 memoryEntryIdRef.current = entry.id;
                 await SupabaseService.linkThreadEntry(threadId, entry.id);
+                setMemoryGoalsCount(Array.isArray(a.suggested_goals) ? a.suggested_goals.length : 0);
                 setMemorySyncedLen(messagesRef.current.length);
                 setMemoryState('saved');
             } else {
@@ -373,7 +376,7 @@ const ChatScreen = () => {
                         {memoryState === 'updating' && 'Actualizando memoria…'}
                         {memoryState === 'saved' && (memoryHasNew
                             ? 'Guardado como memoria · hay mensajes nuevos'
-                            : 'Guardado como memoria ✓')}
+                            : `Guardado como memoria ✓${memoryGoalsCount > 0 ? ` · ${memoryGoalsCount} meta${memoryGoalsCount > 1 ? 's' : ''} detectada${memoryGoalsCount > 1 ? 's' : ''}` : ''}`)}
                     </Text>
                     {memoryState === 'saved' && memoryHasNew && (
                         <TO onPress={syncMemory} style={styles.memoryBannerBtn}>
