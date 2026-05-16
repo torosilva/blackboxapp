@@ -41,11 +41,14 @@ const ChatScreen = () => {
     const memoryEntryIdRef = useRef<string | null>(null);
     const memoryCreatingRef = useRef(false);
     const memorySyncingRef = useRef(false);
+    // Whether the journal-vs-assist decision has been made for this session.
+    const memoryDecidedRef = useRef(false);
     const messagesRef = useRef<ChatMessage[]>([]);
     useEffect(() => { messagesRef.current = messages; }, [messages]);
-    // 'none' before any save; 'saving' first write; 'saved' persisted;
-    // 'updating' while re-syncing the full conversation.
-    const [memoryState, setMemoryState] = useState<'none' | 'saving' | 'saved' | 'updating'>('none');
+    // none: pre-exchange · classifying: deciding journal vs assist ·
+    // assist: kept only in chat history · ask: user must decide ·
+    // saving/updating: writing · saved: persisted memoria.
+    const [memoryState, setMemoryState] = useState<'none' | 'classifying' | 'assist' | 'ask' | 'saving' | 'saved' | 'updating'>('none');
     // Message count included in the last memoria write — used to know when
     // there are new turns the user could push with "Actualizar".
     const [memorySyncedLen, setMemorySyncedLen] = useState(0);
@@ -201,15 +204,15 @@ const ChatScreen = () => {
         }
     };
 
-    // Fail-safe: turn the conversation's first user message into a memoria
-    // and link it to this thread, so it's never lost and reopening the
-    // thread updates the same entry instead of duplicating. Therapy chats
-    // are excluded — they already own a journal entry.
-    const ensureMemory = async () => {
+    // Create the memoria from the conversation and link it to this thread.
+    // Called automatically when classified as "journal", or manually when
+    // the user promotes an assist chat. Therapy chats are excluded.
+    const createMemoria = async () => {
         if (memoryEntryIdRef.current || memoryCreatingRef.current) return;
         if (!user || !threadId || isTherapyMode || !isPro) return;
         const seedText = messagesRef.current.find((m) => m.role === 'user')?.parts[0]?.text ?? '';
         if (!seedText.trim()) return;
+        memoryDecidedRef.current = true;
         memoryCreatingRef.current = true;
         setMemoryState('saving');
         try {
@@ -236,13 +239,35 @@ const ChatScreen = () => {
                 setMemorySyncedLen(messagesRef.current.length);
                 setMemoryState('saved');
             } else {
-                setMemoryState('none');
+                setMemoryState('ask');
             }
         } catch (e: any) {
-            console.warn('CHAT_MEMORY: ensureMemory failed:', e?.message);
-            setMemoryState('none');
+            console.warn('CHAT_MEMORY: createMemoria failed:', e?.message);
+            setMemoryState('ask');
         } finally {
             memoryCreatingRef.current = false;
+        }
+    };
+
+    // Classify the conversation once an exchange exists: journal → save;
+    // assist → keep only in chat history; uncertain → ask the user.
+    const decideMemoria = async () => {
+        if (memoryEntryIdRef.current || memoryDecidedRef.current || memoryCreatingRef.current) return;
+        if (!user || !threadId || isTherapyMode || !isPro) return;
+        const msgs = messagesRef.current;
+        if (!msgs.some(m => m.role === 'user') || !msgs.some(m => m.role === 'model')) return;
+        memoryDecidedRef.current = true;
+        setMemoryState('classifying');
+        const transcript = msgs
+            .map(m => `${m.role === 'user' ? 'Usuario' : 'BLACKBOX'}: ${m.parts[0]?.text ?? ''}`)
+            .join('\n\n');
+        const kind = await SupabaseService.classifyThread(transcript);
+        if (kind === 'journal') {
+            await createMemoria();
+        } else if (kind === 'assist') {
+            setMemoryState('assist');
+        } else {
+            setMemoryState('ask');
         }
     };
 
@@ -300,15 +325,17 @@ const ChatScreen = () => {
         );
     }, [fetchingHistory, initialMessage, isPro, isTherapyMode]);
 
-    // Once the conversation has a user message, ensure a linked memoria
-    // exists (covers both home chats and reopened Hub threads).
+    // After the first user↔AI exchange, classify the chat (journal vs
+    // assist) and act. Skipped if the thread is already a linked memoria.
     useEffect(() => {
         if (fetchingHistory) return;
-        if (memoryEntryIdRef.current || memoryCreatingRef.current) return;
-        if (messages.some((m) => m.role === 'user')) {
-            ensureMemory(); // background, not awaited
+        if (memoryEntryIdRef.current || memoryDecidedRef.current || memoryCreatingRef.current) return;
+        const firstUserIdx = messages.findIndex((m) => m.role === 'user');
+        const hasReply = firstUserIdx >= 0 && messages.some((m, i) => m.role === 'model' && i > firstUserIdx);
+        if (hasReply && !loading) {
+            decideMemoria(); // background, not awaited
         }
-    }, [fetchingHistory, messages]);
+    }, [fetchingHistory, messages, loading]);
 
     useEffect(() => {
         const unsub = navigation.addListener('beforeRemove', () => {
@@ -378,12 +405,15 @@ const ChatScreen = () => {
 
             {memoryState !== 'none' && (
                 <View style={styles.memoryBanner}>
-                    {(memoryState === 'saving' || memoryState === 'updating') && (
+                    {(memoryState === 'saving' || memoryState === 'updating' || memoryState === 'classifying') && (
                         <ActivityIndicator size="small" color="#a855f7" style={{ marginRight: 8 }} />
                     )}
                     <Text style={styles.memoryBannerText}>
+                        {memoryState === 'classifying' && 'Analizando…'}
                         {memoryState === 'saving' && 'Guardando como memoria…'}
                         {memoryState === 'updating' && 'Actualizando memoria…'}
+                        {memoryState === 'assist' && 'Solo en historial de chats'}
+                        {memoryState === 'ask' && '¿Guardar esto como memoria?'}
                         {memoryState === 'saved' && (memoryHasNew
                             ? 'Guardado como memoria · hay mensajes nuevos'
                             : `Guardado como memoria ✓${memoryGoalsCount > 0 ? ` · ${memoryGoalsCount} meta${memoryGoalsCount > 1 ? 's' : ''} detectada${memoryGoalsCount > 1 ? 's' : ''}` : ''}`)}
@@ -392,6 +422,21 @@ const ChatScreen = () => {
                         <TO onPress={syncMemory} style={styles.memoryBannerBtn}>
                             <Text style={styles.memoryBannerBtnText}>Actualizar</Text>
                         </TO>
+                    )}
+                    {memoryState === 'assist' && (
+                        <TO onPress={createMemoria} style={styles.memoryBannerBtn}>
+                            <Text style={styles.memoryBannerBtnText}>Guardar como memoria</Text>
+                        </TO>
+                    )}
+                    {memoryState === 'ask' && (
+                        <>
+                            <TO onPress={createMemoria} style={styles.memoryBannerBtn}>
+                                <Text style={styles.memoryBannerBtnText}>Sí, memoria</Text>
+                            </TO>
+                            <TO onPress={() => setMemoryState('assist')} style={styles.memoryBannerBtnGhost}>
+                                <Text style={styles.memoryBannerBtnGhostText}>Solo historial</Text>
+                            </TO>
+                        </>
                     )}
                 </View>
             )}
@@ -517,6 +562,15 @@ const styles = StyleSheet.create({
         marginLeft: 8,
     },
     memoryBannerBtnText: { color: 'white', fontSize: 12, fontWeight: '900' },
+    memoryBannerBtnGhost: {
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        marginLeft: 6,
+        borderWidth: 1,
+        borderColor: 'rgba(196,181,253,0.4)',
+    },
+    memoryBannerBtnGhostText: { color: '#c4b5fd', fontSize: 12, fontWeight: '800' },
     chatContainer: { flex: 1 },
     chatContent: { padding: 20, paddingBottom: 100 },
     messageWrapper: { marginBottom: 20, width: '100%', flexDirection: 'row' },

@@ -1,6 +1,15 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import { Platform } from 'react-native';
+import { Platform, LogBox } from 'react-native';
+
+// Expo Go (SDK 53+) removed remote push on Android and emits a red LogBox
+// error on import/use. Our notifications are LOCAL and unaffected — silence
+// only this known message so it stops alarming the user.
+LogBox.ignoreLogs([
+    'expo-notifications: Android Push notifications',
+    'Android Push notifications (remote notifications)',
+    '`expo-notifications` functionality is not fully supported in Expo Go',
+]);
 
 // Configure how notifications are handled when the app is foregrounded
 Notifications.setNotificationHandler({

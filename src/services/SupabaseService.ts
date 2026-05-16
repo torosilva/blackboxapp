@@ -234,6 +234,31 @@ export const SupabaseService = {
         }
     },
 
+    // Classifies a chat as a journal memoria vs a one-off assist query.
+    // Returns 'uncertain' on any failure so the UI asks the user.
+    async classifyThread(transcript: string): Promise<'journal' | 'assist' | 'uncertain'> {
+        try {
+            const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/classify-thread`;
+            const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+            const token = getGlobalAccessToken();
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': anonKey,
+                    'Authorization': `Bearer ${token || anonKey}`,
+                },
+                body: JSON.stringify({ transcript }),
+            });
+            if (!res.ok) return 'uncertain';
+            const data = await res.json();
+            return (['journal', 'assist', 'uncertain'].includes(data?.kind) ? data.kind : 'uncertain');
+        } catch (e: any) {
+            console.warn('SUPABASE_SERVICE: classifyThread failed:', e?.message);
+            return 'uncertain';
+        }
+    },
+
     // Mirrors AI-generated action items into the normalized action_items
     // table. 'create' inserts all; 'merge' inserts only tasks not already
     // present for the entry, so existing rows (and their is_completed
