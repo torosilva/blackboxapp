@@ -14,6 +14,7 @@ import { useAuth } from '../context/AuthContext';
 import { voiceService } from '../services/voice';
 import { SupabaseService } from '../services/SupabaseService';
 import AILoadingOverlay from '../components/AILoadingOverlay';
+import WelcomeModal from '../components/WelcomeModal';
 
 const CaptureScreen = () => {
     const navigation = useNavigation<any>();
@@ -316,6 +317,8 @@ const CaptureScreen = () => {
                 visible={loading || isTranscribing}
                 message={isTranscribing ? 'Transcribiendo audio...' : 'Ingresando a tu BlackboxMind...'}
             />
+
+            <WelcomeModal />
         </SAV>
     );
 };
