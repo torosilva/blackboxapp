@@ -133,16 +133,33 @@ const HomeScreen = () => {
     );
   }, []);
 
-  // NOTIFICATION INITIALIZATION
+  const [streak, setStreak] = useState(0);
+
+  // NOTIFICATION INITIALIZATION + retention hooks (streak, smart 9PM, weekly)
   useEffect(() => {
     const initNotifications = async () => {
       const hasPermission = await NotificationService.registerForPushNotificationsAsync();
+      if (!user) return;
+
+      const [{ streak: s, hasEntryToday }, openLoops] = await Promise.all([
+        SupabaseService.getStreakInfo(user.id),
+        SupabaseService.getOpenActionItems(user.id),
+      ]);
+      setStreak(s);
+
       if (hasPermission) {
         await NotificationService.scheduleEngagementNotifications();
+        const topLoop = (openLoops || []).find((l: any) => l.priority === 'HIGH') || (openLoops || [])[0];
+        await NotificationService.scheduleSmartDailyReminder({
+          streak: s,
+          hasEntryToday,
+          topLoopTitle: topLoop?.task ?? null,
+        });
+        await NotificationService.scheduleWeeklyReport();
       }
     };
     initNotifications();
-  }, []);
+  }, [user]);
 
 
   const animatedBrainStyle = useAnimatedStyle(() => ({
@@ -447,6 +464,11 @@ const HomeScreen = () => {
           />
           {showSearch && <View style={styles.searchIndicator} />}
         </TO>
+        {streak >= 2 && (
+          <View style={styles.streakChip}>
+            <Text style={styles.streakText}>🔥 {streak}</Text>
+          </View>
+        )}
         <TO
           style={styles.iconButton}
           onPress={() => navigation.navigate('Loops')}
@@ -713,6 +735,8 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 10 : 15,
     paddingBottom: 15
   },
+  streakChip: { backgroundColor: 'rgba(249,115,22,0.15)', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4, marginRight: 4, alignSelf: 'center' },
+  streakText: { color: '#fb923c', fontSize: 12, fontWeight: '900' },
   dateText: { color: '#6366f1', fontSize: 12, fontWeight: '800', letterSpacing: 1.5, marginBottom: 4 },
   logoCenterContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   headerLogo: { width: 280, height: 100 },

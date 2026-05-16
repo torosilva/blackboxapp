@@ -907,6 +907,44 @@ export const SupabaseService = {
     /**
      * 10. Strategic Goals
      */
+    // Consecutive-day streak based on entry dates (UTC day keys). The
+    // streak stays "alive" through today even if today has no entry yet,
+    // so the nudge can say "don't break your 5-day streak".
+    async getStreakInfo(userId: string): Promise<{ streak: number; hasEntryToday: boolean }> {
+        try {
+            const { data } = await supabase
+                .from('entries')
+                .select('created_at')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false })
+                .limit(200);
+            const days = new Set(
+                (data || [])
+                    .map((e: any) => (e.created_at ? new Date(e.created_at).toISOString().slice(0, 10) : null))
+                    .filter(Boolean) as string[],
+            );
+            if (days.size === 0) return { streak: 0, hasEntryToday: false };
+
+            const dayKey = (d: Date) => d.toISOString().slice(0, 10);
+            const today = new Date();
+            const hasEntryToday = days.has(dayKey(today));
+
+            // Start from today if logged today, else yesterday (grace day).
+            const cursor = new Date(today);
+            if (!hasEntryToday) cursor.setUTCDate(cursor.getUTCDate() - 1);
+
+            let streak = 0;
+            while (days.has(dayKey(cursor))) {
+                streak++;
+                cursor.setUTCDate(cursor.getUTCDate() - 1);
+            }
+            return { streak, hasEntryToday };
+        } catch (e: any) {
+            console.warn('SUPABASE_SERVICE: getStreakInfo failed:', e?.message);
+            return { streak: 0, hasEntryToday: false };
+        }
+    },
+
     async getGoals(userId: string) {
         try {
             const { data, error } = await supabase
