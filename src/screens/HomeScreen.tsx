@@ -472,8 +472,18 @@ const HomeScreen = () => {
       <View style={styles.header}>
         <TO
           style={styles.iconButton}
-          onPress={() => navigation.navigate('Main')}
-          accessibilityLabel="Volver a captura"
+          onPress={() => {
+            // Back peels one layer: category drill / filter / search → overview;
+            // only from the overview does it exit to the capture screen.
+            if (isCategoryDrill || activeFilter !== 'all' || searchQuery.trim()) {
+              setActiveFilter('all');
+              setSearchQuery('');
+              setShowFilters(false);
+            } else {
+              navigation.navigate('Main');
+            }
+          }}
+          accessibilityLabel="Volver"
         >
           <ChevronLeft size={24} color="#94a3b8" />
         </TO>
@@ -716,6 +726,7 @@ const HomeScreen = () => {
               </>
             )}
             <Text style={styles.overviewLabel}>POR CATEGORÍA</Text>
+            <Text style={styles.overviewHint}>El número es el ánimo promedio (−1 a +1) · ▲ positivo · ▼ negativo · ■ neutral</Text>
             {categoryGroups.map((g: any) => {
               const m = catMeta(g.key);
               const avg = g.sentN ? g.sentSum / g.sentN : 0;
@@ -921,7 +932,8 @@ const styles = StyleSheet.create({
   catPillText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
   backToCats: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, alignSelf: 'flex-start' },
   backToCatsText: { color: '#94a3b8', fontSize: 13, fontWeight: '700', marginLeft: 4 },
-  overviewLabel: { color: '#6366f1', fontSize: 11, fontWeight: '900', letterSpacing: 2, marginBottom: 12, marginTop: 4 },
+  overviewLabel: { color: '#6366f1', fontSize: 11, fontWeight: '900', letterSpacing: 2, marginBottom: 6, marginTop: 4 },
+  overviewHint: { color: '#64748b', fontSize: 11, fontWeight: '600', marginBottom: 12, lineHeight: 15 },
   recentChip: { width: 150, padding: 14, borderRadius: 16, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.03)', marginRight: 10 },
   recentChipCat: { fontSize: 9, fontWeight: '900', letterSpacing: 1, marginBottom: 6 },
   recentChipTitle: { color: '#e2e8f0', fontSize: 13, fontWeight: '700', lineHeight: 17, minHeight: 34 },
