@@ -297,8 +297,9 @@ serve(async (req) => {
       { role: 'user' as const, content: userMessage },
     ];
 
-    // System prompt with prompt caching on the static block.
-    // The static rules don't change per-call → cache them. Dynamic context comes after.
+    // Two cache breakpoints: the static rules (reused across all users)
+    // and the static+dynamic prefix (strategic_profile + historical
+    // context + loops — stable within a chat session, reused turn-to-turn).
     const payload = {
       model: MODEL_NAME,
       max_tokens: therapyMode ? 600 : 1500,
@@ -312,6 +313,7 @@ serve(async (req) => {
         {
           type: 'text',
           text: dynamicBlock,
+          cache_control: { type: 'ephemeral' },
         },
       ],
       messages,

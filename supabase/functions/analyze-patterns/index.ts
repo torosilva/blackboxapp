@@ -1,11 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { withRetry, fetchWithStatus } from "../_shared/retry.ts";
+import { callClaude, parseJsonLoose } from "../_shared/claude.ts";
 
-const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const MODEL_NAME = 'gemini-2.5-flash';
+// Opus 4.7: deepest reasoning, used for longitudinal pattern synthesis.
+const MODEL_NAME = 'claude-opus-4-7';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -31,7 +32,7 @@ interface StrategicProfile {
   identified_biases: string[];
 }
 
-interface GeminiPattern {
+interface DetectedPattern {
   pattern_type: "emotional" | "procrastination" | "cognitive_bias" | "productivity";
   title: string;
   description: string;
@@ -41,7 +42,43 @@ interface GeminiPattern {
 
 // ─── Prompt ──────────────────────────────────────────────────────────────────
 
-function buildPatternPrompt(
+// Static system block — identical every call, prompt-cached.
+const STATIC_PATTERNS_SYSTEM = `
+ROL:
+Eres un analista de patrones cognitivos y conductuales de élite. Lees el historial longitudinal de un usuario y haces dos cosas:
+1. Detectas patrones reales, repetidos y accionables.
+2. Sintetizas el Perfil Estratégico de largo plazo del usuario.
+
+REGLAS:
+- OPINIÓN > DESCRIPCIÓN. No describas las entradas; toma postura sobre qué patrón las conecta y por qué importa.
+- PREDICCIÓN > DIAGNÓSTICO. Para cada patrón, su 'description' debe incluir qué pasará si el patrón no se rompe.
+- Identifica entre 2 y 5 patrones concretos. Nada genérico ("a veces se estresa") — específico y cruzado con los datos.
+- Cruza toda la información para actualizar el Perfil Estratégico (fortalezas evolutivas, bloqueos psicológicos, sesgos recurrentes).
+
+FORMATO DE RESPUESTA (JSON ESTRICTO):
+{
+  "patterns": [
+    {
+      "pattern_type": "cognitive_bias",
+      "title": "Título directo",
+      "description": "Patrón + predicción de su costo si no se rompe.",
+      "frequency": 4,
+      "supporting_entry_ids": ["uuid-1", "uuid-2"]
+    }
+  ],
+  "strategic_profile_update": {
+    "cognitive_summary": "Quién es este usuario, sus fortalezas evolutivas y sus mayores bloqueos psicológicos.",
+    "recurring_themes": ["3-5 temas que dominan su narrativa a largo plazo"],
+    "key_goals": ["Objetivos de alta escala detectados"],
+    "identified_biases": ["Sesgos que aparecen repetidamente"]
+  }
+}
+
+'pattern_type' SOLO puede ser uno de: emotional, procrastination, cognitive_bias, productivity.
+Responde SOLO con el JSON. Sin texto adicional.
+`.trim();
+
+function buildPatternUser(
   entries: EntrySnapshot[],
   openLoopsCount: number,
   strategicProfile?: StrategicProfile | null
@@ -58,45 +95,13 @@ function buildPatternPrompt(
     return `[${i + 1}] id=${e.id} | fecha=${e.created_at.slice(0, 10)} | mood=${e.mood_label ?? "?"} | score=${e.sentiment_score ?? "?"} | cat=${e.category ?? "?"} | sesgo=${bias} | resumen=${e.summary?.slice(0, 80) ?? "N/A"}`;
   }).join("\n");
 
-  return `
-ROL:
-Eres un analista de patrones cognitivos y conductuales de élite. Tu trabajo es leer el historial longitudinal de un usuario y hacer dos cosas:
-1. Detectar patrones reales, repetidos y accionables.
-2. Sintetizar el Perfil Estratégico de largo plazo del usuario basado en todas estas entradas.
-
-DATOS DEL USUARIO (últimas ${entries.length} entradas):
+  return `DATOS DEL USUARIO (últimas ${entries.length} entradas):
 ${entrySummaries}
 
 LOOPS ABIERTOS SIN CERRAR: ${openLoopsCount}
 
 RESUMEN ESTRATÉGICO ACTUAL (MEMORIA): ${strategicProfile?.cognitive_summary || 'N/A'}
-TEMAS RECURRENTES ACTUALES: ${(strategicProfile?.recurring_themes ?? []).join(', ') || 'N/A'}
-
-INSTRUCCIÓN:
-- Identifica entre 2 y 5 patrones concretos.
-- Cruza toda la información para actualizar el Perfil Estratégico. Si notas que el usuario es resiliente, tiene miedo al fracaso o es excelente delegando, regístralo en el resumen cognitivo.
-
-FORMATO DE RESPUESTA (JSON ESTRICTO):
-{
-  "patterns": [
-    {
-      "pattern_type": "cognitive_bias",
-      "title": "Título directo",
-      "description": "Descripción clínica y directa.",
-      "frequency": 4,
-      "supporting_entry_ids": ["uuid-1", "uuid-2"]
-    }
-  ],
-  "strategic_profile_update": {
-    "cognitive_summary": "Sintetiza quién es este usuario, sus fortalezas evolutivas y sus mayores bloqueos psicológicos detectados a lo largo de estas ${entries.length} memorias.",
-    "recurring_themes": ["Lista de 3-5 temas que dominan su narrativa a largo plazo"],
-    "key_goals": ["Objetivos de alta escala detectados"],
-    "identified_biases": ["Lista de sesgos que aparecen repetidamente"]
-  }
-}
-
-Responde SOLO con el JSON. Sin texto adicional.
-`.trim();
+TEMAS RECURRENTES ACTUALES: ${(strategicProfile?.recurring_themes ?? []).join(', ') || 'N/A'}`;
 }
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
@@ -112,8 +117,8 @@ serve(async (req) => {
     console.warn("[analyze-patterns] No authorization header present, proceeding with caution.");
   }
 
-  if (!GEMINI_API_KEY) {
-    return new Response(JSON.stringify({ error: "GEMINI_API_KEY not configured" }), {
+  if (!ANTHROPIC_API_KEY) {
+    return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -160,35 +165,21 @@ serve(async (req) => {
       .eq("user_id", userId)
       .maybeSingle();
 
-    // 4. Build prompt and call Gemini
-    const prompt = buildPatternPrompt(entries as EntrySnapshot[], openLoopsCount ?? 0, profile);
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${GEMINI_API_KEY}`;
+    // 4. Build prompt and call Claude (Opus 4.7)
+    const rawText = await callClaude({
+      apiKey: ANTHROPIC_API_KEY!,
+      model: MODEL_NAME,
+      system: [{ type: 'text', text: STATIC_PATTERNS_SYSTEM, cache_control: { type: 'ephemeral' } }],
+      userContent: buildPatternUser(entries as EntrySnapshot[], openLoopsCount ?? 0, profile),
+      maxTokens: 8192,
+      temperature: 0.4,
+    });
 
-    const geminiRes = await withRetry(
-      () => fetchWithStatus(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            response_mime_type: "application/json",
-            temperature: 0.4,
-            maxOutputTokens: 8192,
-          },
-        }),
-      }),
-      { maxAttempts: 3, baseDelayMs: 800 }
-    );
-
-    const geminiData: any = await geminiRes.json();
-    const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
-
-    let patterns: GeminiPattern[] = [];
+    let patterns: DetectedPattern[] = [];
     let profileUpdate: any = null;
 
     try {
-      const match = rawText.match(/\{[\s\S]*\}/);
-      const parsed = JSON.parse(match ? match[0] : rawText);
+      const parsed = parseJsonLoose(rawText);
       patterns = Array.isArray(parsed.patterns) ? parsed.patterns : [];
       profileUpdate = parsed.strategic_profile_update || null;
     } catch (parseErr) {
@@ -225,7 +216,7 @@ serve(async (req) => {
     const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const VALID_TYPES = ["emotional", "procrastination", "cognitive_bias", "productivity"];
 
-    console.log(`[analyze-patterns] Gemini returned ${patterns.length} patterns, starting upsert...`);
+    console.log(`[analyze-patterns] Claude returned ${patterns.length} patterns, starting upsert...`);
 
     const upsertResults = [];
     for (const p of patterns.slice(0, 5)) {
