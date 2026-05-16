@@ -70,6 +70,8 @@ const DashboardScreen = () => {
         latestEntry: null as any
     });
     const [recentThreads, setRecentThreads] = useState<any[]>([]);
+    // Executive view: everything analytical is collapsed by default.
+    const [showDetail, setShowDetail] = useState(false);
     const [interventions, setInterventions] = useState<any[]>([]);
     const [patterns, setPatterns] = useState<any[]>([]);
     const [onboardingChecked, setOnboardingChecked] = useState(false);
@@ -359,6 +361,7 @@ const DashboardScreen = () => {
                 </View>
 
                 {/* Stats Grid */}
+                {showDetail && (
                 <View style={styles.statsGrid}>
                     <TO style={styles.statCard} onPress={() => navigation.navigate('Home')}>
                         <LG colors={['#1e293b', '#0f172a']} style={styles.cardGradient}>
@@ -384,6 +387,7 @@ const DashboardScreen = () => {
                         </LG>
                     </TO>
                 </View>
+                )}
 
                 {/* QuickCapture Banner (v5.9.7 - NEW PROMINENT LOCATION) */}
                 <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
@@ -405,7 +409,28 @@ const DashboardScreen = () => {
                     </TO>
                 </View>
 
+                {/* Executive status headline — the one line that matters */}
+                <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+                    <Text style={{ color: '#e2e8f0', fontSize: 15, fontWeight: '700', lineHeight: 22 }}>
+                        {interventions.length > 0
+                            ? `Acción de hoy: cierra "${interventions[0].task}" (${interventions[0].days}d sin moverse).`
+                            : stats.activeLoops > 5
+                                ? `${stats.activeLoops} loops abiertos. Hoy: purga, cero decisiones nuevas.`
+                                : 'Sin intervención urgente. Captura lo que tengas en mente.'}
+                    </Text>
+                    <TO
+                        onPress={() => setShowDetail(v => !v)}
+                        style={{ marginTop: 12, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center' }}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={{ color: '#6366f1', fontSize: 13, fontWeight: '800', letterSpacing: 0.5 }}>
+                            {showDetail ? 'OCULTAR DETALLE ▴' : 'VER DETALLE ▾'}
+                        </Text>
+                    </TO>
+                </View>
+
                 {/* Strategic Analysis Report Box (v5.9.6 - MOVED UP) */}
+                {showDetail && (
                 <View style={[styles.insightSection, { marginTop: 0, marginBottom: 20, borderColor: 'rgba(168, 85, 247, 0.4)' }]}>
                     <LG colors={['rgba(168, 85, 247, 0.15)', 'rgba(0, 0, 0, 0)']} style={styles.insightGradient}>
                         <View style={styles.insightHeader}>
@@ -428,6 +453,8 @@ const DashboardScreen = () => {
                     </LG>
                 </View>
  
+                )}
+
                 {/* Strategic Interventions (Follow-up Agresivo) */}
                 {interventions.length > 0 && (
                     <View style={styles.interventionSection}>
@@ -497,6 +524,7 @@ const DashboardScreen = () => {
                         </ScrollView>
                     </View>
                 )}
+                {showDetail && (<>
                 {/* Strategic Analysis Section (v5.9.8 - REPLACED ACTION AREA) */}
                 <View style={[styles.insightSection, { marginTop: 10 }]}>
                     <LG colors={['rgba(99, 102, 241, 0.1)', 'rgba(0, 0, 0, 0)']} style={styles.insightGradient}>
@@ -747,6 +775,7 @@ const DashboardScreen = () => {
                         </View>
                     </LG>
                 </View>
+                </>)}
                 <View style={styles.footer}>
                     <Clock size={14} color="#475569" />
                     <Text style={styles.lastUpdate}>Actualizado hace un momento</Text>
