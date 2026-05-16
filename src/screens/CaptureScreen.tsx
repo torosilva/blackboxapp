@@ -177,7 +177,7 @@ const CaptureScreen = () => {
         { label: 'Dashboard', icon: LD, onPress: () => navigation.navigate('Dashboard') },
         { label: 'Reporte Estratégico', icon: BC, onPress: () => navigation.navigate('WeeklyReport', {}) },
         { label: 'Últimos Chats', icon: MC, onPress: () => navigation.navigate('ChatHub') },
-        { label: 'Intervención Estratégica', icon: SA, onPress: () => navigation.navigate('Settings', { initialViewMode: 'biases' }) },
+        { label: 'Mis Sesgos', icon: SA, onPress: () => navigation.navigate('Settings', { initialViewMode: 'biases' }) },
     ];
 
     return (
