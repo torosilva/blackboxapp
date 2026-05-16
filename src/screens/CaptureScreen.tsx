@@ -176,7 +176,7 @@ const CaptureScreen = () => {
         { label: 'Mi BlackBoxMind', icon: Br, onPress: () => navigation.navigate('Home') },
         { label: 'Dashboard', icon: LD, onPress: () => navigation.navigate('Dashboard') },
         { label: 'Reporte Estratégico', icon: BC, onPress: () => navigation.navigate('WeeklyReport', {}) },
-        { label: 'Hub Estratégico', icon: MC, onPress: () => navigation.navigate('ChatHub') },
+        { label: 'Historial de Chats', icon: MC, onPress: () => navigation.navigate('ChatHub') },
         { label: 'Mis Sesgos', icon: SA, onPress: () => navigation.navigate('Settings', { initialViewMode: 'biases' }) },
     ];
 

@@ -165,10 +165,14 @@ const ChatHubScreen = () => {
                 </TO>
                 <View style={styles.headerTitleContainer}>
                     <Sparkles size={20} color="#818cf8" />
-                    <Text style={styles.headerTitle}>HUB ESTRATÉGICO</Text>
+                    <Text style={styles.headerTitle}>HISTORIAL DE CHATS</Text>
                 </View>
                 <View style={{ width: 44 }} />
             </View>
+
+            <Text style={styles.hubSubtitle}>
+                Tus conversaciones de consulta. Lo que reflexionas y se queda vive en Memorias.
+            </Text>
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {!showNewThread ? (
@@ -301,6 +305,7 @@ const styles = StyleSheet.create({
     headerTitleContainer: { flexDirection: 'row', alignItems: 'center' },
     headerTitle: { color: 'white', fontWeight: 'bold', letterSpacing: 2, marginLeft: 8 },
     backBtn: { padding: 8 },
+    hubSubtitle: { color: '#64748b', fontSize: 12, fontWeight: '600', paddingHorizontal: 20, paddingBottom: 8, lineHeight: 17 },
     scrollContent: { padding: 20 },
     sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
     sectionTitle: { color: '#94a3b8', fontSize: 13, fontWeight: '900', letterSpacing: 1 },

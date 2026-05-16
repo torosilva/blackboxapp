@@ -487,7 +487,7 @@ const DashboardScreen = () => {
                     <View style={styles.recentChatsSection}>
                         <View style={styles.sectionHeader}>
                             <TO onPress={() => navigation.navigate('ChatHub' as any)}>
-                                <Text style={styles.sectionTitle}>HUB ESTRATÉGICO</Text>
+                                <Text style={styles.sectionTitle}>HISTORIAL DE CHATS</Text>
                             </TO>
                             <TO onPress={() => navigation.navigate('ChatHub' as any)}>
                                 <Text style={styles.viewMoreText}>Ver todos</Text>
