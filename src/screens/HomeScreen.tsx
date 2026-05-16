@@ -66,6 +66,16 @@ import { SupabaseService } from '../services/SupabaseService';
 import AILoadingOverlay from '../components/AILoadingOverlay';
 import { NotificationService } from '../services/notificationService';
 
+// Category → short label + color, so memorias are differentiable at a glance.
+const CATEGORY_META: Record<string, { label: string; color: string }> = {
+  BUSINESS: { label: 'Negocio', color: '#6366f1' },
+  PERSONAL: { label: 'Personal', color: '#38bdf8' },
+  DEVELOPMENT: { label: 'Desarrollo', color: '#f59e0b' },
+  WELLNESS: { label: 'Bienestar', color: '#10b981' },
+  HEALTH: { label: 'Salud', color: '#f43f5e' },
+};
+const catMeta = (c?: string) => CATEGORY_META[(c || '').toUpperCase()] || { label: c || 'General', color: '#64748b' };
+
 const HomeScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
@@ -676,6 +686,15 @@ const HomeScreen = () => {
                     <Text style={styles.entryDate}>{new Date(entry.created_at).toLocaleDateString()}</Text>
                     {!!entry.mood_label && <Text style={styles.moodBadge}>{entry.mood_label}</Text>}
                   </View>
+                  <TouchableOpacity
+                    onPress={() => { setActiveFilter((entry.category || '').toUpperCase()); setShowFilters(true); }}
+                    style={[styles.catPill, { backgroundColor: `${catMeta(entry.category).color}22`, borderColor: `${catMeta(entry.category).color}66` }]}
+                  >
+                    <View style={[styles.catDot, { backgroundColor: catMeta(entry.category).color }]} />
+                    <Text style={[styles.catPillText, { color: catMeta(entry.category).color }]}>
+                      {catMeta(entry.category).label}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
                 <View style={styles.moodIconContainer}>
                   {getMoodIcon(entry.mood_label, entry.sentiment_score)}
@@ -817,6 +836,9 @@ const styles = StyleSheet.create({
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
   entryDate: { color: '#64748b', fontSize: 12, fontWeight: '600' },
+  catPill: { flexDirection: 'row', alignItems: 'center', marginLeft: 10, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, borderWidth: 1 },
+  catDot: { width: 6, height: 6, borderRadius: 3, marginRight: 5 },
+  catPillText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
   entryTitle: { color: '#ffffff', fontSize: 20, fontWeight: 'bold', marginBottom: 12 },
   entryPreview: { color: '#94a3b8', fontSize: 15, lineHeight: 22 },
   moodBadge: {
