@@ -422,6 +422,25 @@ const HomeScreen = () => {
     }
   });
 
+  // Category overview (default view): one card per category with count,
+  // last activity and average sentiment — attention at a glance.
+  const showOverview = activeFilter === 'all' && !searchQuery.trim();
+  const isCategoryDrill = ['BUSINESS', 'PERSONAL', 'DEVELOPMENT', 'WELLNESS', 'HEALTH'].includes(activeFilter);
+  const recentEntries = [...entries]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 6);
+  const categoryGroups = Object.values(
+    entries.reduce((acc: Record<string, any>, e: any) => {
+      const key = (e.category || 'PERSONAL').toUpperCase();
+      if (!acc[key]) acc[key] = { key, count: 0, last: 0, sentSum: 0, sentN: 0 };
+      acc[key].count++;
+      const t = new Date(e.created_at).getTime();
+      if (t > acc[key].last) acc[key].last = t;
+      if (typeof e.sentiment_score === 'number') { acc[key].sentSum += e.sentiment_score; acc[key].sentN++; }
+      return acc;
+    }, {})
+  ).sort((a: any, b: any) => b.count - a.count);
+
   const TO = TouchableOpacity as any;
   const B = Brain as any;
   const D = Diamond as any;
@@ -657,13 +676,74 @@ const HomeScreen = () => {
         )}
         {/* Weekly Analysis Button removed (already in Strategic Hub) */}
 
-        <Text style={styles.sectionTitle}>Línea de Tiempo</Text>
+        <Text style={styles.sectionTitle}>
+          {showOverview ? 'Memorias' : isCategoryDrill ? catMeta(activeFilter).label : 'Línea de Tiempo'}
+        </Text>
+
+        {isCategoryDrill && (
+          <TouchableOpacity onPress={() => setActiveFilter('all')} style={styles.backToCats} activeOpacity={0.7}>
+            <ChevronLeft size={16} color="#94a3b8" />
+            <Text style={styles.backToCatsText}>Todas las categorías</Text>
+          </TouchableOpacity>
+        )}
 
         {loading ? (
           <ActivityIndicator size="large" color="#6366f1" style={{ marginTop: 40 }} />
-        ) : filteredEntries.length === 0 ? (
+        ) : entries.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No hay registros aún.</Text>
+          </View>
+        ) : showOverview ? (
+          <View>
+            {recentEntries.length > 0 && (
+              <>
+                <Text style={styles.overviewLabel}>RECIENTES</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
+                  {recentEntries.map((e) => (
+                    <TouchableOpacity
+                      key={e.id}
+                      onPress={() => navigation.navigate('EntryDetail', { entryId: e.id })}
+                      style={[styles.recentChip, { borderColor: `${catMeta(e.category).color}55` }]}
+                    >
+                      <Text style={[styles.recentChipCat, { color: catMeta(e.category).color }]}>
+                        {catMeta(e.category).label}
+                      </Text>
+                      <Text style={styles.recentChipTitle} numberOfLines={2}>{e.title}</Text>
+                      <Text style={styles.recentChipDate}>{new Date(e.created_at).toLocaleDateString()}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </>
+            )}
+            <Text style={styles.overviewLabel}>POR CATEGORÍA</Text>
+            {categoryGroups.map((g: any) => {
+              const m = catMeta(g.key);
+              const avg = g.sentN ? g.sentSum / g.sentN : 0;
+              return (
+                <TouchableOpacity
+                  key={g.key}
+                  onPress={() => setActiveFilter(g.key)}
+                  style={[styles.catCard, { borderColor: `${m.color}44` }]}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.catCardDot, { backgroundColor: m.color }]} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.catCardTitle, { color: m.color }]}>{m.label}</Text>
+                    <Text style={styles.catCardMeta}>
+                      {g.count} memoria{g.count > 1 ? 's' : ''} · últ. {new Date(g.last).toLocaleDateString()}
+                    </Text>
+                  </View>
+                  <Text style={[styles.catCardSent, { color: avg > 0.1 ? '#10b981' : avg < -0.1 ? '#ef4444' : '#94a3b8' }]}>
+                    {avg > 0.1 ? '▲' : avg < -0.1 ? '▼' : '■'} {avg.toFixed(1)}
+                  </Text>
+                  <ChevronRight size={18} color="#475569" />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ) : filteredEntries.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Sin resultados en este filtro.</Text>
           </View>
         ) : (
           filteredEntries.map((entry) => (
@@ -839,6 +919,18 @@ const styles = StyleSheet.create({
   catPill: { flexDirection: 'row', alignItems: 'center', marginLeft: 10, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, borderWidth: 1 },
   catDot: { width: 6, height: 6, borderRadius: 3, marginRight: 5 },
   catPillText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  backToCats: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, alignSelf: 'flex-start' },
+  backToCatsText: { color: '#94a3b8', fontSize: 13, fontWeight: '700', marginLeft: 4 },
+  overviewLabel: { color: '#6366f1', fontSize: 11, fontWeight: '900', letterSpacing: 2, marginBottom: 12, marginTop: 4 },
+  recentChip: { width: 150, padding: 14, borderRadius: 16, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.03)', marginRight: 10 },
+  recentChipCat: { fontSize: 9, fontWeight: '900', letterSpacing: 1, marginBottom: 6 },
+  recentChipTitle: { color: '#e2e8f0', fontSize: 13, fontWeight: '700', lineHeight: 17, minHeight: 34 },
+  recentChipDate: { color: '#475569', fontSize: 10, fontWeight: '600', marginTop: 8 },
+  catCard: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 18, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.03)', marginBottom: 12 },
+  catCardDot: { width: 10, height: 10, borderRadius: 5, marginRight: 14 },
+  catCardTitle: { fontSize: 15, fontWeight: '900', letterSpacing: 0.5 },
+  catCardMeta: { color: '#94a3b8', fontSize: 12, fontWeight: '600', marginTop: 3 },
+  catCardSent: { fontSize: 13, fontWeight: '900', marginRight: 10 },
   entryTitle: { color: '#ffffff', fontSize: 20, fontWeight: 'bold', marginBottom: 12 },
   entryPreview: { color: '#94a3b8', fontSize: 15, lineHeight: 22 },
   moodBadge: {
