@@ -37,6 +37,82 @@ async function getRecentInsights(userId: string): Promise<string> {
   }
 }
 
+// Pulls the user's OPEN loops / action items so the assistant already knows
+// the backlog and never has to ask "dame tu lista de tareas".
+// Reads both sources: recent entries' JSONB action_items (where new items
+// live) and the normalized action_items table (backfilled legacy data).
+async function getOpenLoops(userId: string): Promise<string> {
+  try {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    const loops: { task: string; priority: string; category: string }[] = [];
+
+    const { data: entryRows } = await supabase
+      .from('entries')
+      .select('action_items, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(25);
+
+    for (const row of entryRows ?? []) {
+      const items = Array.isArray(row.action_items) ? row.action_items : [];
+      for (const it of items) {
+        if (it && !it.is_completed && (it.task || it.description)) {
+          loops.push({
+            task: String(it.task ?? it.description).trim(),
+            priority: String(it.priority ?? 'MEDIUM').toUpperCase(),
+            category: String(it.category ?? 'PERSONAL').toUpperCase(),
+          });
+        }
+      }
+    }
+
+    try {
+      const { data: tableRows } = await supabase
+        .from('action_items')
+        .select('task, priority, category')
+        .eq('user_id', userId)
+        .eq('is_completed', false)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      for (const r of tableRows ?? []) {
+        if (r?.task) {
+          loops.push({
+            task: String(r.task).trim(),
+            priority: String(r.priority ?? 'MEDIUM').toUpperCase(),
+            category: String(r.category ?? 'PERSONAL').toUpperCase(),
+          });
+        }
+      }
+    } catch {
+      // action_items table may not exist on this project — ignore.
+    }
+
+    // Dedupe by normalized task text, keep highest priority seen.
+    const rank: Record<string, number> = { HIGH: 3, MEDIUM: 2, LOW: 1 };
+    const byTask = new Map<string, { task: string; priority: string; category: string }>();
+    for (const l of loops) {
+      const key = l.task.toLowerCase().slice(0, 120);
+      const existing = byTask.get(key);
+      if (!existing || (rank[l.priority] ?? 2) > (rank[existing.priority] ?? 2)) {
+        byTask.set(key, l);
+      }
+    }
+
+    const merged = [...byTask.values()]
+      .sort((a, b) => (rank[b.priority] ?? 2) - (rank[a.priority] ?? 2))
+      .slice(0, 30);
+
+    if (merged.length === 0) return 'Sin loops abiertos registrados.';
+
+    return merged
+      .map((l) => `• [${l.priority}/${l.category}] ${l.task}`)
+      .join('\n');
+  } catch {
+    return 'Loops no disponibles.';
+  }
+}
+
 async function getStrategicProfile(userId: string): Promise<string> {
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -72,6 +148,7 @@ REGLAS NO NEGOCIABLES:
 5. TONO. Directo, clínico, ultra-profesional. Eres el socio que dice la verdad incómoda.
 6. BREVEDAD. 3-6 oraciones máximo por respuesta. Sin relleno corporativo.
 7. EVITA "es importante", "podrías considerar", "tal vez". Habla con autoridad.
+8. CONTEXTO YA DISPONIBLE. Tienes el perfil estratégico, el historial reciente y los LOOPS/TAREAS ABIERTAS del usuario en este prompt. NUNCA pidas "tu lista de tareas", "los proyectos activos" ni contexto que ya tienes. Úsalo directamente: nombra sus loops reales por su nombre y proponle accionables concretos sobre ELLOS. Si los loops están vacíos, infiere del historial — no preguntes.
 `.trim();
 
 const STATIC_RULES_THERAPY = `
@@ -90,17 +167,21 @@ REGLAS NO NEGOCIABLES:
 6. CONECTA PATRONES. Si detectas correlación con el historial, señálalo brevemente.
 7. BREVEDAD TÁCTICA. 3-5 oraciones. Cero monólogos. Cero clichés terapéuticos.
 8. LENGUAJE. Cálido pero directo. Aliado, no juez. Honesto, no condescendiente.
+9. CONTEXTO YA DISPONIBLE. Tienes el perfil, el historial y los LOOPS/TAREAS ABIERTAS del usuario en este prompt. NUNCA pidas su lista de tareas ni contexto que ya tienes. Refiérete a sus loops reales por nombre. Si están vacíos, infiere del historial — no preguntes.
 `.trim();
 
 // ─── Dynamic context blocks (user-specific — NOT cached) ─────────────────────
 
-function buildDynamicContext_Standard(userName: string, category: string, history: string, profile: string): string {
+function buildDynamicContext_Standard(userName: string, category: string, history: string, profile: string, loops: string): string {
   return `
 USUARIO: ${userName}
 CATEGORÍA DE SESIÓN: ${category}
 
 ━━━ PERFIL ESTRATÉGICO LARGO PLAZO ━━━
 ${profile}
+
+━━━ LOOPS / TAREAS ABIERTAS DEL USUARIO ━━━
+${loops}
 
 ━━━ HISTORIAL RECIENTE (10 entradas) ━━━
 ${history}
@@ -111,6 +192,7 @@ function buildDynamicContext_Therapy(
   userName: string,
   history: string,
   profile: string,
+  loops: string,
   entryContext: any
 ): string {
   const loopsText = entryContext?.actionItems?.length
@@ -134,6 +216,9 @@ ${loopsText}
 
 ━━━ PERFIL ESTRATÉGICO LARGO PLAZO ━━━
 ${profile}
+
+━━━ LOOPS / TAREAS ABIERTAS DEL USUARIO ━━━
+${loops}
 
 ━━━ HISTORIAL RECIENTE (10 entradas) ━━━
 ${history}
@@ -197,14 +282,14 @@ serve(async (req) => {
     }
 
     // Fetch context in parallel
-    const [history, profile] = userId
-      ? await Promise.all([getRecentInsights(userId), getStrategicProfile(userId)])
-      : ['Sin historial previo.', 'Perfil no disponible.'];
+    const [history, profile, loops] = userId
+      ? await Promise.all([getRecentInsights(userId), getStrategicProfile(userId), getOpenLoops(userId)])
+      : ['Sin historial previo.', 'Perfil no disponible.', 'Loops no disponibles.'];
 
     const staticBlock = therapyMode ? STATIC_RULES_THERAPY : STATIC_RULES_STANDARD;
     const dynamicBlock = therapyMode && entryContext
-      ? buildDynamicContext_Therapy(userName, history, profile, entryContext)
-      : buildDynamicContext_Standard(userName, category, history, profile);
+      ? buildDynamicContext_Therapy(userName, history, profile, loops, entryContext)
+      : buildDynamicContext_Standard(userName, category, history, profile, loops);
 
     // Claude messages array — exclude system, that goes in its own field.
     const messages = [
