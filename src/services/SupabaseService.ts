@@ -941,6 +941,30 @@ export const SupabaseService = {
         return true;
     },
 
+    async getChatThread(threadId: string) {
+        const { data, error } = await supabase
+            .from('chat_threads')
+            .select('*')
+            .eq('id', threadId)
+            .maybeSingle();
+        if (error) throw error;
+        return data;
+    },
+
+    async linkThreadEntry(threadId: string, entryId: string) {
+        try {
+            const { error } = await supabase
+                .from('chat_threads')
+                .update({ entry_id: entryId })
+                .eq('id', threadId);
+            if (error) throw error;
+            return true;
+        } catch (error: any) {
+            console.error('SUPABASE_SERVICE: linkThreadEntry failed:', error.message);
+            return false;
+        }
+    },
+
     async getChatMessages(threadId: string) {
         const { data, error } = await supabase
             .from('chat_messages')

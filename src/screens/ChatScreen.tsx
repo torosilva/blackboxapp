@@ -112,6 +112,20 @@ const ChatScreen = () => {
         try {
             console.log('CHAT_SCREEN: Loading history for thread:', threadId);
             const history = await SupabaseService.getChatMessages(threadId);
+            // Load the memoria already linked to this thread (if any) so
+            // reopening it updates that entry instead of duplicating.
+            if (!isTherapyMode) {
+                try {
+                    const thread = await SupabaseService.getChatThread(threadId);
+                    if (thread?.entry_id) {
+                        memoryEntryIdRef.current = thread.entry_id;
+                        setMemorySyncedLen(history?.length ?? 0);
+                        setMemoryState('saved');
+                    }
+                } catch (e: any) {
+                    console.warn('CHAT_SCREEN: getChatThread failed:', e?.message);
+                }
+            }
             if (history && history.length > 0) {
                 console.log('CHAT_SCREEN: History loaded, messages:', history.length);
                 const formatted = history.map((m: any) => ({
@@ -181,11 +195,15 @@ const ChatScreen = () => {
         }
     };
 
-    // Fail-safe: turn the first home message into a memoria immediately,
-    // so it's never lost even if the app is killed mid-conversation.
-    const ensureMemory = async (seedText: string) => {
+    // Fail-safe: turn the conversation's first user message into a memoria
+    // and link it to this thread, so it's never lost and reopening the
+    // thread updates the same entry instead of duplicating. Therapy chats
+    // are excluded — they already own a journal entry.
+    const ensureMemory = async () => {
         if (memoryEntryIdRef.current || memoryCreatingRef.current) return;
-        if (!user || !initialMessage || !seedText.trim()) return;
+        if (!user || !threadId || isTherapyMode || !isPro) return;
+        const seedText = messagesRef.current.find((m) => m.role === 'user')?.parts[0]?.text ?? '';
+        if (!seedText.trim()) return;
         memoryCreatingRef.current = true;
         setMemoryState('saving');
         try {
@@ -206,6 +224,7 @@ const ChatScreen = () => {
             });
             if (entry?.id) {
                 memoryEntryIdRef.current = entry.id;
+                await SupabaseService.linkThreadEntry(threadId, entry.id);
                 setMemorySyncedLen(messagesRef.current.length);
                 setMemoryState('saved');
             } else {
@@ -265,8 +284,17 @@ const ChatScreen = () => {
         if (!isPro && !isTherapyMode) return;
         initialSentRef.current = true;
         handleSend(initialMessage);
-        ensureMemory(initialMessage); // background, not awaited
     }, [fetchingHistory, initialMessage, isPro, isTherapyMode]);
+
+    // Once the conversation has a user message, ensure a linked memoria
+    // exists (covers both home chats and reopened Hub threads).
+    useEffect(() => {
+        if (fetchingHistory) return;
+        if (memoryEntryIdRef.current || memoryCreatingRef.current) return;
+        if (messages.some((m) => m.role === 'user')) {
+            ensureMemory(); // background, not awaited
+        }
+    }, [fetchingHistory, messages]);
 
     useEffect(() => {
         const unsub = navigation.addListener('beforeRemove', () => {
