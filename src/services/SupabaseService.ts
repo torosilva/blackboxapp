@@ -1106,6 +1106,25 @@ export const SupabaseService = {
         return data;
     },
 
+    // The chat thread already tied to a memoria, if any — so "Profundizar
+    // en chat" continues that conversation instead of spawning a new one.
+    async getThreadByEntry(entryId: string) {
+        try {
+            const { data, error } = await supabase
+                .from('chat_threads')
+                .select('*')
+                .eq('entry_id', entryId)
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            if (error) throw error;
+            return data;
+        } catch (e: any) {
+            console.warn('SUPABASE_SERVICE: getThreadByEntry failed:', e?.message);
+            return null;
+        }
+    },
+
     async linkThreadEntry(threadId: string, entryId: string) {
         try {
             const { error } = await supabase

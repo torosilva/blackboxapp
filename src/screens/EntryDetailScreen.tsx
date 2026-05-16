@@ -180,14 +180,20 @@ const EntryDetailScreen = () => {
       if (category === 'WELLNESS') category = 'HEALTH';
       if (category === 'DEVELOPMENT') category = 'PERSONAL';
 
-      const newThread = await SupabaseService.createChatThread(user.id, threadTitle, category);
-      
-      if (newThread) {
-        // Option 1: Just navigate
+      // Continue the conversation already tied to this memoria; only
+      // create (and link) a thread the first time. This keeps "Profundizar
+      // en chat" on the SAME ficha instead of spawning new memorias.
+      let thread = await SupabaseService.getThreadByEntry(entry.id);
+      if (!thread) {
+        thread = await SupabaseService.createChatThread(user.id, threadTitle, category);
+        if (thread) await SupabaseService.linkThreadEntry(thread.id, entry.id);
+      }
+
+      if (thread) {
         navigation.navigate('Chat' as any, {
-          threadId: newThread.id,
-          category: newThread.category,
-          title: newThread.title
+          threadId: thread.id,
+          category: thread.category,
+          title: thread.title,
         });
       }
     } catch (error) {
