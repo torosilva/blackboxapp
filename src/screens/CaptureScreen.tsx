@@ -10,10 +10,8 @@ import {
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
-import { aiService } from '../services/ai';
 import { voiceService } from '../services/voice';
 import { SupabaseService } from '../services/SupabaseService';
-import { NotificationService } from '../services/notificationService';
 import AILoadingOverlay from '../components/AILoadingOverlay';
 
 const CaptureScreen = () => {
@@ -46,7 +44,7 @@ const CaptureScreen = () => {
     }, []);
 
     const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
-    const canSubmit = content.trim().length >= 40 && wordCount >= 8;
+    const canSubmit = content.trim().length > 0;
 
     const displayName = (profile?.full_name || user?.email?.split('@')[0] || '').split(' ')[0];
     const greeting = (() => {
@@ -56,56 +54,29 @@ const CaptureScreen = () => {
         return 'Buenas noches';
     })();
 
-    const handleSave = async () => {
-        if (!content.trim()) return;
+    const handleSend = async () => {
+        const message = content.trim();
+        if (!message) return;
         if (!user) { Alert.alert('Error', 'Debes estar conectado.'); return; }
-
-        if (!canSubmit) {
-            Alert.alert(
-                'Contenido Insuficiente',
-                'Escribe al menos un párrafo para que BLACKBOX pueda darte un análisis profundo.',
-                [{ text: 'Entendido' }]
-            );
-            return;
-        }
 
         setLoading(true);
         try {
-            let audioUrl = null;
-            if (lastRecordingUri) {
-                audioUrl = await SupabaseService.uploadAudio(lastRecordingUri, user.id);
-            }
-
-            const analysis = await aiService.generateDailySummary([content], user.id);
-
-            await SupabaseService.createEntry({
-                user_id: user.id,
-                title: analysis.title,
-                content: analysis.original_text || content,
-                sentiment_score: analysis.sentiment_score,
-                mood_label: analysis.mood_label,
-                summary: analysis.summary,
-                wellness_recommendation: analysis.wellness_recommendation,
-                strategic_insight: analysis.strategic_insight,
-                action_items: analysis.action_items,
-                audio_url: audioUrl,
-                original_text: analysis.original_text || content,
-                category: analysis.category || 'PERSONAL'
-            });
-
-            if (Array.isArray(analysis.action_items)) {
-                const highs = analysis.action_items.filter((a: any) => a.priority === 'HIGH');
-                for (const h of highs) {
-                    await NotificationService.scheduleStrategicFollowup(h.task);
-                }
-            }
+            const threadTitle = message.split('\n')[0].slice(0, 50) || 'Nueva conversación';
+            const thread = await SupabaseService.createChatThread(user.id, threadTitle, 'GENERAL');
+            if (!thread) throw new Error('No se pudo crear la conversación');
 
             setContent('');
             setLastRecordingUri(null);
-            Alert.alert('✓ Memoria registrada', analysis.title || 'Entrada guardada en BLACKBOX.');
+
+            navigation.navigate('Chat', {
+                threadId: thread.id,
+                category: thread.category,
+                title: thread.title,
+                initialMessage: message,
+            });
         } catch (err: any) {
             console.error('CAPTURE_ERROR:', err);
-            Alert.alert('No se pudo guardar', 'Hubo un problema al analizar tu entrada. Verifica tu conexión e intenta de nuevo.');
+            Alert.alert('No se pudo iniciar', 'Hubo un problema al abrir la conversación. Verifica tu conexión e intenta de nuevo.');
         } finally {
             setLoading(false);
         }
@@ -221,7 +192,7 @@ const CaptureScreen = () => {
                                 </TO>
 
                                 <TO
-                                    onPress={handleSave}
+                                    onPress={handleSend}
                                     disabled={!canSubmit || loading}
                                     style={[styles.sendBtn, canSubmit ? styles.sendBtnActive : styles.sendBtnDisabled]}
                                     activeOpacity={0.8}

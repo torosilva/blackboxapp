@@ -16,7 +16,7 @@ import { Crown } from 'lucide-react-native';
 const ChatScreen = () => {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
-    const { threadId, category, title, isTherapyMode, entryContext } = route.params || {};
+    const { threadId, category, title, isTherapyMode, entryContext, initialMessage } = route.params || {};
     const { user, profile, refreshProfile } = useAuth();
     const { isPro } = useSubscription();
     const Cr = Crown as any;
@@ -33,6 +33,7 @@ const ChatScreen = () => {
     const [loading, setLoading] = useState(false);
     const [fetchingHistory, setFetchingHistory] = useState(true);
     const scrollViewRef = useRef<ScrollView>(null);
+    const initialSentRef = useRef(false);
 
     const fullName = profile?.full_name || user?.email?.split('@')[0] || 'Explorador';
 
@@ -164,6 +165,16 @@ const ChatScreen = () => {
             setLoading(false);
         }
     };
+
+    // Auto-send the message the user typed on the home screen, once,
+    // after history loads. Gated users never trigger this (paywall stays).
+    useEffect(() => {
+        if (fetchingHistory || initialSentRef.current) return;
+        if (!initialMessage || !initialMessage.trim()) return;
+        if (!isPro && !isTherapyMode) return;
+        initialSentRef.current = true;
+        handleSend(initialMessage);
+    }, [fetchingHistory, initialMessage, isPro, isTherapyMode]);
 
     if (isLimitReached) {
         return (
