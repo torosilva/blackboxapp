@@ -10,6 +10,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { ChatService, ChatMessage } from '../services/ChatService';
 import { useAuth } from '../context/AuthContext';
 import { SupabaseService } from '../services/SupabaseService';
+import { aiService } from '../services/ai';
 import { useSubscription } from '../hooks/useSubscription';
 import { Crown } from 'lucide-react-native';
 
@@ -34,6 +35,14 @@ const ChatScreen = () => {
     const [fetchingHistory, setFetchingHistory] = useState(true);
     const scrollViewRef = useRef<ScrollView>(null);
     const initialSentRef = useRef(false);
+    // Hybrid memoria: a home-originated chat (has initialMessage) becomes a
+    // journal entry. The first message creates it (fail-safe); leaving the
+    // chat enriches it with a summary of the whole conversation.
+    const memoryEntryIdRef = useRef<string | null>(null);
+    const memoryCreatingRef = useRef(false);
+    const memoryEnrichedRef = useRef(false);
+    const messagesRef = useRef<ChatMessage[]>([]);
+    useEffect(() => { messagesRef.current = messages; }, [messages]);
 
     const fullName = profile?.full_name || user?.email?.split('@')[0] || 'Explorador';
 
@@ -166,6 +175,64 @@ const ChatScreen = () => {
         }
     };
 
+    // Fail-safe: turn the first home message into a memoria immediately,
+    // so it's never lost even if the app is killed mid-conversation.
+    const ensureMemory = async (seedText: string) => {
+        if (memoryEntryIdRef.current || memoryCreatingRef.current) return;
+        if (!user || !initialMessage || !seedText.trim()) return;
+        memoryCreatingRef.current = true;
+        try {
+            const a = await aiService.generateDailySummary([seedText], user.id);
+            const entry = await SupabaseService.createEntry({
+                user_id: user.id,
+                title: a.title,
+                content: a.original_text || seedText,
+                summary: a.summary,
+                mood_label: a.mood_label,
+                sentiment_score: a.sentiment_score,
+                wellness_recommendation: a.wellness_recommendation,
+                strategic_insight: a.strategic_insight,
+                action_items: a.action_items,
+                audio_url: null,
+                original_text: a.original_text || seedText,
+                category: a.category || 'PERSONAL',
+            });
+            if (entry?.id) memoryEntryIdRef.current = entry.id;
+        } catch (e: any) {
+            console.warn('CHAT_MEMORY: ensureMemory failed:', e?.message);
+        } finally {
+            memoryCreatingRef.current = false;
+        }
+    };
+
+    // On leaving the chat, enrich that memoria with a summary of the full
+    // conversation. Fire-and-forget — the promise resolves after unmount.
+    const enrichMemory = () => {
+        const id = memoryEntryIdRef.current;
+        if (!id || !user || memoryEnrichedRef.current) return;
+        const msgs = messagesRef.current;
+        const userTurns = msgs.filter((m) => m.role === 'user');
+        if (userTurns.length < 2) return; // trivial — fail-safe entry is enough
+        memoryEnrichedRef.current = true;
+        const transcript = msgs
+            .map((m) => `${m.role === 'user' ? 'Usuario' : 'BLACKBOX'}: ${m.parts[0]?.text ?? ''}`)
+            .join('\n\n');
+        aiService.generateDailySummary([transcript], user.id)
+            .then((a) => SupabaseService.updateEntryAnalysis(id, {
+                title: a.title,
+                content: a.original_text || transcript,
+                summary: a.summary,
+                mood_label: a.mood_label,
+                sentiment_score: a.sentiment_score,
+                wellness_recommendation: a.wellness_recommendation,
+                strategic_insight: a.strategic_insight,
+                action_items: a.action_items,
+                original_text: a.original_text || transcript,
+                category: a.category,
+            }))
+            .catch((e: any) => console.warn('CHAT_MEMORY: enrichMemory failed:', e?.message));
+    };
+
     // Auto-send the message the user typed on the home screen, once,
     // after history loads. Gated users never trigger this (paywall stays).
     useEffect(() => {
@@ -174,7 +241,15 @@ const ChatScreen = () => {
         if (!isPro && !isTherapyMode) return;
         initialSentRef.current = true;
         handleSend(initialMessage);
+        ensureMemory(initialMessage); // background, not awaited
     }, [fetchingHistory, initialMessage, isPro, isTherapyMode]);
+
+    useEffect(() => {
+        const unsub = navigation.addListener('beforeRemove', () => {
+            enrichMemory();
+        });
+        return unsub;
+    }, [navigation]);
 
     if (isLimitReached) {
         return (

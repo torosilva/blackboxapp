@@ -572,6 +572,53 @@ export const SupabaseService = {
         }
     },
 
+    // Overwrites an entry's analyzed fields. Used to enrich the fail-safe
+    // memoria created from a chat's first message with a summary of the
+    // whole conversation when the user leaves the chat.
+    async updateEntryAnalysis(entryId: string, analysis: {
+        title?: string;
+        content?: string;
+        summary: string;
+        mood_label: string;
+        sentiment_score: number;
+        wellness_recommendation: any;
+        strategic_insight: any;
+        action_items: any[];
+        original_text?: string;
+        category?: string;
+    }) {
+        try {
+            const { error } = await supabase
+                .from('entries')
+                .update({
+                    ...(analysis.title ? { title: analysis.title } : {}),
+                    ...(analysis.content ? { content: analysis.content } : {}),
+                    ...(analysis.original_text ? { original_text: analysis.original_text } : {}),
+                    ...(analysis.category ? { category: analysis.category } : {}),
+                    ai_analysis: {
+                        summary: analysis.summary,
+                        mood_label: analysis.mood_label,
+                        sentiment_score: analysis.sentiment_score,
+                        wellness_recommendation: analysis.wellness_recommendation,
+                        strategic_insight: analysis.strategic_insight,
+                        action_items: analysis.action_items,
+                    },
+                    summary: analysis.summary,
+                    mood_label: analysis.mood_label,
+                    sentiment_score: analysis.sentiment_score,
+                    wellness_recommendation: analysis.wellness_recommendation,
+                    strategic_insight: analysis.strategic_insight,
+                    mood: analysis.mood_label,
+                })
+                .eq('id', entryId);
+            if (error) throw error;
+            return true;
+        } catch (error: any) {
+            console.error('SUPABASE_SERVICE: updateEntryAnalysis failed:', error.message);
+            return false;
+        }
+    },
+
     /**
      * Mark terms as accepted for the user
      */
