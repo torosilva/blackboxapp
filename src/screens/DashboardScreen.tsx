@@ -413,7 +413,7 @@ const DashboardScreen = () => {
                 <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
                     <Text style={{ color: '#e2e8f0', fontSize: 15, fontWeight: '700', lineHeight: 22 }}>
                         {interventions.length > 0
-                            ? `Acción de hoy: cierra "${interventions[0].task}" (${interventions[0].days}d sin moverse).`
+                            ? `${stats.activeLoops} loops · ejecución ${stats.totalMemories > 0 ? Math.round((stats.completedGoals / stats.totalMemories) * 100) : 0}%. Tu acción priorizada está abajo.`
                             : stats.activeLoops > 5
                                 ? `${stats.activeLoops} loops abiertos. Hoy: purga, cero decisiones nuevas.`
                                 : 'Sin intervención urgente. Captura lo que tengas en mente.'}
