@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Share, Platform, StatusBar, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Share2, ClipboardList, Stethoscope, Activity, TrendingUp } from 'lucide-react-native';
+import { ChevronLeft, Share2, ClipboardList, Stethoscope, Activity, TrendingUp, FileDown } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import { aiService } from '../services/ai';
 import { SupabaseService } from '../services/SupabaseService';
 import { useAuth } from '../context/AuthContext';
@@ -72,6 +74,7 @@ const WeeklyReportScreen = ({ route }: any) => {
     const TO = TouchableOpacity as any;
     const CL = ChevronLeft as any;
     const S2 = Share2 as any;
+    const FD = FileDown as any;
     const CPL = ClipboardList as any;
     const Ste = Stethoscope as any;
     const Act = Activity as any;
@@ -178,6 +181,60 @@ const WeeklyReportScreen = ({ route }: any) => {
             });
         } catch (error) {
             console.log('Share error', error);
+        }
+    };
+
+    // Minimal, safe Markdown → printable HTML for the coach/psychologist PDF.
+    const reportToHtml = (md: string) => {
+        const esc = (s: string) => s
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const inline = (s: string) =>
+            esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        const blocks = md.split('\n').map((raw) => {
+            const t = raw.trim();
+            if (!t) return '';
+            if (t.startsWith('## ')) return `<h2>${inline(t.slice(3))}</h2>`;
+            if (t.startsWith('# ')) return `<h1>${inline(t.slice(2))}</h1>`;
+            if (t.startsWith('- ') || t.startsWith('* ')) return `<li>${inline(t.slice(2))}</li>`;
+            return `<p>${inline(t)}</p>`;
+        }).join('\n').replace(/(<li>.*?<\/li>\n?)+/gs, (m) => `<ul>${m}</ul>`);
+        const dateStr = reportEndDate.toLocaleDateString();
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+        <style>
+          body{font-family:-apple-system,Helvetica,Arial,sans-serif;color:#0f172a;padding:40px;line-height:1.55}
+          .brand{color:#6366f1;font-weight:800;letter-spacing:2px;font-size:12px}
+          h1{font-size:22px;margin:18px 0 6px}h2{font-size:16px;color:#4f46e5;margin:20px 0 6px}
+          p{margin:6px 0;font-size:13px}ul{margin:6px 0 6px 18px}li{font-size:13px;margin:3px 0}
+          .meta{color:#64748b;font-size:11px;margin-bottom:18px}
+          .foot{margin-top:32px;color:#94a3b8;font-size:10px;border-top:1px solid #e2e8f0;padding-top:10px}
+        </style></head><body>
+        <div class="brand">BLACKBOX MIND</div>
+        <div class="meta">Reporte Estratégico · Fin del periodo: ${dateStr}</div>
+        ${blocks}
+        <div class="foot">Documento generado por BLACKBOX MIND para acompañamiento profesional (coach / psicólogo).</div>
+        </body></html>`;
+    };
+
+    const exportPdf = async () => {
+        if (!report?.trim()) return;
+        try {
+            const { uri } = await Print.printToFileAsync({ html: reportToHtml(report) });
+            if (await Sharing.isAvailableAsync()) {
+                await Sharing.shareAsync(uri, {
+                    mimeType: 'application/pdf',
+                    dialogTitle: 'Compartir Reporte Estratégico (PDF)',
+                    UTI: 'com.adobe.pdf',
+                });
+            } else {
+                await Share.share({ url: uri, title: 'Reporte Estratégico BLACKBOX' });
+            }
+        } catch (error: any) {
+            console.log('PDF export error', error?.message);
+            Alert.alert(
+                'Exportar PDF',
+                'El PDF requiere la app compilada (EAS build); en Expo Go no está disponible. Comparto el reporte como texto.',
+                [{ text: 'OK', onPress: handleShare }],
+            );
         }
     };
 
@@ -319,10 +376,13 @@ const WeeklyReportScreen = ({ route }: any) => {
             </ScrollView>
 
             {/* FLOATING ACTION BUTTON */}
-            <View style={styles.footer}>
-                <TO style={styles.exportButton} onPress={handleShare}>
-                    <S2 size={20} color="white" style={{ marginRight: 10 }} />
-                    <Text style={styles.exportButtonText}>Exportar Reporte</Text>
+            <View style={[styles.footer, { flexDirection: 'row', gap: 12 }]}>
+                <TO style={[styles.exportButton, { flex: 1 }]} onPress={exportPdf}>
+                    <FD size={20} color="white" style={{ marginRight: 10 }} />
+                    <Text style={styles.exportButtonText}>Exportar PDF</Text>
+                </TO>
+                <TO style={styles.shareTextBtn} onPress={handleShare}>
+                    <S2 size={20} color="#94a3b8" />
                 </TO>
             </View>
         </SAV>
@@ -422,7 +482,8 @@ const styles = StyleSheet.create({
         shadowRadius: 15,
         elevation: 8
     },
-    exportButtonText: { color: 'white', fontWeight: 'bold', fontSize: 17 }
+    exportButtonText: { color: 'white', fontWeight: 'bold', fontSize: 17 },
+    shareTextBtn: { width: 56, alignItems: 'center', justifyContent: 'center', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' }
 });
 
 export default WeeklyReportScreen;

@@ -788,22 +788,43 @@ const SettingsScreen = () => {
                     /* FULL DETAIL VIEW (Tasks/Biases) */
                     <View style={{ paddingBottom: 40 }}>
                         {viewMode === 'biases' ? (
-                            biasHistory.map((item, idx) => (
-                                <TO
-                                    key={idx}
-                                    style={styles.hubTaskItem}
-                                    onPress={() => navigation.navigate('EntryDetail', { entryId: item.entryId })}
-                                >
-                                    <View style={styles.biasTag}>
-                                        <Text style={styles.biasTagText}>{item.bias}</Text>
-                                    </View>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={styles.hubTaskDesc}>{item.bias}</Text>
-                                        <Text style={styles.hubTaskSource}>{item.entryTitle}</Text>
-                                    </View>
-                                    <AR size={14} color="#475569" />
-                                </TO>
-                            ))
+                            biasHistory.length === 0 ? (
+                                <View style={styles.biasEmpty}>
+                                    <Text style={styles.biasEmptyText}>
+                                        Aún no se detectan sesgos recurrentes. Aparecerán aquí
+                                        conforme BLACKBOX analice tus memorias.
+                                    </Text>
+                                </View>
+                            ) : (
+                                biasHistory.map((item, idx) => (
+                                    <TO
+                                        key={idx}
+                                        style={styles.biasCard}
+                                        onPress={() => navigation.navigate('EntryDetail', { entryId: item.entryId })}
+                                        activeOpacity={0.8}
+                                    >
+                                        <View style={styles.biasCardTop}>
+                                            <View style={styles.biasTag}>
+                                                <Text style={styles.biasTagText} numberOfLines={1}>{item.bias}</Text>
+                                            </View>
+                                            <Text style={styles.biasDate}>
+                                                {item.date ? new Date(item.date).toLocaleDateString() : ''}
+                                            </Text>
+                                        </View>
+                                        {!!item.message && (
+                                            <Text style={styles.biasMessage} numberOfLines={3}>
+                                                {item.message}
+                                            </Text>
+                                        )}
+                                        <View style={styles.biasCardFoot}>
+                                            <Text style={styles.biasSource} numberOfLines={1}>
+                                                De: {item.entryTitle}
+                                            </Text>
+                                            <AR size={14} color="#475569" />
+                                        </View>
+                                    </TO>
+                                ))
+                            )
                         ) : (
                             ['BUSINESS', 'PERSONAL', 'DEVELOPMENT', 'WELLNESS', 'GENERAL'].map(cat => {
                                 const catLabels: any = {
@@ -1273,6 +1294,21 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     biasTagText: { color: '#f59e0b', fontSize: 11, fontWeight: 'bold' },
+    biasCard: {
+        backgroundColor: 'rgba(255,255,255,0.03)',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(245,158,11,0.18)',
+        padding: 14,
+        marginBottom: 10,
+    },
+    biasCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+    biasDate: { color: '#475569', fontSize: 11, fontWeight: '600', marginLeft: 10 },
+    biasMessage: { color: '#cbd5e1', fontSize: 13, lineHeight: 19 },
+    biasCardFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
+    biasSource: { color: '#64748b', fontSize: 12, fontWeight: '600', flex: 1, marginRight: 8 },
+    biasEmpty: { padding: 24, alignItems: 'center' },
+    biasEmptyText: { color: '#64748b', fontSize: 13, textAlign: 'center', lineHeight: 19 },
     hubBiasTitle: { color: '#ffffff', fontSize: 14, flex: 1 },
     // NEW PROFILE STYLES
     profileSummary: {
