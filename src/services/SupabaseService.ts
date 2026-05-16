@@ -216,6 +216,10 @@ export const SupabaseService = {
             if (data?.id) {
                 SupabaseService.triggerEntryEmbedding(data.id, entry.original_text || entry.content)
                     .catch(e => console.warn('SUPABASE_SERVICE: embed-entry trigger failed:', e?.message));
+                // Mirror action items into the normalized table so they're
+                // closeable and show up in the Loops inbox.
+                SupabaseService.syncEntryActionItems(entry.user_id, data.id, entry.action_items, 'create')
+                    .catch(e => console.warn('SUPABASE_SERVICE: syncEntryActionItems failed:', e?.message));
             }
 
             return data;
@@ -223,6 +227,51 @@ export const SupabaseService = {
             console.error('SUPABASE_SERVICE: Database Insert Failed:', error.message || error);
             throw error;
         }
+    },
+
+    // Mirrors AI-generated action items into the normalized action_items
+    // table. 'create' inserts all; 'merge' inserts only tasks not already
+    // present for the entry, so existing rows (and their is_completed
+    // state) are preserved when a chat memoria is re-summarized.
+    async syncEntryActionItems(
+        userId: string,
+        entryId: string,
+        items: any[],
+        mode: 'create' | 'merge' = 'create',
+    ) {
+        if (!userId || !entryId || !Array.isArray(items) || items.length === 0) return;
+        const normPriority = (p: any) => {
+            const v = String(p ?? 'MEDIUM').toUpperCase();
+            return ['HIGH', 'MEDIUM', 'LOW'].includes(v) ? v : 'MEDIUM';
+        };
+        const normCategory = (c: any) => {
+            let v = String(c ?? 'PERSONAL').toUpperCase();
+            if (v === 'HEALTH') v = 'WELLNESS';
+            return ['BUSINESS', 'PERSONAL', 'DEVELOPMENT', 'WELLNESS'].includes(v) ? v : 'PERSONAL';
+        };
+
+        let rows = items
+            .map((it) => ({
+                user_id: userId,
+                entry_id: entryId,
+                task: String(it?.task ?? it?.description ?? '').trim(),
+                priority: normPriority(it?.priority),
+                category: normCategory(it?.category),
+            }))
+            .filter((r) => r.task.length > 0);
+
+        if (mode === 'merge') {
+            const { data: existing } = await supabase
+                .from('action_items')
+                .select('task')
+                .eq('entry_id', entryId);
+            const seen = new Set((existing ?? []).map((e: any) => String(e.task).toLowerCase()));
+            rows = rows.filter((r) => !seen.has(r.task.toLowerCase()));
+        }
+
+        if (rows.length === 0) return;
+        const { error } = await supabase.from('action_items').insert(rows);
+        if (error) console.warn('SUPABASE_SERVICE: action_items insert failed:', error.message);
     },
 
     /**
@@ -586,6 +635,7 @@ export const SupabaseService = {
         action_items: any[];
         original_text?: string;
         category?: string;
+        user_id?: string;
     }) {
         try {
             const { error } = await supabase
@@ -612,6 +662,11 @@ export const SupabaseService = {
                 })
                 .eq('id', entryId);
             if (error) throw error;
+            if (analysis.user_id && Array.isArray(analysis.action_items)) {
+                await SupabaseService.syncEntryActionItems(
+                    analysis.user_id, entryId, analysis.action_items, 'merge',
+                ).catch((e) => console.warn('SUPABASE_SERVICE: merge action items failed:', e?.message));
+            }
             return true;
         } catch (error: any) {
             console.error('SUPABASE_SERVICE: updateEntryAnalysis failed:', error.message);

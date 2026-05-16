@@ -264,6 +264,7 @@ const ChatScreen = () => {
                 action_items: a.action_items,
                 original_text: a.original_text || transcript,
                 category: a.category,
+                user_id: user.id,
             }))
             .then(() => {
                 setMemorySyncedLen(len);

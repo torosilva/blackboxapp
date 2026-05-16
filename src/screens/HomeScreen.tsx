@@ -449,6 +449,12 @@ const HomeScreen = () => {
         </TO>
         <TO
           style={styles.iconButton}
+          onPress={() => navigation.navigate('Loops')}
+        >
+          <Z size={22} color="#94a3b8" />
+        </TO>
+        <TO
+          style={styles.iconButton}
           onPress={() => navigation.navigate('Dashboard')}
         >
           <LayoutDashboard size={22} color="#94a3b8" />

@@ -24,6 +24,7 @@ import ChatHubScreen from '../screens/ChatHubScreen';
 import CaptureScreen from '../screens/CaptureScreen';
 import ForgotPasswordScreen from '../auth/ForgotPasswordScreen';
 import FeedbackHistoryScreen from '../screens/FeedbackHistoryScreen';
+import LoopsScreen from '../screens/LoopsScreen';
 import QuickCaptureScreen from '../screens/QuickCaptureScreen';
 import PaywallScreen from '../screens/PaywallScreen';
 import InvitationCodeScreen from '../screens/InvitationCodeScreen';
@@ -118,6 +119,7 @@ function AppNavigator() {
                     <Stack.Screen name="ChatHub" component={ChatHubScreen as any} />
                     <Stack.Screen name="Chat" component={ChatScreen as any} />
                     <Stack.Screen name="FeedbackHistory" component={FeedbackHistoryScreen as any} />
+                    <Stack.Screen name="Loops" component={LoopsScreen as any} />
                     <Stack.Screen name="Terms" component={TermsScreen as any} />
                     <Stack.Screen name="Privacy" component={PrivacyScreen as any} />
                     <Stack.Screen name="Onboarding" component={OnboardingScreen as any} />
