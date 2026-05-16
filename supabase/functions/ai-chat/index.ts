@@ -272,6 +272,7 @@ serve(async (req) => {
       category = 'General',
       therapyMode = false,
       entryContext,
+      image,
     } = await req.json();
 
     if (!userMessage) {
@@ -291,10 +292,19 @@ serve(async (req) => {
       ? buildDynamicContext_Therapy(userName, history, profile, loops, entryContext)
       : buildDynamicContext_Standard(userName, category, history, profile, loops);
 
+    // Last user turn: plain text, or image + text when an image is attached
+    // (Claude Sonnet has vision).
+    const lastUserContent = image?.data && image?.mediaType
+      ? [
+          { type: 'image', source: { type: 'base64', media_type: image.mediaType, data: image.data } },
+          { type: 'text', text: userMessage },
+        ]
+      : userMessage;
+
     // Claude messages array — exclude system, that goes in its own field.
     const messages = [
       ...convertHistory(chatHistory),
-      { role: 'user' as const, content: userMessage },
+      { role: 'user' as const, content: lastUserContent },
     ];
 
     // Two cache breakpoints: the static rules (reused across all users)

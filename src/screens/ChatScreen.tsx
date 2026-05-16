@@ -17,7 +17,7 @@ import { Crown } from 'lucide-react-native';
 const ChatScreen = () => {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
-    const { threadId, category, title, isTherapyMode, entryContext, initialMessage } = route.params || {};
+    const { threadId, category, title, isTherapyMode, entryContext, initialMessage, initialImage } = route.params || {};
     const { user, profile, refreshProfile } = useAuth();
     const { isPro } = useSubscription();
     const Cr = Crown as any;
@@ -151,17 +151,21 @@ const ChatScreen = () => {
         }
     };
 
-    const handleSend = async (text: string = inputText) => {
+    const handleSend = async (
+        text: string = inputText,
+        image?: { mediaType: string; data: string } | null,
+    ) => {
         if (!text.trim() || loading || !user || !threadId) return;
 
-        const userMsg: ChatMessage = { role: 'user', parts: [{ text }] };
+        const displayText = image ? `${text}\n🖼️ (imagen adjunta)` : text;
+        const userMsg: ChatMessage = { role: 'user', parts: [{ text: displayText }] };
         setMessages(prev => [...prev, userMsg]);
         setInputText('');
         setLoading(true);
 
         try {
             // 1. Save User Message to DB
-            await SupabaseService.saveChatMessage(threadId, 'user', text);
+            await SupabaseService.saveChatMessage(threadId, 'user', displayText);
 
             // 2. Get AI Response — pass therapy context if in therapy mode
             const response = await ChatService.sendMessage(
@@ -171,7 +175,8 @@ const ChatScreen = () => {
                 fullName,
                 category,
                 isTherapyMode,
-                entryContext
+                entryContext,
+                image ?? null
             );
             
             const aiText = response.parts[0].text;
@@ -287,7 +292,12 @@ const ChatScreen = () => {
         if (!initialMessage || !initialMessage.trim()) return;
         if (!isPro && !isTherapyMode) return;
         initialSentRef.current = true;
-        handleSend(initialMessage);
+        handleSend(
+            initialMessage,
+            initialImage?.data && initialImage?.mediaType
+                ? { mediaType: initialImage.mediaType, data: initialImage.data }
+                : null,
+        );
     }, [fetchingHistory, initialMessage, isPro, isTherapyMode]);
 
     // Once the conversation has a user message, ensure a linked memoria
