@@ -40,9 +40,15 @@ const ChatScreen = () => {
     // chat enriches it with a summary of the whole conversation.
     const memoryEntryIdRef = useRef<string | null>(null);
     const memoryCreatingRef = useRef(false);
-    const memoryEnrichedRef = useRef(false);
+    const memorySyncingRef = useRef(false);
     const messagesRef = useRef<ChatMessage[]>([]);
     useEffect(() => { messagesRef.current = messages; }, [messages]);
+    // 'none' before any save; 'saving' first write; 'saved' persisted;
+    // 'updating' while re-syncing the full conversation.
+    const [memoryState, setMemoryState] = useState<'none' | 'saving' | 'saved' | 'updating'>('none');
+    // Message count included in the last memoria write — used to know when
+    // there are new turns the user could push with "Actualizar".
+    const [memorySyncedLen, setMemorySyncedLen] = useState(0);
 
     const fullName = profile?.full_name || user?.email?.split('@')[0] || 'Explorador';
 
@@ -181,6 +187,7 @@ const ChatScreen = () => {
         if (memoryEntryIdRef.current || memoryCreatingRef.current) return;
         if (!user || !initialMessage || !seedText.trim()) return;
         memoryCreatingRef.current = true;
+        setMemoryState('saving');
         try {
             const a = await aiService.generateDailySummary([seedText], user.id);
             const entry = await SupabaseService.createEntry({
@@ -197,23 +204,32 @@ const ChatScreen = () => {
                 original_text: a.original_text || seedText,
                 category: a.category || 'PERSONAL',
             });
-            if (entry?.id) memoryEntryIdRef.current = entry.id;
+            if (entry?.id) {
+                memoryEntryIdRef.current = entry.id;
+                setMemorySyncedLen(messagesRef.current.length);
+                setMemoryState('saved');
+            } else {
+                setMemoryState('none');
+            }
         } catch (e: any) {
             console.warn('CHAT_MEMORY: ensureMemory failed:', e?.message);
+            setMemoryState('none');
         } finally {
             memoryCreatingRef.current = false;
         }
     };
 
-    // On leaving the chat, enrich that memoria with a summary of the full
-    // conversation. Fire-and-forget — the promise resolves after unmount.
-    const enrichMemory = () => {
+    // Re-sync the memoria with a summary of the whole conversation.
+    // Called manually from the in-chat banner and once on leaving the chat.
+    const syncMemory = () => {
         const id = memoryEntryIdRef.current;
-        if (!id || !user || memoryEnrichedRef.current) return;
+        if (!id || !user || memorySyncingRef.current) return;
         const msgs = messagesRef.current;
-        const userTurns = msgs.filter((m) => m.role === 'user');
-        if (userTurns.length < 2) return; // trivial — fail-safe entry is enough
-        memoryEnrichedRef.current = true;
+        if (msgs.filter((m) => m.role === 'user').length < 2) return;
+        if (msgs.length <= memorySyncedLen) return; // nothing new to push
+        memorySyncingRef.current = true;
+        setMemoryState('updating');
+        const len = msgs.length;
         const transcript = msgs
             .map((m) => `${m.role === 'user' ? 'Usuario' : 'BLACKBOX'}: ${m.parts[0]?.text ?? ''}`)
             .join('\n\n');
@@ -230,7 +246,15 @@ const ChatScreen = () => {
                 original_text: a.original_text || transcript,
                 category: a.category,
             }))
-            .catch((e: any) => console.warn('CHAT_MEMORY: enrichMemory failed:', e?.message));
+            .then(() => {
+                setMemorySyncedLen(len);
+                setMemoryState('saved');
+            })
+            .catch((e: any) => {
+                console.warn('CHAT_MEMORY: syncMemory failed:', e?.message);
+                setMemoryState('saved');
+            })
+            .finally(() => { memorySyncingRef.current = false; });
     };
 
     // Auto-send the message the user typed on the home screen, once,
@@ -246,7 +270,7 @@ const ChatScreen = () => {
 
     useEffect(() => {
         const unsub = navigation.addListener('beforeRemove', () => {
-            enrichMemory();
+            syncMemory();
         });
         return unsub;
     }, [navigation]);
@@ -285,6 +309,11 @@ const ChatScreen = () => {
         );
     }
 
+    const memoryHasNew =
+        memoryState === 'saved' &&
+        messages.length > memorySyncedLen &&
+        messages.filter((m) => m.role === 'user').length >= 2;
+
     return (
         <SAV style={styles.container}>
             <StatusBar barStyle="light-content" />
@@ -304,6 +333,26 @@ const ChatScreen = () => {
                 </View>
                 <View style={{ width: 44 }} />
             </View>
+
+            {memoryState !== 'none' && (
+                <View style={styles.memoryBanner}>
+                    {(memoryState === 'saving' || memoryState === 'updating') && (
+                        <ActivityIndicator size="small" color="#a855f7" style={{ marginRight: 8 }} />
+                    )}
+                    <Text style={styles.memoryBannerText}>
+                        {memoryState === 'saving' && 'Guardando como memoria…'}
+                        {memoryState === 'updating' && 'Actualizando memoria…'}
+                        {memoryState === 'saved' && (memoryHasNew
+                            ? 'Guardado como memoria · hay mensajes nuevos'
+                            : 'Guardado como memoria ✓')}
+                    </Text>
+                    {memoryState === 'saved' && memoryHasNew && (
+                        <TO onPress={syncMemory} style={styles.memoryBannerBtn}>
+                            <Text style={styles.memoryBannerBtnText}>Actualizar</Text>
+                        </TO>
+                    )}
+                </View>
+            )}
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -408,6 +457,24 @@ const styles = StyleSheet.create({
     headerTitle: { color: 'white', fontWeight: 'bold', letterSpacing: 2, fontSize: 13 },
     categoryLabel: { color: '#6366f1', fontSize: 10, fontWeight: '900', marginTop: 2 },
     backBtn: { padding: 8 },
+    memoryBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(168, 85, 247, 0.12)',
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(168, 85, 247, 0.25)',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+    },
+    memoryBannerText: { color: '#c4b5fd', fontSize: 12, fontWeight: '700', flex: 1 },
+    memoryBannerBtn: {
+        backgroundColor: '#a855f7',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+        marginLeft: 8,
+    },
+    memoryBannerBtnText: { color: 'white', fontSize: 12, fontWeight: '900' },
     chatContainer: { flex: 1 },
     chatContent: { padding: 20, paddingBottom: 100 },
     messageWrapper: { marginBottom: 20, width: '100%', flexDirection: 'row' },
