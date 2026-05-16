@@ -32,6 +32,7 @@ import {
   Search,
   Plus,
   ChevronRight,
+  ChevronLeft,
   Zap,
   Stethoscope,
   Sparkles,
@@ -440,6 +441,13 @@ const HomeScreen = () => {
       />
 
       <View style={styles.header}>
+        <TO
+          style={styles.iconButton}
+          onPress={() => navigation.navigate('Main')}
+          accessibilityLabel="Volver a captura"
+        >
+          <ChevronLeft size={24} color="#94a3b8" />
+        </TO>
         <TO
           style={styles.iconButton}
           onPress={() => setIsMinimized(!isMinimized)}

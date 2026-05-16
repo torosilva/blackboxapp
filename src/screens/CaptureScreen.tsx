@@ -173,6 +173,7 @@ const CaptureScreen = () => {
     const SA = ShieldAlert as any;
 
     const shortcuts = [
+        { label: 'Mi BlackBoxMind', icon: Br, onPress: () => navigation.navigate('Home') },
         { label: 'Dashboard', icon: LD, onPress: () => navigation.navigate('Dashboard') },
         { label: 'Reporte Estratégico', icon: BC, onPress: () => navigation.navigate('WeeklyReport', {}) },
         { label: 'Últimos Chats', icon: MC, onPress: () => navigation.navigate('ChatHub') },
