@@ -48,3 +48,6 @@ serviceAccountKey.json
 
 # Debug/test archives
 *.tar
+
+# Supabase CLI scratch (auto-rewritten, must not block pulls)
+supabase/.temp/
