@@ -46,6 +46,76 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     },
 });
 
+// Parse the OAuth callback URL and establish the Supabase session.
+// Handles both PKCE (?code=...) and implicit (#access_token=...) flows
+// without relying on the URL/URLSearchParams polyfill (incomplete in RN).
+const _parseParams = (str: string): Record<string, string> => {
+    const out: Record<string, string> = {};
+    if (!str) return out;
+    for (const pair of str.split('&')) {
+        if (!pair) continue;
+        const idx = pair.indexOf('=');
+        const k = idx === -1 ? pair : pair.slice(0, idx);
+        const v = idx === -1 ? '' : pair.slice(idx + 1);
+        try {
+            out[decodeURIComponent(k)] = decodeURIComponent(v);
+        } catch {
+            out[k] = v;
+        }
+    }
+    return out;
+};
+
+const _completeSessionFromUrl = async (url: string) => {
+    const queryStr = url.includes('?') ? url.split('?')[1].split('#')[0] : '';
+    const fragStr = url.includes('#') ? url.split('#')[1] : '';
+    const q = _parseParams(queryStr);
+    const f = _parseParams(fragStr);
+
+    if (q.code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(q.code);
+        if (error) throw error;
+        return;
+    }
+
+    const access_token = f.access_token || q.access_token;
+    const refresh_token = f.refresh_token || q.refresh_token;
+    if (access_token && refresh_token) {
+        const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+        if (error) throw error;
+        return;
+    }
+
+    const errMsg = q.error_description || f.error_description || q.error || f.error;
+    throw new Error(errMsg || 'No se pudo completar el inicio de sesión con el proveedor.');
+};
+
+const _performOAuth = async (provider: 'google' | 'apple') => {
+    const redirectTo = AuthSession.makeRedirectUri({ path: 'auth-callback' });
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+            redirectTo,
+            skipBrowserRedirect: true,
+        },
+    });
+
+    if (error) throw error;
+    if (!data?.url) throw new Error('El proveedor no devolvió una URL de autenticación.');
+
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+
+    if (result.type === 'success' && result.url) {
+        await _completeSessionFromUrl(result.url);
+        return;
+    }
+    if (result.type === 'cancel' || result.type === 'dismiss') {
+        return; // User closed the browser; not an error.
+    }
+    throw new Error('El inicio de sesión no se completó.');
+};
+
 export const SupabaseService = {
     /**
      * Internal helper to unpack ai_analysis JSONB into flat object
@@ -851,46 +921,11 @@ export const SupabaseService = {
 
     /**
      * 7. Social Authentication (Google)
+     * Opens an auth session, waits for the blackbox://auth-callback redirect,
+     * and establishes the Supabase session from the returned URL.
      */
     async signInWithGoogle() {
-        const redirectUrl = AuthSession.makeRedirectUri();
-        const { data, error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                redirectTo: redirectUrl,
-                skipBrowserRedirect: true,
-            },
-        });
-        
-        if (error) throw error;
-        if (data?.url) {
-            // Using openBrowserAsync instead of openAuthSessionAsync to prevent reboots in some Expo Go versions
-            await WebBrowser.openBrowserAsync(data.url);
-        }
-    },
-
-    /**
-     * 8. Social Authentication (Apple)
-     */
-    async signInWithApple() {
-        try {
-            const redirectUrl = AuthSession.makeRedirectUri();
-            const { data, error } = await supabase.auth.signInWithOAuth({
-                provider: 'apple',
-                options: {
-                    redirectTo: redirectUrl,
-                    skipBrowserRedirect: true,
-                },
-            });
-
-            if (error) throw error;
-            if (data?.url) {
-                await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
-            }
-        } catch (error: any) {
-            console.error('SUPABASE_SERVICE: Apple Sign-In Failed:', error.message);
-            throw error;
-        }
+        await _performOAuth('google');
     },
 
     /**

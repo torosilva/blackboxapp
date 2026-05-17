@@ -102,17 +102,6 @@ export default function LoginScreen() {
         }
     };
 
-    const handleAppleLogin = async () => {
-        try {
-            setLoading(true);
-            await SupabaseService.signInWithApple();
-        } catch (error: any) {
-            Alert.alert("Error de acceso Apple", error.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const TO = TouchableOpacity as any;
     const Icon = Ionicons as any;
     const FA = FontAwesome5 as any;
@@ -195,21 +184,14 @@ export default function LoginScreen() {
                             <View className="flex-1 h-[1px] bg-white/10" />
                         </View>
 
-                        <View className="mt-6 flex-row space-x-4">
+                        <View className="mt-6">
                             <TO
                                 onPress={handleGoogleLogin}
-                                className="flex-1 bg-white/5 border border-white/10 py-4 rounded-xl flex-row items-center justify-center space-x-3"
+                                disabled={loading}
+                                className="bg-white/5 border border-white/10 py-4 rounded-xl flex-row items-center justify-center space-x-3"
                             >
                                 <FA name="google" size={18} color="white" />
-                                <Text className="text-white font-semibold">Google</Text>
-                            </TO>
-
-                            <TO
-                                onPress={handleAppleLogin}
-                                className="flex-1 bg-white/5 border border-white/10 py-4 rounded-xl flex-row items-center justify-center space-x-3"
-                            >
-                                <FA name="apple" size={20} color="white" />
-                                <Text className="text-white font-semibold">Apple</Text>
+                                <Text className="text-white font-semibold">Continuar con Google</Text>
                             </TO>
                         </View>
 
