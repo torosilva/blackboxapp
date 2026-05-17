@@ -1,6 +1,15 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import { Platform } from 'react-native';
+import { Platform, LogBox } from 'react-native';
+
+// Expo Go (SDK 53+) removed remote push on Android and emits a red LogBox
+// error on import/use. Our notifications are LOCAL and unaffected — silence
+// only this known message so it stops alarming the user.
+LogBox.ignoreLogs([
+    'expo-notifications: Android Push notifications',
+    'Android Push notifications (remote notifications)',
+    '`expo-notifications` functionality is not fully supported in Expo Go',
+]);
 
 // Configure how notifications are handled when the app is foregrounded
 Notifications.setNotificationHandler({
@@ -156,13 +165,87 @@ export const NotificationService = {
                 console.log('Notification Service: 9AM challenge notification scheduled');
             }
 
-            // 9:00 PM — Evening reflection (already may exist as scheduleDailyReminder)
-            const eveningTitle = 'Momento de reflexión 🌙';
-            if (!titles.includes(eveningTitle)) {
-                await this.scheduleDailyReminder();
-            }
+            // The 9:00 PM reminder is now owned by scheduleSmartDailyReminder
+            // (personalized with streak + top loop), called from Home.
         } catch (error) {
             console.warn('NOTIFICATION_SERVICE: Failed to schedule engagement notifications', error);
+        }
+    },
+
+    /**
+     * Personalized 9PM reminder: references the user's streak and oldest
+     * open HIGH loop. Re-scheduled on app open with fresh state, replacing
+     * any prior evening reminder so there's never a duplicate 9PM.
+     */
+    async scheduleSmartDailyReminder(opts: { streak: number; hasEntryToday: boolean; topLoopTitle?: string | null }) {
+        try {
+            const SMART_TITLE = 'BLACKBOX 🌙';
+            const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+            for (const n of scheduled) {
+                const t = n.content.title ?? '';
+                if (t === SMART_TITLE || t === 'Momento de reflexión 🌙') {
+                    await Notifications.cancelScheduledNotificationAsync(n.identifier);
+                }
+            }
+
+            let body: string;
+            if (opts.topLoopTitle) {
+                body = `Tienes "${opts.topLoopTitle}" abierto. ¿Lo cierras hoy o lo registras como avance? 1 min.`;
+            } else if (opts.streak >= 2) {
+                body = opts.hasEntryToday
+                    ? `Racha de ${opts.streak} días 🔥. Mañana sigues.`
+                    : `Llevas ${opts.streak} días seguidos 🔥 — no rompas la racha. 1 min basta.`;
+            } else {
+                body = '¿Qué movió o bloqueó tu día? 1 minuto y queda registrado.';
+            }
+
+            await Notifications.scheduleNotificationAsync({
+                content: {
+                    title: SMART_TITLE,
+                    body,
+                    sound: true,
+                    priority: Notifications.AndroidNotificationPriority.HIGH,
+                    data: { type: 'SMART_DAILY' },
+                },
+                trigger: {
+                    type: Notifications.SchedulableTriggerInputTypes.DAILY,
+                    hour: 21,
+                    minute: 0,
+                },
+            });
+            console.log('Notification Service: smart 9PM reminder scheduled');
+        } catch (error) {
+            console.warn('NOTIFICATION_SERVICE: scheduleSmartDailyReminder failed', error);
+        }
+    },
+
+    /**
+     * Weekly nudge (Sunday 6PM) that deep-links to the weekly report.
+     */
+    async scheduleWeeklyReport() {
+        try {
+            const WEEKLY_TITLE = '📊 Tu reporte semanal está listo';
+            const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+            if (scheduled.some(n => n.content.title === WEEKLY_TITLE)) return;
+
+            await Notifications.scheduleNotificationAsync({
+                content: {
+                    title: WEEKLY_TITLE,
+                    body: 'Cómo se movió tu semana: patrones, victorias y la directiva para la próxima.',
+                    sound: true,
+                    priority: Notifications.AndroidNotificationPriority.HIGH,
+                    data: { type: 'WEEKLY_REPORT' },
+                },
+                trigger: {
+                    type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+                    weekday: 1, // 1 = Sunday
+                    hour: 18,
+                    minute: 0,
+                },
+            });
+            console.log('Notification Service: weekly report notification scheduled');
+        } catch (error) {
+            console.warn('NOTIFICATION_SERVICE: scheduleWeeklyReport failed', error);
         }
     },
 };

@@ -9,3 +9,15 @@ verify_jwt = false
 
 [functions.transcribe-audio]
 verify_jwt = false
+
+[functions.embed-entry]
+verify_jwt = false
+
+[functions.search-entries]
+verify_jwt = false
+
+[functions.backfill-embeddings]
+verify_jwt = false
+
+[functions.classify-thread]
+verify_jwt = false

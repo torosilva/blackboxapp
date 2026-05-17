@@ -10,13 +10,14 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { ChatService, ChatMessage } from '../services/ChatService';
 import { useAuth } from '../context/AuthContext';
 import { SupabaseService } from '../services/SupabaseService';
+import { aiService } from '../services/ai';
 import { useSubscription } from '../hooks/useSubscription';
 import { Crown } from 'lucide-react-native';
 
 const ChatScreen = () => {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
-    const { threadId, category, title, isTherapyMode, entryContext } = route.params || {};
+    const { threadId, category, title, isTherapyMode, entryContext, initialMessage, initialImage } = route.params || {};
     const { user, profile, refreshProfile } = useAuth();
     const { isPro } = useSubscription();
     const Cr = Crown as any;
@@ -33,6 +34,25 @@ const ChatScreen = () => {
     const [loading, setLoading] = useState(false);
     const [fetchingHistory, setFetchingHistory] = useState(true);
     const scrollViewRef = useRef<ScrollView>(null);
+    const initialSentRef = useRef(false);
+    // Hybrid memoria: a home-originated chat (has initialMessage) becomes a
+    // journal entry. The first message creates it (fail-safe); leaving the
+    // chat enriches it with a summary of the whole conversation.
+    const memoryEntryIdRef = useRef<string | null>(null);
+    const memoryCreatingRef = useRef(false);
+    const memorySyncingRef = useRef(false);
+    // Whether the journal-vs-assist decision has been made for this session.
+    const memoryDecidedRef = useRef(false);
+    const messagesRef = useRef<ChatMessage[]>([]);
+    useEffect(() => { messagesRef.current = messages; }, [messages]);
+    // none: pre-exchange · classifying: deciding journal vs assist ·
+    // assist: kept only in chat history · ask: user must decide ·
+    // saving/updating: writing · saved: persisted memoria.
+    const [memoryState, setMemoryState] = useState<'none' | 'classifying' | 'assist' | 'ask' | 'saving' | 'saved' | 'updating'>('none');
+    // Message count included in the last memoria write — used to know when
+    // there are new turns the user could push with "Actualizar".
+    const [memorySyncedLen, setMemorySyncedLen] = useState(0);
+    const [memoryGoalsCount, setMemoryGoalsCount] = useState(0);
 
     const fullName = profile?.full_name || user?.email?.split('@')[0] || 'Explorador';
 
@@ -96,6 +116,20 @@ const ChatScreen = () => {
         try {
             console.log('CHAT_SCREEN: Loading history for thread:', threadId);
             const history = await SupabaseService.getChatMessages(threadId);
+            // Load the memoria already linked to this thread (if any) so
+            // reopening it updates that entry instead of duplicating.
+            if (!isTherapyMode) {
+                try {
+                    const thread = await SupabaseService.getChatThread(threadId);
+                    if (thread?.entry_id) {
+                        memoryEntryIdRef.current = thread.entry_id;
+                        setMemorySyncedLen(history?.length ?? 0);
+                        setMemoryState('saved');
+                    }
+                } catch (e: any) {
+                    console.warn('CHAT_SCREEN: getChatThread failed:', e?.message);
+                }
+            }
             if (history && history.length > 0) {
                 console.log('CHAT_SCREEN: History loaded, messages:', history.length);
                 const formatted = history.map((m: any) => ({
@@ -120,17 +154,21 @@ const ChatScreen = () => {
         }
     };
 
-    const handleSend = async (text: string = inputText) => {
+    const handleSend = async (
+        text: string = inputText,
+        image?: { mediaType: string; data: string } | null,
+    ) => {
         if (!text.trim() || loading || !user || !threadId) return;
 
-        const userMsg: ChatMessage = { role: 'user', parts: [{ text }] };
+        const displayText = image ? `${text}\n🖼️ (imagen adjunta)` : text;
+        const userMsg: ChatMessage = { role: 'user', parts: [{ text: displayText }] };
         setMessages(prev => [...prev, userMsg]);
         setInputText('');
         setLoading(true);
 
         try {
             // 1. Save User Message to DB
-            await SupabaseService.saveChatMessage(threadId, 'user', text);
+            await SupabaseService.saveChatMessage(threadId, 'user', displayText);
 
             // 2. Get AI Response — pass therapy context if in therapy mode
             const response = await ChatService.sendMessage(
@@ -140,7 +178,8 @@ const ChatScreen = () => {
                 fullName,
                 category,
                 isTherapyMode,
-                entryContext
+                entryContext,
+                image ?? null
             );
             
             const aiText = response.parts[0].text;
@@ -164,6 +203,146 @@ const ChatScreen = () => {
             setLoading(false);
         }
     };
+
+    // Create the memoria from the conversation and link it to this thread.
+    // Called automatically when classified as "journal", or manually when
+    // the user promotes an assist chat. Therapy chats are excluded.
+    const createMemoria = async () => {
+        if (memoryEntryIdRef.current || memoryCreatingRef.current) return;
+        if (!user || !threadId || isTherapyMode || !isPro) return;
+        const seedText = messagesRef.current.find((m) => m.role === 'user')?.parts[0]?.text ?? '';
+        if (!seedText.trim()) return;
+        memoryDecidedRef.current = true;
+        memoryCreatingRef.current = true;
+        setMemoryState('saving');
+        try {
+            const a = await aiService.generateDailySummary([seedText], user.id);
+            const entry = await SupabaseService.createEntry({
+                user_id: user.id,
+                title: a.title,
+                content: a.original_text || seedText,
+                summary: a.summary,
+                mood_label: a.mood_label,
+                sentiment_score: a.sentiment_score,
+                wellness_recommendation: a.wellness_recommendation,
+                strategic_insight: a.strategic_insight,
+                action_items: a.action_items,
+                audio_url: null,
+                original_text: a.original_text || seedText,
+                category: a.category || 'PERSONAL',
+                suggested_goals: a.suggested_goals,
+            });
+            if (entry?.id) {
+                memoryEntryIdRef.current = entry.id;
+                await SupabaseService.linkThreadEntry(threadId, entry.id);
+                setMemoryGoalsCount(Array.isArray(a.suggested_goals) ? a.suggested_goals.length : 0);
+                setMemorySyncedLen(messagesRef.current.length);
+                setMemoryState('saved');
+            } else {
+                setMemoryState('ask');
+            }
+        } catch (e: any) {
+            console.warn('CHAT_MEMORY: createMemoria failed:', e?.message);
+            setMemoryState('ask');
+        } finally {
+            memoryCreatingRef.current = false;
+        }
+    };
+
+    // Classify the conversation once an exchange exists: journal → save;
+    // assist → keep only in chat history; uncertain → ask the user.
+    const decideMemoria = async () => {
+        if (memoryEntryIdRef.current || memoryDecidedRef.current || memoryCreatingRef.current) return;
+        if (!user || !threadId || isTherapyMode || !isPro) return;
+        const msgs = messagesRef.current;
+        if (!msgs.some(m => m.role === 'user') || !msgs.some(m => m.role === 'model')) return;
+        memoryDecidedRef.current = true;
+        setMemoryState('classifying');
+        const transcript = msgs
+            .map(m => `${m.role === 'user' ? 'Usuario' : 'BLACKBOX'}: ${m.parts[0]?.text ?? ''}`)
+            .join('\n\n');
+        const kind = await SupabaseService.classifyThread(transcript);
+        if (kind === 'journal') {
+            await createMemoria();
+        } else if (kind === 'assist') {
+            setMemoryState('assist');
+        } else {
+            setMemoryState('ask');
+        }
+    };
+
+    // Re-sync the memoria with a summary of the whole conversation.
+    // Called manually from the in-chat banner and once on leaving the chat.
+    const syncMemory = () => {
+        const id = memoryEntryIdRef.current;
+        if (!id || !user || memorySyncingRef.current) return;
+        const msgs = messagesRef.current;
+        if (msgs.filter((m) => m.role === 'user').length < 2) return;
+        if (msgs.length <= memorySyncedLen) return; // nothing new to push
+        memorySyncingRef.current = true;
+        setMemoryState('updating');
+        const len = msgs.length;
+        const transcript = msgs
+            .map((m) => `${m.role === 'user' ? 'Usuario' : 'BLACKBOX'}: ${m.parts[0]?.text ?? ''}`)
+            .join('\n\n');
+        aiService.generateDailySummary([transcript], user.id)
+            .then((a) => SupabaseService.updateEntryAnalysis(id, {
+                title: a.title,
+                content: a.original_text || transcript,
+                summary: a.summary,
+                mood_label: a.mood_label,
+                sentiment_score: a.sentiment_score,
+                wellness_recommendation: a.wellness_recommendation,
+                strategic_insight: a.strategic_insight,
+                action_items: a.action_items,
+                original_text: a.original_text || transcript,
+                category: a.category,
+                user_id: user.id,
+            }))
+            .then(() => {
+                setMemorySyncedLen(len);
+                setMemoryState('saved');
+            })
+            .catch((e: any) => {
+                console.warn('CHAT_MEMORY: syncMemory failed:', e?.message);
+                setMemoryState('saved');
+            })
+            .finally(() => { memorySyncingRef.current = false; });
+    };
+
+    // Auto-send the message the user typed on the home screen, once,
+    // after history loads. Gated users never trigger this (paywall stays).
+    useEffect(() => {
+        if (fetchingHistory || initialSentRef.current) return;
+        if (!initialMessage || !initialMessage.trim()) return;
+        if (!isPro && !isTherapyMode) return;
+        initialSentRef.current = true;
+        handleSend(
+            initialMessage,
+            initialImage?.data && initialImage?.mediaType
+                ? { mediaType: initialImage.mediaType, data: initialImage.data }
+                : null,
+        );
+    }, [fetchingHistory, initialMessage, isPro, isTherapyMode]);
+
+    // After the first user↔AI exchange, classify the chat (journal vs
+    // assist) and act. Skipped if the thread is already a linked memoria.
+    useEffect(() => {
+        if (fetchingHistory) return;
+        if (memoryEntryIdRef.current || memoryDecidedRef.current || memoryCreatingRef.current) return;
+        const firstUserIdx = messages.findIndex((m) => m.role === 'user');
+        const hasReply = firstUserIdx >= 0 && messages.some((m, i) => m.role === 'model' && i > firstUserIdx);
+        if (hasReply && !loading) {
+            decideMemoria(); // background, not awaited
+        }
+    }, [fetchingHistory, messages, loading]);
+
+    useEffect(() => {
+        const unsub = navigation.addListener('beforeRemove', () => {
+            syncMemory();
+        });
+        return unsub;
+    }, [navigation]);
 
     if (isLimitReached) {
         return (
@@ -199,6 +378,11 @@ const ChatScreen = () => {
         );
     }
 
+    const memoryHasNew =
+        memoryState === 'saved' &&
+        messages.length > memorySyncedLen &&
+        messages.filter((m) => m.role === 'user').length >= 2;
+
     return (
         <SAV style={styles.container}>
             <StatusBar barStyle="light-content" />
@@ -218,6 +402,44 @@ const ChatScreen = () => {
                 </View>
                 <View style={{ width: 44 }} />
             </View>
+
+            {memoryState !== 'none' && (
+                <View style={styles.memoryBanner}>
+                    {(memoryState === 'saving' || memoryState === 'updating' || memoryState === 'classifying') && (
+                        <ActivityIndicator size="small" color="#a855f7" style={{ marginRight: 8 }} />
+                    )}
+                    <Text style={styles.memoryBannerText}>
+                        {memoryState === 'classifying' && 'Analizando…'}
+                        {memoryState === 'saving' && 'Guardando como memoria…'}
+                        {memoryState === 'updating' && 'Actualizando memoria…'}
+                        {memoryState === 'assist' && 'Solo en historial de chats'}
+                        {memoryState === 'ask' && '¿Guardar esto como memoria?'}
+                        {memoryState === 'saved' && (memoryHasNew
+                            ? 'Guardado como memoria · hay mensajes nuevos'
+                            : `Guardado como memoria ✓${memoryGoalsCount > 0 ? ` · ${memoryGoalsCount} meta${memoryGoalsCount > 1 ? 's' : ''} detectada${memoryGoalsCount > 1 ? 's' : ''}` : ''}`)}
+                    </Text>
+                    {memoryState === 'saved' && memoryHasNew && (
+                        <TO onPress={syncMemory} style={styles.memoryBannerBtn}>
+                            <Text style={styles.memoryBannerBtnText}>Actualizar</Text>
+                        </TO>
+                    )}
+                    {memoryState === 'assist' && (
+                        <TO onPress={createMemoria} style={styles.memoryBannerBtn}>
+                            <Text style={styles.memoryBannerBtnText}>Guardar como memoria</Text>
+                        </TO>
+                    )}
+                    {memoryState === 'ask' && (
+                        <>
+                            <TO onPress={createMemoria} style={styles.memoryBannerBtn}>
+                                <Text style={styles.memoryBannerBtnText}>Sí, memoria</Text>
+                            </TO>
+                            <TO onPress={() => setMemoryState('assist')} style={styles.memoryBannerBtnGhost}>
+                                <Text style={styles.memoryBannerBtnGhostText}>Solo historial</Text>
+                            </TO>
+                        </>
+                    )}
+                </View>
+            )}
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -322,6 +544,33 @@ const styles = StyleSheet.create({
     headerTitle: { color: 'white', fontWeight: 'bold', letterSpacing: 2, fontSize: 13 },
     categoryLabel: { color: '#6366f1', fontSize: 10, fontWeight: '900', marginTop: 2 },
     backBtn: { padding: 8 },
+    memoryBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(168, 85, 247, 0.12)',
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(168, 85, 247, 0.25)',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+    },
+    memoryBannerText: { color: '#c4b5fd', fontSize: 12, fontWeight: '700', flex: 1 },
+    memoryBannerBtn: {
+        backgroundColor: '#a855f7',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+        marginLeft: 8,
+    },
+    memoryBannerBtnText: { color: 'white', fontSize: 12, fontWeight: '900' },
+    memoryBannerBtnGhost: {
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        marginLeft: 6,
+        borderWidth: 1,
+        borderColor: 'rgba(196,181,253,0.4)',
+    },
+    memoryBannerBtnGhostText: { color: '#c4b5fd', fontSize: 12, fontWeight: '800' },
     chatContainer: { flex: 1 },
     chatContent: { padding: 20, paddingBottom: 100 },
     messageWrapper: { marginBottom: 20, width: '100%', flexDirection: 'row' },

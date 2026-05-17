@@ -172,6 +172,7 @@ export const SupabaseService = {
         audio_url: string | null;
         original_text: string;
         category?: string;
+        suggested_goals?: string[];
     }) {
         try {
             console.log('SUPABASE_SERVICE: Inserting entry to DB with Active Loops...');
@@ -211,10 +212,158 @@ export const SupabaseService = {
                 throw error;
             }
             console.log('SUPABASE_SERVICE: Entry created successfully');
+
+            // Fire-and-forget: generate semantic embedding for the new entry
+            if (data?.id) {
+                SupabaseService.triggerEntryEmbedding(data.id, entry.original_text || entry.content)
+                    .catch(e => console.warn('SUPABASE_SERVICE: embed-entry trigger failed:', e?.message));
+                // Mirror action items into the normalized table so they're
+                // closeable and show up in the Loops inbox.
+                SupabaseService.syncEntryActionItems(entry.user_id, data.id, entry.action_items, 'create')
+                    .catch(e => console.warn('SUPABASE_SERVICE: syncEntryActionItems failed:', e?.message));
+                if (entry.suggested_goals?.length) {
+                    SupabaseService.syncSuggestedGoals(entry.user_id, entry.suggested_goals, entry.title)
+                        .catch(e => console.warn('SUPABASE_SERVICE: syncSuggestedGoals failed:', e?.message));
+                }
+            }
+
             return data;
         } catch (error: any) {
             console.error('SUPABASE_SERVICE: Database Insert Failed:', error.message || error);
             throw error;
+        }
+    },
+
+    // Classifies a chat as a journal memoria vs a one-off assist query.
+    // Returns 'uncertain' on any failure so the UI asks the user.
+    async classifyThread(transcript: string): Promise<'journal' | 'assist' | 'uncertain'> {
+        try {
+            const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/classify-thread`;
+            const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+            const token = getGlobalAccessToken();
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': anonKey,
+                    'Authorization': `Bearer ${token || anonKey}`,
+                },
+                body: JSON.stringify({ transcript }),
+            });
+            if (!res.ok) return 'uncertain';
+            const data = await res.json();
+            return (['journal', 'assist', 'uncertain'].includes(data?.kind) ? data.kind : 'uncertain');
+        } catch (e: any) {
+            console.warn('SUPABASE_SERVICE: classifyThread failed:', e?.message);
+            return 'uncertain';
+        }
+    },
+
+    // Mirrors AI-generated action items into the normalized action_items
+    // table. 'create' inserts all; 'merge' inserts only tasks not already
+    // present for the entry, so existing rows (and their is_completed
+    // state) are preserved when a chat memoria is re-summarized.
+    async syncEntryActionItems(
+        userId: string,
+        entryId: string,
+        items: any[],
+        mode: 'create' | 'merge' = 'create',
+    ) {
+        if (!userId || !entryId || !Array.isArray(items) || items.length === 0) return;
+        const normPriority = (p: any) => {
+            const v = String(p ?? 'MEDIUM').toUpperCase();
+            return ['HIGH', 'MEDIUM', 'LOW'].includes(v) ? v : 'MEDIUM';
+        };
+        const normCategory = (c: any) => {
+            let v = String(c ?? 'PERSONAL').toUpperCase();
+            if (v === 'HEALTH') v = 'WELLNESS';
+            return ['BUSINESS', 'PERSONAL', 'DEVELOPMENT', 'WELLNESS'].includes(v) ? v : 'PERSONAL';
+        };
+
+        let rows = items
+            .map((it) => ({
+                user_id: userId,
+                entry_id: entryId,
+                task: String(it?.task ?? it?.description ?? '').trim(),
+                priority: normPriority(it?.priority),
+                category: normCategory(it?.category),
+            }))
+            .filter((r) => r.task.length > 0);
+
+        if (mode === 'merge') {
+            const { data: existing } = await supabase
+                .from('action_items')
+                .select('task')
+                .eq('entry_id', entryId);
+            const seen = new Set((existing ?? []).map((e: any) => String(e.task).toLowerCase()));
+            rows = rows.filter((r) => !seen.has(r.task.toLowerCase()));
+        }
+
+        if (rows.length === 0) return;
+        const { error } = await supabase.from('action_items').insert(rows);
+        if (error) console.warn('SUPABASE_SERVICE: action_items insert failed:', error.message);
+    },
+
+    /**
+     * Fire-and-forget: invoke embed-entry to generate semantic embedding for a new entry.
+     * Called automatically from createEntry; safe to call manually for retries.
+     */
+    async triggerEntryEmbedding(entryId: string, text?: string): Promise<void> {
+        try {
+            const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/embed-entry`;
+            const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+            const token = getGlobalAccessToken();
+            await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': anonKey,
+                    'Authorization': `Bearer ${token || anonKey}`,
+                },
+                body: JSON.stringify({ entryId, text }),
+            });
+        } catch (e: any) {
+            // Swallow — embedding is non-critical, can be backfilled later
+            console.warn('SUPABASE_SERVICE: triggerEntryEmbedding error:', e?.message);
+        }
+    },
+
+    /**
+     * Semantic search over the user's entries using cosine similarity on embeddings.
+     * Returns entries ranked by relevance, not exact text match.
+     */
+    async semanticSearch(userId: string, query: string, opts?: { threshold?: number; limit?: number }): Promise<any[]> {
+        if (!query?.trim() || !userId) return [];
+        try {
+            const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/search-entries`;
+            const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+            const token = getGlobalAccessToken();
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': anonKey,
+                    'Authorization': `Bearer ${token || anonKey}`,
+                },
+                body: JSON.stringify({
+                    userId,
+                    query,
+                    threshold: opts?.threshold ?? 0.5,
+                    limit: opts?.limit ?? 20,
+                }),
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                console.warn(`SUPABASE_SERVICE: semantic search HTTP ${response.status}: ${errText}`);
+                return [];
+            }
+            const data = await response.json();
+            return data?.results ?? [];
+        } catch (e: any) {
+            console.warn('SUPABASE_SERVICE: semanticSearch error:', e?.message);
+            return [];
         }
     },
 
@@ -502,6 +651,59 @@ export const SupabaseService = {
         }
     },
 
+    // Overwrites an entry's analyzed fields. Used to enrich the fail-safe
+    // memoria created from a chat's first message with a summary of the
+    // whole conversation when the user leaves the chat.
+    async updateEntryAnalysis(entryId: string, analysis: {
+        title?: string;
+        content?: string;
+        summary: string;
+        mood_label: string;
+        sentiment_score: number;
+        wellness_recommendation: any;
+        strategic_insight: any;
+        action_items: any[];
+        original_text?: string;
+        category?: string;
+        user_id?: string;
+    }) {
+        try {
+            const { error } = await supabase
+                .from('entries')
+                .update({
+                    ...(analysis.title ? { title: analysis.title } : {}),
+                    ...(analysis.content ? { content: analysis.content } : {}),
+                    ...(analysis.original_text ? { original_text: analysis.original_text } : {}),
+                    ...(analysis.category ? { category: analysis.category } : {}),
+                    ai_analysis: {
+                        summary: analysis.summary,
+                        mood_label: analysis.mood_label,
+                        sentiment_score: analysis.sentiment_score,
+                        wellness_recommendation: analysis.wellness_recommendation,
+                        strategic_insight: analysis.strategic_insight,
+                        action_items: analysis.action_items,
+                    },
+                    summary: analysis.summary,
+                    mood_label: analysis.mood_label,
+                    sentiment_score: analysis.sentiment_score,
+                    wellness_recommendation: analysis.wellness_recommendation,
+                    strategic_insight: analysis.strategic_insight,
+                    mood: analysis.mood_label,
+                })
+                .eq('id', entryId);
+            if (error) throw error;
+            if (analysis.user_id && Array.isArray(analysis.action_items)) {
+                await SupabaseService.syncEntryActionItems(
+                    analysis.user_id, entryId, analysis.action_items, 'merge',
+                ).catch((e) => console.warn('SUPABASE_SERVICE: merge action items failed:', e?.message));
+            }
+            return true;
+        } catch (error: any) {
+            console.error('SUPABASE_SERVICE: updateEntryAnalysis failed:', error.message);
+            return false;
+        }
+    },
+
     /**
      * Mark terms as accepted for the user
      */
@@ -730,6 +932,44 @@ export const SupabaseService = {
     /**
      * 10. Strategic Goals
      */
+    // Consecutive-day streak based on entry dates (UTC day keys). The
+    // streak stays "alive" through today even if today has no entry yet,
+    // so the nudge can say "don't break your 5-day streak".
+    async getStreakInfo(userId: string): Promise<{ streak: number; hasEntryToday: boolean }> {
+        try {
+            const { data } = await supabase
+                .from('entries')
+                .select('created_at')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false })
+                .limit(200);
+            const days = new Set(
+                (data || [])
+                    .map((e: any) => (e.created_at ? new Date(e.created_at).toISOString().slice(0, 10) : null))
+                    .filter(Boolean) as string[],
+            );
+            if (days.size === 0) return { streak: 0, hasEntryToday: false };
+
+            const dayKey = (d: Date) => d.toISOString().slice(0, 10);
+            const today = new Date();
+            const hasEntryToday = days.has(dayKey(today));
+
+            // Start from today if logged today, else yesterday (grace day).
+            const cursor = new Date(today);
+            if (!hasEntryToday) cursor.setUTCDate(cursor.getUTCDate() - 1);
+
+            let streak = 0;
+            while (days.has(dayKey(cursor))) {
+                streak++;
+                cursor.setUTCDate(cursor.getUTCDate() - 1);
+            }
+            return { streak, hasEntryToday };
+        } catch (e: any) {
+            console.warn('SUPABASE_SERVICE: getStreakInfo failed:', e?.message);
+            return { streak: 0, hasEntryToday: false };
+        }
+    },
+
     async getGoals(userId: string) {
         try {
             const { data, error } = await supabase
@@ -743,6 +983,38 @@ export const SupabaseService = {
         } catch (error: any) {
             console.error('SUPABASE_SERVICE: Error fetching goals', error);
             return [];
+        }
+    },
+
+    // Centralized: turn analyze-entry's suggested_goals into Goal rows for
+    // ANY memoria (chat or journal). Dedupes against existing goals by
+    // lowercased title so re-summarizing a chat never duplicates.
+    async syncSuggestedGoals(userId: string, goals: any[], sourceTitle?: string) {
+        if (!userId || !Array.isArray(goals) || goals.length === 0) return 0;
+        try {
+            const existing = await SupabaseService.getGoals(userId);
+            const seen = new Set(
+                (existing || []).map((g: any) => String(g.title).trim().toLowerCase()),
+            );
+            const rows = goals
+                .map((g) => (typeof g === 'string' ? g : g?.title ?? '').toString().trim())
+                .filter((t) => t.length > 0 && !seen.has(t.toLowerCase()))
+                .map((title) => ({
+                    user_id: userId,
+                    title,
+                    description: sourceTitle ? `Detectada en: ${sourceTitle}` : 'Detectada automáticamente',
+                    category: 'PERSONAL',
+                }));
+            if (rows.length === 0) return 0;
+            const { error } = await supabase.from('goals').insert(rows);
+            if (error) {
+                console.warn('SUPABASE_SERVICE: syncSuggestedGoals insert failed:', error.message);
+                return 0;
+            }
+            return rows.length;
+        } catch (e: any) {
+            console.warn('SUPABASE_SERVICE: syncSuggestedGoals failed:', e?.message);
+            return 0;
         }
     },
 
@@ -822,6 +1094,49 @@ export const SupabaseService = {
             .eq('id', threadId);
         if (error) throw error;
         return true;
+    },
+
+    async getChatThread(threadId: string) {
+        const { data, error } = await supabase
+            .from('chat_threads')
+            .select('*')
+            .eq('id', threadId)
+            .maybeSingle();
+        if (error) throw error;
+        return data;
+    },
+
+    // The chat thread already tied to a memoria, if any — so "Profundizar
+    // en chat" continues that conversation instead of spawning a new one.
+    async getThreadByEntry(entryId: string) {
+        try {
+            const { data, error } = await supabase
+                .from('chat_threads')
+                .select('*')
+                .eq('entry_id', entryId)
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            if (error) throw error;
+            return data;
+        } catch (e: any) {
+            console.warn('SUPABASE_SERVICE: getThreadByEntry failed:', e?.message);
+            return null;
+        }
+    },
+
+    async linkThreadEntry(threadId: string, entryId: string) {
+        try {
+            const { error } = await supabase
+                .from('chat_threads')
+                .update({ entry_id: entryId })
+                .eq('id', threadId);
+            if (error) throw error;
+            return true;
+        } catch (error: any) {
+            console.error('SUPABASE_SERVICE: linkThreadEntry failed:', error.message);
+            return false;
+        }
     },
 
     async getChatMessages(threadId: string) {

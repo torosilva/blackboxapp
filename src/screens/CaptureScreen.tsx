@@ -1,20 +1,20 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
-    StatusBar, Alert, KeyboardAvoidingView, Platform, Animated, ScrollView
+    StatusBar, Alert, KeyboardAvoidingView, Platform, Animated, ScrollView, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import {
-    Mic, MicOff, ArrowUp, Box, Brain, Plus,
+    Mic, MicOff, ArrowUp, Box, Brain, Plus, X,
     LayoutDashboard, BarChart2, MessageCircle, ShieldAlert
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
-import { aiService } from '../services/ai';
 import { voiceService } from '../services/voice';
 import { SupabaseService } from '../services/SupabaseService';
-import { NotificationService } from '../services/notificationService';
 import AILoadingOverlay from '../components/AILoadingOverlay';
+import WelcomeModal from '../components/WelcomeModal';
 
 const CaptureScreen = () => {
     const navigation = useNavigation<any>();
@@ -25,6 +25,56 @@ const CaptureScreen = () => {
     const [isRecording, setIsRecording] = useState(false);
     const [isTranscribing, setIsTranscribing] = useState(false);
     const [lastRecordingUri, setLastRecordingUri] = useState<string | null>(null);
+    const [recordSecs, setRecordSecs] = useState(0);
+    const [pickedImage, setPickedImage] = useState<{ uri: string; mediaType: string; data: string } | null>(null);
+
+    const pickImage = async () => {
+        try {
+            const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!perm.granted) {
+                Alert.alert('Permiso requerido', 'Necesito acceso a tus fotos para adjuntar una imagen.');
+                return;
+            }
+            const res = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                quality: 0.7,
+                base64: true,
+            });
+            if (res.canceled || !res.assets?.[0]?.base64) return;
+            const a = res.assets[0];
+            const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            const mediaType = allowed.includes(a.mimeType || '') ? a.mimeType! : 'image/jpeg';
+            setPickedImage({ uri: a.uri, mediaType, data: a.base64! });
+        } catch (e: any) {
+            console.warn('CAPTURE: pickImage failed:', e?.message);
+            Alert.alert('Error', 'No se pudo cargar la imagen.');
+        }
+    };
+
+    // Recording timer for the "Escuchando…" indicator.
+    useEffect(() => {
+        if (!isRecording) { setRecordSecs(0); return; }
+        setRecordSecs(0);
+        const id = setInterval(() => setRecordSecs(s => s + 1), 1000);
+        return () => clearInterval(id);
+    }, [isRecording]);
+
+    // Pulse the recording dot while listening (dedicated value so it
+    // doesn't fight the ambient brain-breathing animation).
+    const dotAnim = useRef(new Animated.Value(1)).current;
+    useEffect(() => {
+        if (!isRecording && !isTranscribing) return;
+        const loop = Animated.loop(
+            Animated.sequence([
+                Animated.timing(dotAnim, { toValue: 1.4, duration: 600, useNativeDriver: true }),
+                Animated.timing(dotAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+            ])
+        );
+        loop.start();
+        return () => { loop.stop(); dotAnim.setValue(1); };
+    }, [isRecording, isTranscribing]);
+
+    const fmtSecs = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
     const inputRef = useRef<any>(null);
     const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -46,7 +96,7 @@ const CaptureScreen = () => {
     }, []);
 
     const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
-    const canSubmit = content.trim().length >= 40 && wordCount >= 8;
+    const canSubmit = content.trim().length > 0 || !!pickedImage;
 
     const displayName = (profile?.full_name || user?.email?.split('@')[0] || '').split(' ')[0];
     const greeting = (() => {
@@ -56,56 +106,32 @@ const CaptureScreen = () => {
         return 'Buenas noches';
     })();
 
-    const handleSave = async () => {
-        if (!content.trim()) return;
+    const handleSend = async () => {
+        const message = content.trim() || (pickedImage ? '¿Qué ves en esta imagen? Interprétala en mi contexto.' : '');
+        if (!message) return;
         if (!user) { Alert.alert('Error', 'Debes estar conectado.'); return; }
-
-        if (!canSubmit) {
-            Alert.alert(
-                'Contenido Insuficiente',
-                'Escribe al menos un párrafo para que BLACKBOX pueda darte un análisis profundo.',
-                [{ text: 'Entendido' }]
-            );
-            return;
-        }
 
         setLoading(true);
         try {
-            let audioUrl = null;
-            if (lastRecordingUri) {
-                audioUrl = await SupabaseService.uploadAudio(lastRecordingUri, user.id);
-            }
+            const threadTitle = message.split('\n')[0].slice(0, 50) || 'Nueva conversación';
+            const thread = await SupabaseService.createChatThread(user.id, threadTitle, 'GENERAL');
+            if (!thread) throw new Error('No se pudo crear la conversación');
 
-            const analysis = await aiService.generateDailySummary([content], user.id);
-
-            await SupabaseService.createEntry({
-                user_id: user.id,
-                title: analysis.title,
-                content: analysis.original_text || content,
-                sentiment_score: analysis.sentiment_score,
-                mood_label: analysis.mood_label,
-                summary: analysis.summary,
-                wellness_recommendation: analysis.wellness_recommendation,
-                strategic_insight: analysis.strategic_insight,
-                action_items: analysis.action_items,
-                audio_url: audioUrl,
-                original_text: analysis.original_text || content,
-                category: analysis.category || 'PERSONAL'
-            });
-
-            if (Array.isArray(analysis.action_items)) {
-                const highs = analysis.action_items.filter((a: any) => a.priority === 'HIGH');
-                for (const h of highs) {
-                    await NotificationService.scheduleStrategicFollowup(h.task);
-                }
-            }
-
+            const imgParam = pickedImage;
             setContent('');
             setLastRecordingUri(null);
-            Alert.alert('✓ Memoria registrada', analysis.title || 'Entrada guardada en BLACKBOX.');
+            setPickedImage(null);
+
+            navigation.navigate('Chat', {
+                threadId: thread.id,
+                category: thread.category,
+                title: thread.title,
+                initialMessage: message,
+                initialImage: imgParam,
+            });
         } catch (err: any) {
             console.error('CAPTURE_ERROR:', err);
-            Alert.alert('No se pudo guardar', 'Hubo un problema al analizar tu entrada. Verifica tu conexión e intenta de nuevo.');
+            Alert.alert('No se pudo iniciar', 'Hubo un problema al abrir la conversación. Verifica tu conexión e intenta de nuevo.');
         } finally {
             setLoading(false);
         }
@@ -141,16 +167,18 @@ const CaptureScreen = () => {
     const Bx = Box as any;
     const Br = Brain as any;
     const Pl = Plus as any;
+    const Xx = X as any;
     const LD = LayoutDashboard as any;
     const BC = BarChart2 as any;
     const MC = MessageCircle as any;
     const SA = ShieldAlert as any;
 
     const shortcuts = [
+        { label: 'Mi BlackBoxMind', icon: Br, onPress: () => navigation.navigate('Home') },
         { label: 'Dashboard', icon: LD, onPress: () => navigation.navigate('Dashboard') },
         { label: 'Reporte Estratégico', icon: BC, onPress: () => navigation.navigate('WeeklyReport', {}) },
-        { label: 'Últimos Chats', icon: MC, onPress: () => navigation.navigate('ChatHub') },
-        { label: 'Intervención Estratégica', icon: SA, onPress: () => navigation.navigate('Settings', { initialViewMode: 'biases' }) },
+        { label: 'Historial de Chats', icon: MC, onPress: () => navigation.navigate('ChatHub') },
+        { label: 'Mis Sesgos', icon: SA, onPress: () => navigation.navigate('Settings', { initialViewMode: 'biases' }) },
     ];
 
     return (
@@ -192,9 +220,36 @@ const CaptureScreen = () => {
                             editable={!loading}
                         />
 
+                        {(isRecording || isTranscribing) && (
+                            <View style={styles.recordingBar}>
+                                <Animated.View
+                                    style={[
+                                        styles.recordingDot,
+                                        isTranscribing && { backgroundColor: '#6366f1' },
+                                        { transform: [{ scale: dotAnim }] },
+                                    ]}
+                                />
+                                <Text style={styles.recordingText}>
+                                    {isTranscribing
+                                        ? 'Transcribiendo tu audio…'
+                                        : `Escuchando ${fmtSecs(recordSecs)} · toca el micrófono para detener`}
+                                </Text>
+                            </View>
+                        )}
+
+                        {pickedImage && (
+                            <View style={styles.imagePreview}>
+                                <Image source={{ uri: pickedImage.uri }} style={styles.imageThumb} />
+                                <Text style={styles.imageHint}>Imagen adjunta · BLACKBOX la interpretará</Text>
+                                <TO onPress={() => setPickedImage(null)} style={styles.imageRemove} activeOpacity={0.7}>
+                                    <Xx size={16} color="#fca5a5" />
+                                </TO>
+                            </View>
+                        )}
+
                         <View style={styles.inputFooter}>
                             <View style={styles.leftActions}>
-                                <TO style={styles.iconBtn} activeOpacity={0.7}>
+                                <TO style={styles.iconBtn} activeOpacity={0.7} onPress={pickImage} disabled={loading}>
                                     <Pl size={16} color="#64748b" />
                                 </TO>
                                 {wordCount > 0 && (
@@ -221,7 +276,7 @@ const CaptureScreen = () => {
                                 </TO>
 
                                 <TO
-                                    onPress={handleSave}
+                                    onPress={handleSend}
                                     disabled={!canSubmit || loading}
                                     style={[styles.sendBtn, canSubmit ? styles.sendBtnActive : styles.sendBtnDisabled]}
                                     activeOpacity={0.8}
@@ -262,6 +317,8 @@ const CaptureScreen = () => {
                 visible={loading || isTranscribing}
                 message={isTranscribing ? 'Transcribiendo audio...' : 'Ingresando a tu BlackboxMind...'}
             />
+
+            <WelcomeModal />
         </SAV>
     );
 };
@@ -337,6 +394,36 @@ const styles = StyleSheet.create({
         borderColor: '#ef4444',
     },
     wordCount: { color: '#475569', fontSize: 12 },
+    recordingBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(239,68,68,0.10)',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        marginTop: 4,
+        marginBottom: 8,
+    },
+    recordingDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: '#ef4444',
+        marginRight: 10,
+    },
+    recordingText: { color: '#fca5a5', fontSize: 13, fontWeight: '700', flex: 1 },
+    imagePreview: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(99,102,241,0.10)',
+        borderRadius: 12,
+        padding: 8,
+        marginTop: 4,
+        marginBottom: 8,
+    },
+    imageThumb: { width: 44, height: 44, borderRadius: 8, marginRight: 10 },
+    imageHint: { color: '#a5b4fc', fontSize: 12, fontWeight: '600', flex: 1 },
+    imageRemove: { padding: 6 },
     sendBtn: {
         width: 30, height: 30, borderRadius: 15,
         justifyContent: 'center',

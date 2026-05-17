@@ -1,5 +1,6 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
+import * as Notifications from 'expo-notifications';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { TabProvider } from '../context/TabContext';
@@ -24,6 +25,7 @@ import ChatHubScreen from '../screens/ChatHubScreen';
 import CaptureScreen from '../screens/CaptureScreen';
 import ForgotPasswordScreen from '../auth/ForgotPasswordScreen';
 import FeedbackHistoryScreen from '../screens/FeedbackHistoryScreen';
+import LoopsScreen from '../screens/LoopsScreen';
 import QuickCaptureScreen from '../screens/QuickCaptureScreen';
 import PaywallScreen from '../screens/PaywallScreen';
 import InvitationCodeScreen from '../screens/InvitationCodeScreen';
@@ -118,6 +120,7 @@ function AppNavigator() {
                     <Stack.Screen name="ChatHub" component={ChatHubScreen as any} />
                     <Stack.Screen name="Chat" component={ChatScreen as any} />
                     <Stack.Screen name="FeedbackHistory" component={FeedbackHistoryScreen as any} />
+                    <Stack.Screen name="Loops" component={LoopsScreen as any} />
                     <Stack.Screen name="Terms" component={TermsScreen as any} />
                     <Stack.Screen name="Privacy" component={PrivacyScreen as any} />
                     <Stack.Screen name="Onboarding" component={OnboardingScreen as any} />
@@ -173,13 +176,27 @@ function AppNavigator() {
     );
 }
 
+const navigationRef = createNavigationContainerRef<any>();
+
 export default function RootNavigator() {
     console.log('ROOT_NAVIGATOR: Starting rendering...');
+
+    // Route notification taps to the relevant screen.
+    React.useEffect(() => {
+        const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+            const type = (response.notification.request.content.data as any)?.type;
+            if (!navigationRef.isReady() || !type) return;
+            if (type === 'WEEKLY_REPORT') navigationRef.navigate('WeeklyReport', {});
+            else if (type === 'STRATEGIC_FOLLOWUP' || type === 'SMART_DAILY') navigationRef.navigate('Loops');
+        });
+        return () => sub.remove();
+    }, []);
+
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             <SafeAreaProvider>
                 <AuthProvider>
-                    <NavigationContainer>
+                    <NavigationContainer ref={navigationRef}>
                         <AppNavigator />
                     </NavigationContainer>
                 </AuthProvider>

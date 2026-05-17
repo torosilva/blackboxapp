@@ -32,6 +32,7 @@ import {
   Search,
   Plus,
   ChevronRight,
+  ChevronLeft,
   Zap,
   Stethoscope,
   Sparkles,
@@ -65,6 +66,16 @@ import { SupabaseService } from '../services/SupabaseService';
 import AILoadingOverlay from '../components/AILoadingOverlay';
 import { NotificationService } from '../services/notificationService';
 
+// Category → short label + color, so memorias are differentiable at a glance.
+const CATEGORY_META: Record<string, { label: string; color: string }> = {
+  BUSINESS: { label: 'Negocio', color: '#6366f1' },
+  PERSONAL: { label: 'Personal', color: '#38bdf8' },
+  DEVELOPMENT: { label: 'Desarrollo', color: '#f59e0b' },
+  WELLNESS: { label: 'Bienestar', color: '#10b981' },
+  HEALTH: { label: 'Salud', color: '#f43f5e' },
+};
+const catMeta = (c?: string) => CATEGORY_META[(c || '').toUpperCase()] || { label: c || 'General', color: '#64748b' };
+
 const HomeScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
@@ -79,7 +90,10 @@ const HomeScreen = () => {
   const [lastEntriesFingerprint, setLastEntriesFingerprint] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [showSearch, setShowSearch] = useState(false); // NEW: Independent search visibility
+  const [semanticResults, setSemanticResults] = useState<any[] | null>(null);
+  const [semanticLoading, setSemanticLoading] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
+  const semanticDebounceRef = useRef<any>(null);
   const isFocused = useIsFocused();
   // Lock to prevent duplicate concurrent Gemini calls
   const summaryLockRef = useRef(false);
@@ -90,6 +104,32 @@ const HomeScreen = () => {
       fetchData();
     }
   }, [isFocused, user]);
+
+  // Semantic search — debounced. Fires when user types ≥3 chars and pauses 500ms.
+  useEffect(() => {
+    if (semanticDebounceRef.current) clearTimeout(semanticDebounceRef.current);
+
+    const q = searchQuery.trim();
+    if (!user || q.length < 3) {
+      setSemanticResults(null);
+      setSemanticLoading(false);
+      return;
+    }
+
+    setSemanticLoading(true);
+    semanticDebounceRef.current = setTimeout(async () => {
+      try {
+        const results = await SupabaseService.semanticSearch(user.id, q);
+        setSemanticResults(results);
+      } finally {
+        setSemanticLoading(false);
+      }
+    }, 500);
+
+    return () => {
+      if (semanticDebounceRef.current) clearTimeout(semanticDebounceRef.current);
+    };
+  }, [searchQuery, user]);
 
   // PULSING BRAIN ANIMATION
   const brainPulse = useSharedValue(1);
@@ -104,16 +144,33 @@ const HomeScreen = () => {
     );
   }, []);
 
-  // NOTIFICATION INITIALIZATION
+  const [streak, setStreak] = useState(0);
+
+  // NOTIFICATION INITIALIZATION + retention hooks (streak, smart 9PM, weekly)
   useEffect(() => {
     const initNotifications = async () => {
       const hasPermission = await NotificationService.registerForPushNotificationsAsync();
+      if (!user) return;
+
+      const [{ streak: s, hasEntryToday }, openLoops] = await Promise.all([
+        SupabaseService.getStreakInfo(user.id),
+        SupabaseService.getOpenActionItems(user.id),
+      ]);
+      setStreak(s);
+
       if (hasPermission) {
         await NotificationService.scheduleEngagementNotifications();
+        const topLoop = (openLoops || []).find((l: any) => l.priority === 'HIGH') || (openLoops || [])[0];
+        await NotificationService.scheduleSmartDailyReminder({
+          streak: s,
+          hasEntryToday,
+          topLoopTitle: topLoop?.task ?? null,
+        });
+        await NotificationService.scheduleWeeklyReport();
       }
     };
     initNotifications();
-  }, []);
+  }, [user]);
 
 
   const animatedBrainStyle = useAnimatedStyle(() => ({
@@ -328,13 +385,27 @@ const HomeScreen = () => {
 
   const filterCounts = getFilteredCounts();
 
+  // Semantic search active when query ≥3 chars AND we have results back.
+  // Maps semanticResults (ids only) back to full entries so card UI works.
+  const semanticActive = searchQuery.trim().length >= 3 && semanticResults !== null;
+  const semanticIds = new Set((semanticResults ?? []).map((r: any) => r.id));
+
   const filteredEntries = entries.filter(e => {
-    const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = (e.title || '').toLowerCase().includes(searchLower) ||
-      (e.content || '').toLowerCase().includes(searchLower) ||
-      (e.mood_label || '').toLowerCase().includes(searchLower) ||
-      (e.category || '').toLowerCase().includes(searchLower) ||
-      (Array.isArray(e.action_items) && e.action_items.some((ai: any) => (ai.task || ai.description || '').toLowerCase().includes(searchLower)));
+    let matchesSearch = true;
+
+    if (semanticActive) {
+      // When semantic search is on, ignore substring match — trust embeddings.
+      matchesSearch = semanticIds.has(e.id);
+    } else {
+      // Fallback: substring match for short queries (<3 chars) or before semantic returns.
+      const searchLower = searchQuery.toLowerCase();
+      matchesSearch = !searchLower ||
+        (e.title || '').toLowerCase().includes(searchLower) ||
+        (e.content || '').toLowerCase().includes(searchLower) ||
+        (e.mood_label || '').toLowerCase().includes(searchLower) ||
+        (e.category || '').toLowerCase().includes(searchLower) ||
+        (Array.isArray(e.action_items) && e.action_items.some((ai: any) => (ai.task || ai.description || '').toLowerCase().includes(searchLower)));
+    }
 
     if (!matchesSearch) return false;
 
@@ -350,6 +421,25 @@ const HomeScreen = () => {
       default: return true;
     }
   });
+
+  // Category overview (default view): one card per category with count,
+  // last activity and average sentiment — attention at a glance.
+  const showOverview = activeFilter === 'all' && !searchQuery.trim();
+  const isCategoryDrill = ['BUSINESS', 'PERSONAL', 'DEVELOPMENT', 'WELLNESS', 'HEALTH'].includes(activeFilter);
+  const recentEntries = [...entries]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 6);
+  const categoryGroups = Object.values(
+    entries.reduce((acc: Record<string, any>, e: any) => {
+      const key = (e.category || 'PERSONAL').toUpperCase();
+      if (!acc[key]) acc[key] = { key, count: 0, last: 0, sentSum: 0, sentN: 0 };
+      acc[key].count++;
+      const t = new Date(e.created_at).getTime();
+      if (t > acc[key].last) acc[key].last = t;
+      if (typeof e.sentiment_score === 'number') { acc[key].sentSum += e.sentiment_score; acc[key].sentN++; }
+      return acc;
+    }, {})
+  ).sort((a: any, b: any) => b.count - a.count);
 
   const TO = TouchableOpacity as any;
   const B = Brain as any;
@@ -382,6 +472,23 @@ const HomeScreen = () => {
       <View style={styles.header}>
         <TO
           style={styles.iconButton}
+          onPress={() => {
+            // Back peels one layer: category drill / filter / search → overview;
+            // only from the overview does it exit to the capture screen.
+            if (isCategoryDrill || activeFilter !== 'all' || searchQuery.trim()) {
+              setActiveFilter('all');
+              setSearchQuery('');
+              setShowFilters(false);
+            } else {
+              navigation.navigate('Main');
+            }
+          }}
+          accessibilityLabel="Volver"
+        >
+          <ChevronLeft size={24} color="#94a3b8" />
+        </TO>
+        <TO
+          style={styles.iconButton}
           onPress={() => setIsMinimized(!isMinimized)}
         >
           <Animated.View style={[styles.brainIconContainer, animatedBrainStyle]}>
@@ -403,6 +510,17 @@ const HomeScreen = () => {
             resizeMode="contain"
           />
           {showSearch && <View style={styles.searchIndicator} />}
+        </TO>
+        {streak >= 2 && (
+          <View style={styles.streakChip}>
+            <Text style={styles.streakText}>🔥 {streak}</Text>
+          </View>
+        )}
+        <TO
+          style={styles.iconButton}
+          onPress={() => navigation.navigate('Loops')}
+        >
+          <Z size={22} color="#94a3b8" />
         </TO>
         <TO
           style={styles.iconButton}
@@ -427,13 +545,28 @@ const HomeScreen = () => {
             <TextInput
               ref={searchInputRef}
               style={styles.searchInput}
-              placeholder="Explorar memorias..."
+              placeholder={semanticActive ? "Búsqueda semántica activa" : "Explorar memorias..."}
               placeholderTextColor="#94a3b8"
               value={searchQuery}
               onChangeText={(text: any) => {
                 setSearchQuery(text);
               }}
             />
+
+            {semanticLoading && (
+              <ActivityIndicator size="small" color="#a855f7" style={{ marginRight: 8 }} />
+            )}
+            {semanticActive && !semanticLoading && (
+              <View style={{
+                backgroundColor: 'rgba(168, 85, 247, 0.15)',
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+                borderRadius: 6,
+                marginRight: 8,
+              }}>
+                <Text style={{ color: '#a855f7', fontSize: 10, fontWeight: '700' }}>SEMÁNTICA</Text>
+              </View>
+            )}
 
             <TO
               style={[styles.miniFilterBtn, (activeFilter !== 'all' || showFilters) && styles.miniFilterBtnActive]}
@@ -553,13 +686,75 @@ const HomeScreen = () => {
         )}
         {/* Weekly Analysis Button removed (already in Strategic Hub) */}
 
-        <Text style={styles.sectionTitle}>Línea de Tiempo</Text>
+        <Text style={styles.sectionTitle}>
+          {showOverview ? 'Memorias' : isCategoryDrill ? catMeta(activeFilter).label : 'Línea de Tiempo'}
+        </Text>
+
+        {isCategoryDrill && (
+          <TouchableOpacity onPress={() => setActiveFilter('all')} style={styles.backToCats} activeOpacity={0.7}>
+            <ChevronLeft size={16} color="#94a3b8" />
+            <Text style={styles.backToCatsText}>Todas las categorías</Text>
+          </TouchableOpacity>
+        )}
 
         {loading ? (
           <ActivityIndicator size="large" color="#6366f1" style={{ marginTop: 40 }} />
-        ) : filteredEntries.length === 0 ? (
+        ) : entries.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No hay registros aún.</Text>
+          </View>
+        ) : showOverview ? (
+          <View>
+            {recentEntries.length > 0 && (
+              <>
+                <Text style={styles.overviewLabel}>RECIENTES</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
+                  {recentEntries.map((e) => (
+                    <TouchableOpacity
+                      key={e.id}
+                      onPress={() => navigation.navigate('EntryDetail', { entryId: e.id })}
+                      style={[styles.recentChip, { borderColor: `${catMeta(e.category).color}55` }]}
+                    >
+                      <Text style={[styles.recentChipCat, { color: catMeta(e.category).color }]}>
+                        {catMeta(e.category).label}
+                      </Text>
+                      <Text style={styles.recentChipTitle} numberOfLines={2}>{e.title}</Text>
+                      <Text style={styles.recentChipDate}>{new Date(e.created_at).toLocaleDateString()}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </>
+            )}
+            <Text style={styles.overviewLabel}>POR CATEGORÍA</Text>
+            <Text style={styles.overviewHint}>El número es el ánimo promedio (−1 a +1) · ▲ positivo · ▼ negativo · ■ neutral</Text>
+            {categoryGroups.map((g: any) => {
+              const m = catMeta(g.key);
+              const avg = g.sentN ? g.sentSum / g.sentN : 0;
+              return (
+                <TouchableOpacity
+                  key={g.key}
+                  onPress={() => setActiveFilter(g.key)}
+                  style={[styles.catCard, { borderColor: `${m.color}44` }]}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.catCardDot, { backgroundColor: m.color }]} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.catCardTitle, { color: m.color }]}>{m.label}</Text>
+                    <Text style={styles.catCardMeta}>
+                      {g.count} memoria{g.count > 1 ? 's' : ''} · últ. {new Date(g.last).toLocaleDateString()}
+                    </Text>
+                  </View>
+                  <Text style={[styles.catCardSent, { color: avg > 0.1 ? '#10b981' : avg < -0.1 ? '#ef4444' : '#94a3b8' }]}>
+                    {avg > 0.1 ? '▲' : avg < -0.1 ? '▼' : '■'} {avg.toFixed(1)}
+                  </Text>
+                  <ChevronRight size={18} color="#475569" />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ) : filteredEntries.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Sin resultados en este filtro.</Text>
           </View>
         ) : (
           filteredEntries.map((entry) => (
@@ -582,6 +777,15 @@ const HomeScreen = () => {
                     <Text style={styles.entryDate}>{new Date(entry.created_at).toLocaleDateString()}</Text>
                     {!!entry.mood_label && <Text style={styles.moodBadge}>{entry.mood_label}</Text>}
                   </View>
+                  <TouchableOpacity
+                    onPress={() => { setActiveFilter((entry.category || '').toUpperCase()); setShowFilters(true); }}
+                    style={[styles.catPill, { backgroundColor: `${catMeta(entry.category).color}22`, borderColor: `${catMeta(entry.category).color}66` }]}
+                  >
+                    <View style={[styles.catDot, { backgroundColor: catMeta(entry.category).color }]} />
+                    <Text style={[styles.catPillText, { color: catMeta(entry.category).color }]}>
+                      {catMeta(entry.category).label}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
                 <View style={styles.moodIconContainer}>
                   {getMoodIcon(entry.mood_label, entry.sentiment_score)}
@@ -649,6 +853,8 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 10 : 15,
     paddingBottom: 15
   },
+  streakChip: { backgroundColor: 'rgba(249,115,22,0.15)', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4, marginRight: 4, alignSelf: 'center' },
+  streakText: { color: '#fb923c', fontSize: 12, fontWeight: '900' },
   dateText: { color: '#6366f1', fontSize: 12, fontWeight: '800', letterSpacing: 1.5, marginBottom: 4 },
   logoCenterContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   headerLogo: { width: 280, height: 100 },
@@ -721,6 +927,22 @@ const styles = StyleSheet.create({
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
   entryDate: { color: '#64748b', fontSize: 12, fontWeight: '600' },
+  catPill: { flexDirection: 'row', alignItems: 'center', marginLeft: 10, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, borderWidth: 1 },
+  catDot: { width: 6, height: 6, borderRadius: 3, marginRight: 5 },
+  catPillText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  backToCats: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, alignSelf: 'flex-start' },
+  backToCatsText: { color: '#94a3b8', fontSize: 13, fontWeight: '700', marginLeft: 4 },
+  overviewLabel: { color: '#6366f1', fontSize: 11, fontWeight: '900', letterSpacing: 2, marginBottom: 6, marginTop: 4 },
+  overviewHint: { color: '#64748b', fontSize: 11, fontWeight: '600', marginBottom: 12, lineHeight: 15 },
+  recentChip: { width: 150, padding: 14, borderRadius: 16, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.03)', marginRight: 10 },
+  recentChipCat: { fontSize: 9, fontWeight: '900', letterSpacing: 1, marginBottom: 6 },
+  recentChipTitle: { color: '#e2e8f0', fontSize: 13, fontWeight: '700', lineHeight: 17, minHeight: 34 },
+  recentChipDate: { color: '#475569', fontSize: 10, fontWeight: '600', marginTop: 8 },
+  catCard: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 18, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.03)', marginBottom: 12 },
+  catCardDot: { width: 10, height: 10, borderRadius: 5, marginRight: 14 },
+  catCardTitle: { fontSize: 15, fontWeight: '900', letterSpacing: 0.5 },
+  catCardMeta: { color: '#94a3b8', fontSize: 12, fontWeight: '600', marginTop: 3 },
+  catCardSent: { fontSize: 13, fontWeight: '900', marginRight: 10 },
   entryTitle: { color: '#ffffff', fontSize: 20, fontWeight: 'bold', marginBottom: 12 },
   entryPreview: { color: '#94a3b8', fontSize: 15, lineHeight: 22 },
   moodBadge: {

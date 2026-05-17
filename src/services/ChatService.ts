@@ -24,7 +24,8 @@ export const ChatService = {
         userName?: string,
         category?: string,
         therapyMode?: boolean,
-        entryContext?: EntryContext
+        entryContext?: EntryContext,
+        image?: { mediaType: string; data: string } | null
     ) {
         const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/ai-chat`;
         const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -45,6 +46,7 @@ export const ChatService = {
                 category: category ?? 'General',
                 therapyMode: therapyMode ?? false,
                 entryContext: entryContext ?? null,
+                image: image ?? null,
             }),
         });
 

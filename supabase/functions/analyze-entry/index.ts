@@ -1,11 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { withRetry, fetchWithStatus } from "../_shared/retry.ts";
+import { callClaude, parseJsonLoose } from "../_shared/claude.ts";
 
-const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-const MODEL_NAME = 'gemini-2.5-flash';
+// Haiku 4.5: fast + cheap, ideal for the per-entry daily summary.
+const MODEL_NAME = 'claude-haiku-4-5-20251001';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -76,26 +77,22 @@ INSTRUCCIÓN: Tienes datos suficientes. Cruza el contenido de hoy con el sesgo m
   return context;
 }
 
-function buildAnalysisPrompt(userText: string, historicalContext?: HistoricalContext | string | null): string {
-  const contextBlock = buildContextBlock(historicalContext);
-  return `
+// Static system block — same on every call, so it's prompt-cached.
+const STATIC_ANALYZE_SYSTEM = `
 ROL:
 Eres BLACKBOX, un Consultor Estratégico Senior (Ex-McKinsey), Auditor de Decisiones y Coach de Alto Rendimiento.
 Tu objetivo es convertir el caos o las metas del usuario en CLARIDAD TÁCTICA.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CONTEXTO HISTÓRICO DEL USUARIO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${contextBlock}
-
 REGLAS DE OPERACIÓN:
-1. CERO OBVIEDADES: Si el usuario plantea una meta, dile CÓMO (embudos, canales, CAC).
-2. PUNTO CIEGO ESTRATÉGICO: Encuentra el riesgo o error de cálculo que el usuario NO está viendo.
-3. SESGOS COGNITIVOS: Identifica sesgos (Costo Hundido, Confirmación, etc.) en problemas operativos.
-4. TITULACIÓN AUTOMÁTICA: Genera un título militar, clínico y directo basado en el contenido (máx 5 palabras). No uses emojis. Ej: 'Falla Operativa: Proveedor' o 'Auditoría: Expansión Q3'.
-5. TONO: Directo, clínico, objetivo. No busques consolar, busca dar ventaja competitiva.
-6. VALORACIÓN DE METAS: Analiza si el usuario plantea un objetivo de largo alcance. Si es así, lístalo en 'suggested_goals'.
-7. USA EL CONTEXTO HISTÓRICO: Si hay patrones disponibles, intégralos en el insight.
+1. OPINIÓN > DESCRIPCIÓN. No repitas lo que el usuario ya sabe ni parafrasees su texto. Toma postura sobre qué está pasando realmente.
+2. PREDICCIÓN > DIAGNÓSTICO. Si detectas un patrón o riesgo, predice qué pasará si no se rompe (concreto, con horizonte temporal).
+3. CERO OBVIEDADES: Si el usuario plantea una meta, dile CÓMO (embudos, canales, CAC), no que "es importante".
+4. PUNTO CIEGO ESTRATÉGICO: Encuentra el riesgo o error de cálculo que el usuario NO está viendo.
+5. SESGOS COGNITIVOS: Identifica sesgos (Costo Hundido, Confirmación, etc.) en problemas operativos.
+6. TITULACIÓN AUTOMÁTICA: Genera un título militar, clínico y directo basado en el contenido (máx 5 palabras). Sin emojis. Ej: 'Falla Operativa: Proveedor'.
+7. TONO: Directo, clínico, objetivo. No busques consolar, busca dar ventaja competitiva.
+8. VALORACIÓN DE METAS: Si el usuario plantea un objetivo de largo alcance, lístalo en 'suggested_goals'.
+9. USA EL CONTEXTO HISTÓRICO: Si hay patrones disponibles, intégralos en el insight (longitudinal, no aislado).
 
 FORMATO DE RESPUESTA (JSON ESTRICTO):
 {
@@ -127,28 +124,18 @@ FORMATO DE RESPUESTA (JSON ESTRICTO):
   }
 }
 
-REGLA DE ORO: En 'category' SOLO puedes usar uno de los siguientes valores exactos: BUSINESS, PERSONAL, DEVELOPMENT, WELLNESS, HEALTH. Cualquier otro valor hará que el sistema falle.
+REGLA DE ORO: En 'category' SOLO puedes usar uno de estos valores exactos: BUSINESS, PERSONAL, DEVELOPMENT, WELLNESS, HEALTH. Cualquier otro valor hará que el sistema falle.
 
 Responde SOLO con el JSON. Sin texto adicional.
+`.trim();
+
+function buildAnalysisUser(userText: string, historicalContext?: HistoricalContext | string | null): string {
+  const contextBlock = buildContextBlock(historicalContext);
+  return `━━━ CONTEXTO HISTÓRICO DEL USUARIO ━━━
+${contextBlock}
 
 Analiza esta entrada:
-${userText}
-`.trim();
-}
-
-async function callGemini(payload: unknown): Promise<unknown> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${GEMINI_API_KEY}`;
-  return withRetry(
-    async () => {
-      const res = await fetchWithStatus(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      return res.json();
-    },
-    { maxAttempts: 3, baseDelayMs: 600 }
-  );
+${userText}`.trim();
 }
 
 serve(async (req) => {
@@ -156,8 +143,8 @@ serve(async (req) => {
 
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) console.warn('[analyze-entry] No authorization header - continuing');
-  if (!GEMINI_API_KEY) {
-    const diag = { title: "ERROR INTERNO", summary: "Falta GEMINI_API_KEY en Supabase Vault", mood_label: "Error", category: "PERSONAL" };
+  if (!ANTHROPIC_API_KEY) {
+    const diag = { title: "ERROR INTERNO", summary: "Falta ANTHROPIC_API_KEY en Supabase Vault", mood_label: "Error", category: "PERSONAL" };
     return new Response(JSON.stringify({ analysis: diag }), { status: 200, headers: corsHeaders });
   }
 
@@ -193,30 +180,32 @@ Genera un reporte ejecutivo en Markdown con estas secciones:
 Sé directo, clínico y sin relleno. Máximo 400 palabras.
       `.trim();
 
-      const weeklyData: any = await callGemini({
-        contents: [{ parts: [{ text: weeklyPrompt }] }],
-        generationConfig: { temperature: 0.6 }
+      const weeklyReport = await callClaude({
+        apiKey: ANTHROPIC_API_KEY!,
+        model: MODEL_NAME,
+        system: [{
+          type: 'text',
+          text: 'Eres BLACKBOX, un Analista Estratégico Senior. Generas reportes ejecutivos directos, clínicos y sin relleno, en Markdown.',
+          cache_control: { type: 'ephemeral' },
+        }],
+        userContent: weeklyPrompt,
+        maxTokens: 2000,
+        temperature: 0.6,
       });
-
-      const weeklyReport = weeklyData?.candidates?.[0]?.content?.parts?.[0]?.text ?? 'No se pudo generar el reporte.';
       return new Response(JSON.stringify({ report: weeklyReport }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const userText = (entries ?? []).map((e: any) => typeof e === 'string' ? e : `Contenido: ${e.content}`).join('\n---\n');
-    const prompt = buildAnalysisPrompt(userText, historicalContext);
 
-    const data: any = await callGemini({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { response_mime_type: 'application/json', temperature: 0.7 }
+    const rawText = await callClaude({
+      apiKey: ANTHROPIC_API_KEY!,
+      model: MODEL_NAME,
+      system: [{ type: 'text', text: STATIC_ANALYZE_SYSTEM, cache_control: { type: 'ephemeral' } }],
+      userContent: buildAnalysisUser(userText, historicalContext),
+      maxTokens: 4096,
+      temperature: 0.7,
     });
-
-    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!rawText) {
-      const finishReason = data?.candidates?.[0]?.finishReason ?? 'unknown';
-      const promptFeedback = data?.promptFeedback?.blockReason ?? null;
-      throw new Error(`Gemini returned no content. finishReason=${finishReason}${promptFeedback ? `, blocked=${promptFeedback}` : ''}`);
-    }
-    const parsed = JSON.parse(rawText);
+    const parsed = parseJsonLoose(rawText);
 
     // ─── Sanitize Category (Avoid DB Constraints violation) ──────────────
     const VALID_CATEGORIES = ['BUSINESS', 'PERSONAL', 'DEVELOPMENT', 'WELLNESS', 'HEALTH'];
