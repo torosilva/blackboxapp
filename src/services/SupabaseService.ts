@@ -91,7 +91,7 @@ const _completeSessionFromUrl = async (url: string) => {
 };
 
 const _performOAuth = async (provider: 'google' | 'apple') => {
-    const redirectTo = AuthSession.makeRedirectUri({ path: 'auth-callback' });
+    const redirectTo = AuthSession.makeRedirectUri({ path: 'auth/callback' });
 
     const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
@@ -921,7 +921,7 @@ export const SupabaseService = {
 
     /**
      * 7. Social Authentication (Google)
-     * Opens an auth session, waits for the blackbox://auth-callback redirect,
+     * Opens an auth session, waits for the blackbox://auth/callback redirect,
      * and establishes the Supabase session from the returned URL.
      */
     async signInWithGoogle() {
