@@ -49,6 +49,7 @@ serve(async (req) => {
       userContent: `Conversación:\n${String(transcript).slice(0, 6000)}`,
       maxTokens: 50,
       temperature: 0,
+      meter: { component: "thread_classification", req },
     });
 
     let kind = "uncertain";

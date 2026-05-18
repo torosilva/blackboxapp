@@ -173,6 +173,7 @@ serve(async (req) => {
       userContent: buildPatternUser(entries as EntrySnapshot[], openLoopsCount ?? 0, profile),
       maxTokens: 8192,
       temperature: 0.4,
+      meter: { component: 'pattern_synthesis', userId, req },
     });
 
     let patterns: DetectedPattern[] = [];

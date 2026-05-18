@@ -191,6 +191,7 @@ Sé directo, clínico y sin relleno. Máximo 400 palabras.
         userContent: weeklyPrompt,
         maxTokens: 2000,
         temperature: 0.6,
+        meter: { component: 'weekly_report', userId, req },
       });
       return new Response(JSON.stringify({ report: weeklyReport }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -204,6 +205,7 @@ Sé directo, clínico y sin relleno. Máximo 400 palabras.
       userContent: buildAnalysisUser(userText, historicalContext),
       maxTokens: 4096,
       temperature: 0.7,
+      meter: { component: 'entry_analysis', userId, req },
     });
     const parsed = parseJsonLoose(rawText);
 

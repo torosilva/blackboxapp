@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry, fetchWithStatus } from "../_shared/retry.ts";
+import { logUsage } from "../_shared/usage.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -353,6 +354,18 @@ serve(async (req) => {
     const usage = data?.usage;
     if (usage) {
       console.log(`[ai-chat] tokens — input: ${usage.input_tokens}, output: ${usage.output_tokens}, cache_read: ${usage.cache_read_input_tokens ?? 0}, cache_write: ${usage.cache_creation_input_tokens ?? 0}`);
+      await logUsage({
+        req,
+        userId,
+        component: image?.data ? 'image_vision' : 'ai_chat',
+        provider: 'anthropic',
+        model: MODEL_NAME,
+        inputTokens: usage.input_tokens ?? 0,
+        outputTokens: usage.output_tokens ?? 0,
+        cacheReadTokens: usage.cache_read_input_tokens ?? 0,
+        cacheWriteTokens: usage.cache_creation_input_tokens ?? 0,
+        meta: { therapyMode: !!therapyMode, hasImage: !!image?.data },
+      });
     }
 
     // Return shape compatible with existing client code (parts[0].text).
