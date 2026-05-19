@@ -109,57 +109,28 @@ const CaptureScreen = () => {
         return 'Buenas noches';
     })();
 
-    const handleSend = async () => {
-        const message = content.trim() || (pickedImage ? '¿Qué ves en esta imagen? Interprétala en mi contexto.' : '');
-        if (!message) return;
-        if (!user) { Alert.alert('Error', 'Debes estar conectado.'); return; }
+    // Core: text/voice → analyze → clinical verdict (ficha). Returns false
+    // if it didn't proceed (too short / error) so callers can recover.
+    const analyzeAndOpenVerdict = async (rawMessage: string, audioUri: string | null): Promise<boolean> => {
+        const message = (rawMessage || '').trim();
+        if (!message) return false;
+        if (!user) { Alert.alert('Error', 'Debes estar conectado.'); return false; }
 
-        // Image attachments stay in the conversational (vision) flow.
-        if (pickedImage) {
-            setLoading(true);
-            try {
-                const threadTitle = message.split('\n')[0].slice(0, 50) || 'Nueva conversación';
-                const thread = await SupabaseService.createChatThread(user.id, threadTitle, 'GENERAL');
-                if (!thread) throw new Error('No se pudo crear la conversación');
-
-                const imgParam = pickedImage;
-                setContent('');
-                setLastRecordingUri(null);
-                setPickedImage(null);
-
-                navigation.navigate('Chat', {
-                    threadId: thread.id,
-                    category: thread.category,
-                    title: thread.title,
-                    initialMessage: message,
-                    initialImage: imgParam,
-                });
-            } catch (err: any) {
-                console.error('CAPTURE_ERROR:', err);
-                Alert.alert('No se pudo iniciar', 'Hubo un problema al abrir la conversación. Verifica tu conexión e intenta de nuevo.');
-            } finally {
-                setLoading(false);
-            }
-            return;
-        }
-
-        // Text / voice brain-dump → analyze → clinical verdict (the ficha).
-        // From the ficha the user can tap "Profundizar en Chat" to converse.
-        const wc = message.trim().split(/\s+/).length;
+        const wc = message.split(/\s+/).length;
         if (message.length < 40 || wc < 8) {
             Alert.alert(
                 'Cuéntame un poco más',
                 'Suéltalo con un poco más de detalle (un par de frases) para que BLACKBOX pueda darte un veredicto útil.',
                 [{ text: 'Entendido' }]
             );
-            return;
+            return false;
         }
 
         setLoading(true);
         try {
             let audioUrl = null;
-            if (lastRecordingUri) {
-                audioUrl = await SupabaseService.uploadAudio(lastRecordingUri, user.id);
+            if (audioUri) {
+                audioUrl = await SupabaseService.uploadAudio(audioUri, user.id);
             }
 
             const analysis = await aiService.generateDailySummary([message], user.id);
@@ -191,15 +162,54 @@ const CaptureScreen = () => {
 
             if (savedEntry?.id) {
                 navigation.navigate('EntryDetail', { entryId: savedEntry.id });
-            } else {
-                Alert.alert('No se pudo guardar', 'Intenta de nuevo.');
+                return true;
             }
+            Alert.alert('No se pudo guardar', 'Intenta de nuevo.');
+            return false;
         } catch (err: any) {
             console.error('CAPTURE_ANALYZE_ERROR:', err);
             Alert.alert('No se pudo analizar', 'Hubo un problema al generar tu veredicto. Verifica tu conexión e intenta de nuevo.');
+            return false;
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleSend = async () => {
+        if (!user) { Alert.alert('Error', 'Debes estar conectado.'); return; }
+
+        // Image attachments stay in the conversational (vision) flow.
+        if (pickedImage) {
+            const message = content.trim() || '¿Qué ves en esta imagen? Interprétala en mi contexto.';
+            setLoading(true);
+            try {
+                const threadTitle = message.split('\n')[0].slice(0, 50) || 'Nueva conversación';
+                const thread = await SupabaseService.createChatThread(user.id, threadTitle, 'GENERAL');
+                if (!thread) throw new Error('No se pudo crear la conversación');
+
+                const imgParam = pickedImage;
+                setContent('');
+                setLastRecordingUri(null);
+                setPickedImage(null);
+
+                navigation.navigate('Chat', {
+                    threadId: thread.id,
+                    category: thread.category,
+                    title: thread.title,
+                    initialMessage: message,
+                    initialImage: imgParam,
+                });
+            } catch (err: any) {
+                console.error('CAPTURE_ERROR:', err);
+                Alert.alert('No se pudo iniciar', 'Hubo un problema al abrir la conversación. Verifica tu conexión e intenta de nuevo.');
+            } finally {
+                setLoading(false);
+            }
+            return;
+        }
+
+        // Typed brain-dump → straight to the verdict.
+        await analyzeAndOpenVerdict(content, lastRecordingUri);
     };
 
     const toggleRecording = async () => {
@@ -209,13 +219,23 @@ const CaptureScreen = () => {
             setIsRecording(false);
             if (uri) {
                 setIsTranscribing(true);
+                let trans = '';
                 try {
-                    const trans = await voiceService.transcribeAudio(uri);
-                    setContent(prev => prev + (prev ? ' ' : '') + trans);
+                    trans = await voiceService.transcribeAudio(uri);
                 } catch {
                     Alert.alert('Error de transcripción', 'No se pudo convertir el audio a texto.');
                 } finally {
                     setIsTranscribing(false);
+                }
+                // Voice → straight to verdict. No detour through the text box,
+                // no manual "send". If it can't proceed (too short / error),
+                // drop the transcription into the box so it isn't lost.
+                if (trans && trans.trim()) {
+                    const ok = await analyzeAndOpenVerdict(trans, uri);
+                    if (!ok) {
+                        setContent(prev => prev ? `${prev} ${trans}` : trans);
+                        setShowText(true);
+                    }
                 }
             }
         } else {
@@ -417,7 +437,7 @@ const CaptureScreen = () => {
 
             <AILoadingOverlay
                 visible={loading || isTranscribing}
-                message={isTranscribing ? 'Transcribiendo audio...' : 'Ingresando a tu BlackboxMind...'}
+                message={isTranscribing ? 'Transcribiendo…' : 'Analizando…'}
             />
 
             <WelcomeModal />
