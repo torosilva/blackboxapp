@@ -474,7 +474,7 @@ function Home() {
             <div className="relative mx-auto w-full max-w-md">
               <div className="rounded-2xl border border-white/10 bg-[#151B33] p-2 shadow-2xl shadow-indigo-900/30">
                 <img
-                  src="/assets/testimonio-jsmunoz.jpg"
+                  src="/assets/testimonio-jsmunoz.png"
                   alt="Recomendación de Juan Sebastián Muñoz Botero en LinkedIn"
                   className="w-full h-auto rounded-xl"
                   loading="lazy"
