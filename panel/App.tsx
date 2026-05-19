@@ -438,6 +438,56 @@ function Home() {
         </div>
       </section>
 
+      {/* --- TESTIMONIOS --- */}
+      <section id="testimonios" className="py-24 px-6 bg-[#0B1021] relative overflow-hidden scroll-mt-32">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+
+        <div className="max-w-6xl mx-auto relative z-10">
+          <div className="text-center mb-14">
+            <div className="inline-flex items-center space-x-3 mb-6">
+              <div className="h-px w-6 bg-indigo-500/50"></div>
+              <span className="text-indigo-400 font-bold tracking-[0.4em] uppercase text-[9px]">Lo dicen ellos</span>
+              <div className="h-px w-6 bg-indigo-500/50"></div>
+            </div>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight">No es teoría. Es un director real.</h2>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-10 items-center">
+            {/* Cita limpia */}
+            <div className="bg-gradient-to-b from-white/5 to-transparent border border-white/5 rounded-[2rem] p-8 md:p-10">
+              <p className="text-lg md:text-2xl font-light leading-relaxed text-gray-200">
+                “Mientras cenamos en la noche, mi esposa me cuenta algo importante sobre su día; treinta segundos después ya no me acuerdo de qué me dijo. Eso es pura saturación mental.{' '}
+                <span className="text-white font-semibold">BlackBox Mind me pareció brutal: me ayuda a ver todo lo que cargo</span> antes de que me lo cobre la vida.”
+              </p>
+              <div className="flex items-center gap-4 mt-8 pt-6 border-t border-white/5">
+                <div className="w-11 h-11 rounded-full bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-300 font-bold">
+                  JS
+                </div>
+                <div>
+                  <div className="font-bold text-white">Juan Sebastián Muñoz Botero</div>
+                  <div className="text-sm text-gray-400">Business Director · Grupo Vanti</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Captura original (prueba social) */}
+            <div className="relative mx-auto w-full max-w-md">
+              <div className="rounded-2xl border border-white/10 bg-[#151B33] p-2 shadow-2xl shadow-indigo-900/30">
+                <img
+                  src="/assets/testimonio-jsmunoz.jpg"
+                  alt="Recomendación de Juan Sebastián Muñoz Botero en LinkedIn"
+                  className="w-full h-auto rounded-xl"
+                  loading="lazy"
+                />
+              </div>
+              <div className="absolute -bottom-3 -right-3 bg-[#0B1021] border border-white/10 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-widest text-indigo-400 uppercase">
+                Publicado en LinkedIn
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* --- CTA / DOWNLOAD --- */}
       <section id="cta" className="py-24 px-6">
         <div className="max-w-4xl mx-auto bg-gradient-to-br from-[#151B33] to-[#0B1021] rounded-[3rem] p-12 md:p-20 text-center border border-white/5 shadow-2xl relative overflow-hidden group">
