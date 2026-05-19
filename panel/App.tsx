@@ -149,7 +149,7 @@ function Home() {
             </h1>
 
             <p className="text-lg md:text-xl text-gray-400 mb-10 max-w-xl mx-auto lg:mx-0 leading-relaxed">
-              BLACKBOX saca de tu cabeza lo que te está costando decisiones y relaciones — antes de que la vida te lo cobre.
+              Para directores que deciden con la cabeza llena. BLACKBOX descarga el ruido, expone tus sesgos y te devuelve solo lo que exige acción.
             </p>
 
             {isJoined ? (
