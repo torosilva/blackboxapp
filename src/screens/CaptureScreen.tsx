@@ -27,6 +27,7 @@ const CaptureScreen = () => {
     const [lastRecordingUri, setLastRecordingUri] = useState<string | null>(null);
     const [recordSecs, setRecordSecs] = useState(0);
     const [pickedImage, setPickedImage] = useState<{ uri: string; mediaType: string; data: string } | null>(null);
+    const [showText, setShowText] = useState(false);
 
     const pickImage = async () => {
         try {
@@ -206,6 +207,41 @@ const CaptureScreen = () => {
                         </Text>
                     </View>
 
+                    {(!showText && !content.trim() && !pickedImage) ? (
+                    <View style={styles.voiceHero}>
+                        <Text style={styles.voiceTitle}>Suelta lo que cargas</Text>
+                        <Text style={styles.voiceSub}>Habla. BLACKBOX lo ordena, detecta el sesgo y te devuelve el movimiento.</Text>
+
+                        <TO
+                            onPress={toggleRecording}
+                            disabled={loading || isTranscribing}
+                            style={[styles.bigMicBtn, isRecording && styles.bigMicBtnActive]}
+                            activeOpacity={0.85}
+                        >
+                            <Animated.View style={{ transform: [{ scale: isRecording ? dotAnim : pulseAnim }] }}>
+                                {isRecording ? <MO size={48} color="white" /> : <Mi size={48} color="white" />}
+                            </Animated.View>
+                        </TO>
+
+                        <Text style={styles.recordHintBig}>
+                            {isTranscribing
+                                ? 'Transcribiendo tu audio…'
+                                : isRecording
+                                    ? `Escuchando ${fmtSecs(recordSecs)} · toca para terminar`
+                                    : 'Toca el micrófono y habla'}
+                        </Text>
+
+                        <TO onPress={() => setShowText(true)} style={{ marginTop: 26, padding: 8 }} activeOpacity={0.7}>
+                            <Text style={styles.writeLink}>Prefiero escribir</Text>
+                        </TO>
+                    </View>
+                    ) : (
+                    <>
+                    {(showText && !content.trim() && !pickedImage) && (
+                        <TO onPress={() => setShowText(false)} style={styles.backToVoiceRow} activeOpacity={0.7}>
+                            <Text style={styles.writeLink}>← Volver a voz</Text>
+                        </TO>
+                    )}
                     {/* Input card — Claude style */}
                     <View style={styles.inputCard}>
                         <TextInput
@@ -286,6 +322,8 @@ const CaptureScreen = () => {
                             </View>
                         </View>
                     </View>
+                    </>
+                    )}
 
                     {/* Shortcut chips — small, delicate, centered */}
                     <View style={styles.chipsWrap}>
@@ -434,6 +472,55 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255,255,255,0.03)',
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.06)',
+    },
+    voiceHero: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 4,
+    },
+    voiceTitle: {
+        color: '#e2e8f0',
+        fontSize: 24,
+        fontWeight: '600',
+        textAlign: 'center',
+        letterSpacing: 0.3,
+    },
+    voiceSub: {
+        color: '#94a3b8',
+        fontSize: 14,
+        lineHeight: 21,
+        textAlign: 'center',
+        marginTop: 10,
+        maxWidth: 300,
+    },
+    bigMicBtn: {
+        width: 122, height: 122, borderRadius: 61,
+        backgroundColor: '#6366f1',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 30,
+        shadowColor: '#6366f1',
+        shadowOpacity: 0.45,
+        shadowRadius: 22,
+        shadowOffset: { width: 0, height: 0 },
+    },
+    bigMicBtnActive: { backgroundColor: '#ef4444', shadowColor: '#ef4444' },
+    recordHintBig: {
+        color: '#64748b',
+        fontSize: 13,
+        fontWeight: '600',
+        letterSpacing: 0.5,
+        marginTop: 18,
+    },
+    writeLink: {
+        color: '#818cf8',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    backToVoiceRow: {
+        paddingVertical: 6,
+        marginBottom: 8,
+        alignSelf: 'flex-start',
     },
     chipsWrap: {
         marginTop: 14,
