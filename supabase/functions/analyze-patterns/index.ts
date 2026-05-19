@@ -55,6 +55,17 @@ REGLAS:
 - Identifica entre 2 y 5 patrones concretos. Nada genérico ("a veces se estresa") — específico y cruzado con los datos.
 - Cruza toda la información para actualizar el Perfil Estratégico (fortalezas evolutivas, bloqueos psicológicos, sesgos recurrentes).
 
+DIAGNÓSTICO DE EVASIÓN (lo más importante de esta función):
+Para los LOOPS ABIERTOS que llevan tiempo sin cerrarse, NO los cuentes ni los repitas: diagnostica POR QUÉ el usuario evita cerrarlos.
+- 'avoidance_reason' debe nombrar la verdad incómoda concreta, cruzando con los OTROS loops reales del usuario y su perfil. Ejemplo del nivel esperado: "No cierras el de proveedores porque te obliga a confrontar a tu socio — el mismo patrón que te frena en el loop de contratación." Esto es lo que ningún gestor de tareas hace; clávalo.
+- Solo incluye loops cuyo 'loop_id' esté EXACTAMENTE en la lista LOOPS ABIERTOS provista. Usa ese loop_id literal.
+- Si no puedes diagnosticar la evasión con base real (en el texto/perfil/otros loops), OMITE ese loop. Nunca inventes una razón.
+
+CALIBRACIÓN (OBLIGATORIA):
+- Tono de socio estratégico senior. Sin drama, sin "crisis/colapso/estadio/punto de no retorno", sin lenguaje clínico ni médico.
+- PROHIBIDO inventar datos: cifras, conteos, fechas, nombres de personas o loops que NO estén en los datos provistos. Si no lo tienes, no lo digas.
+- 'avoidance_reason': 1 a 2 frases, específico y concreto. Nada genérico.
+
 FORMATO DE RESPUESTA (JSON ESTRICTO):
 {
   "patterns": [
@@ -66,6 +77,13 @@ FORMATO DE RESPUESTA (JSON ESTRICTO):
       "supporting_entry_ids": ["uuid-1", "uuid-2"]
     }
   ],
+  "loop_diagnostics": [
+    {
+      "loop_id": "uuid EXACTO de un loop de la lista LOOPS ABIERTOS",
+      "connected_theme": "Tema corto (2-4 palabras) que lo conecta con su narrativa",
+      "avoidance_reason": "1-2 frases: POR QUÉ evita cerrarlo, cruzado con sus otros loops/perfil. Verdad incómoda concreta."
+    }
+  ],
   "strategic_profile_update": {
     "cognitive_summary": "Quién es este usuario, sus fortalezas evolutivas y sus mayores bloqueos psicológicos.",
     "recurring_themes": ["3-5 temas que dominan su narrativa a largo plazo"],
@@ -75,12 +93,13 @@ FORMATO DE RESPUESTA (JSON ESTRICTO):
 }
 
 'pattern_type' SOLO puede ser uno de: emotional, procrastination, cognitive_bias, productivity.
+'loop_diagnostics' puede ir vacío [] si no hay evasión diagnosticable con base real.
 Responde SOLO con el JSON. Sin texto adicional.
 `.trim();
 
 function buildPatternUser(
   entries: EntrySnapshot[],
-  openLoopsCount: number,
+  openLoops: { id: string; task: string; created_at?: string }[],
   strategicProfile?: StrategicProfile | null
 ): string {
   const entrySummaries = entries.map((e, i) => {
@@ -95,10 +114,15 @@ function buildPatternUser(
     return `[${i + 1}] id=${e.id} | fecha=${e.created_at.slice(0, 10)} | mood=${e.mood_label ?? "?"} | score=${e.sentiment_score ?? "?"} | cat=${e.category ?? "?"} | sesgo=${bias} | resumen=${e.summary?.slice(0, 80) ?? "N/A"}`;
   }).join("\n");
 
+  const loopList = openLoops.length
+    ? openLoops.map((l) => `loop_id=${l.id} | abierto desde ${l.created_at?.slice(0, 10) ?? '?'} | ${l.task}`).join("\n")
+    : "Ninguno.";
+
   return `DATOS DEL USUARIO (últimas ${entries.length} entradas):
 ${entrySummaries}
 
-LOOPS ABIERTOS SIN CERRAR: ${openLoopsCount}
+LOOPS ABIERTOS SIN CERRAR (${openLoops.length}) — diagnostica la evasión de los que llevan tiempo abiertos, usando su loop_id EXACTO:
+${loopList}
 
 RESUMEN ESTRATÉGICO ACTUAL (MEMORIA): ${strategicProfile?.cognitive_summary || 'N/A'}
 TEMAS RECURRENTES ACTUALES: ${(strategicProfile?.recurring_themes ?? []).join(', ') || 'N/A'}`;
@@ -151,12 +175,15 @@ serve(async (req) => {
       });
     }
 
-    // 2. Count open loops
-    const { count: openLoopsCount } = await supabase
+    // 2. Fetch open loops (id + task) so the model can diagnose avoidance
+    const { data: openLoopRows } = await supabase
       .from("action_items")
-      .select("*", { count: "exact", head: true })
+      .select("id, task, created_at")
       .eq("user_id", userId)
-      .eq("is_completed", false);
+      .eq("is_completed", false)
+      .order("created_at", { ascending: true })
+      .limit(40);
+    const openLoops = (openLoopRows ?? []) as { id: string; task: string; created_at?: string }[];
 
     // 3. Fetch Strategic Profile
     const { data: profile } = await supabase
@@ -170,7 +197,7 @@ serve(async (req) => {
       apiKey: ANTHROPIC_API_KEY!,
       model: MODEL_NAME,
       system: [{ type: 'text', text: STATIC_PATTERNS_SYSTEM, cache_control: { type: 'ephemeral' } }],
-      userContent: buildPatternUser(entries as EntrySnapshot[], openLoopsCount ?? 0, profile),
+      userContent: buildPatternUser(entries as EntrySnapshot[], openLoops, profile),
       maxTokens: 8192,
       temperature: 0.4,
       meter: { component: 'pattern_synthesis', userId, req },
@@ -178,13 +205,46 @@ serve(async (req) => {
 
     let patterns: DetectedPattern[] = [];
     let profileUpdate: any = null;
+    let loopDiagnostics: { loop_id: string; connected_theme?: string; avoidance_reason?: string }[] = [];
 
     try {
       const parsed = parseJsonLoose(rawText);
       patterns = Array.isArray(parsed.patterns) ? parsed.patterns : [];
       profileUpdate = parsed.strategic_profile_update || null;
+      loopDiagnostics = Array.isArray(parsed.loop_diagnostics) ? parsed.loop_diagnostics : [];
     } catch (parseErr) {
       console.error("[analyze-patterns] JSON parse error:", parseErr);
+    }
+
+    // 4b. Promote diagnosed loops to the REGRESAN lane with the avoidance
+    // reason. Only touch loops that are real, open, and owned by this user
+    // (the loop_id must be one we sent to the model).
+    const validLoopIds = new Set(openLoops.map((l) => l.id));
+    for (const d of loopDiagnostics) {
+      if (!d?.loop_id || !validLoopIds.has(d.loop_id)) continue;
+      if (!d.avoidance_reason || !String(d.avoidance_reason).trim()) continue;
+      try {
+        const { data: cur } = await supabase
+          .from("action_items")
+          .select("recurrence_count")
+          .eq("id", d.loop_id)
+          .eq("user_id", userId)
+          .maybeSingle();
+        await supabase
+          .from("action_items")
+          .update({
+            status: "regresa",
+            recurrence_count: (cur?.recurrence_count ?? 0) + 1,
+            connected_theme: d.connected_theme ?? null,
+            avoidance_reason: String(d.avoidance_reason).trim(),
+            last_surfaced_at: now,
+          })
+          .eq("id", d.loop_id)
+          .eq("user_id", userId)
+          .eq("is_completed", false);
+      } catch (e) {
+        console.error("[analyze-patterns] loop diagnostic write failed:", (e as Error).message);
+      }
     }
 
     // 5. Update Strategic Profile (The Deep Memory)
