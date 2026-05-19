@@ -51,6 +51,7 @@ const NewEntryScreen = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [lastRecordingUri, setLastRecordingUri] = useState<string | null>(null);
   const [metering, setMetering] = useState(-160);
+  const [showText, setShowText] = useState(false);
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
 
 
@@ -127,8 +128,13 @@ const NewEntryScreen = () => {
         }
       }
 
-      // Entry saved successfully — go back to Home where the memory will appear
-      navigation.goBack();
+      // Entry analyzed — take the user straight to the verdict (the clinical
+      // report), not silently back to an empty compose box.
+      if (savedEntry?.id) {
+        navigation.replace('EntryDetail', { entryId: savedEntry.id });
+      } else {
+        navigation.goBack();
+      }
 
     } catch (err: any) {
       console.error('Save Error:', err);
@@ -212,62 +218,106 @@ const NewEntryScreen = () => {
           <Xi color="white" size={24} />
         </TO>
         <Text style={styles.headerTitle}>NUEVO REGISTRO</Text>
-        <TO
-          onPress={handleSave}
-          disabled={loading}
-          style={[styles.publishBtn, loading && { opacity: 0.5 }]}
-        >
-          {loading ? (
-            <View /> 
-          ) : (
-            <Text style={styles.publishBtnText}>PUBLICAR</Text>
-          )}
-        </TO>
+        {content.trim() ? (
+          <TO
+            onPress={handleSave}
+            disabled={loading}
+            style={[styles.publishBtn, loading && { opacity: 0.5 }]}
+          >
+            {loading ? (
+              <View />
+            ) : (
+              <Text style={styles.publishBtnText}>ANALIZAR</Text>
+            )}
+          </TO>
+        ) : (
+          <View style={{ width: 70 }} />
+        )}
       </View>
 
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
-          <TI
-            multiline
-            style={styles.contentInput}
-            placeholder="¿Qué tienes en mente?"
-            placeholderTextColor="#475569"
-            autoFocus={false} // Disable autoFocus to allow user to see microphone
-            value={content}
-            onChangeText={setContent}
-          />
-        </ScrollView>
+        {(!showText && !content.trim()) ? (
+          // ─── VOZ PRIMERO (acción principal) ───────────────────────────────
+          <View style={styles.voiceHero}>
+            <Text style={styles.voiceTitle}>Suelta lo que cargas</Text>
+            <Text style={styles.voiceSub}>
+              Habla. BLACKBOX lo ordena, detecta el sesgo y te devuelve el movimiento.
+            </Text>
 
-        <View style={styles.visualizerContainer}>
-          <VoiceVisualizer isActive={isRecording} metering={metering} />
-        </View>
+            <Animated.View style={{ transform: [{ scale: isRecording ? 1 : pulseAnim }], marginTop: 20 }}>
+              <TO
+                onPress={() => { toggleRecording(); }}
+                style={[styles.heroRecordBtn, isRecording && styles.recordBtnActive]}
+              >
+                <View style={[styles.heroInnerRecord, isRecording && styles.innerRecordActive]}>
+                  {isRecording ? <View style={styles.stopIconLg} /> : <Mi size={46} color="white" />}
+                </View>
+              </TO>
+            </Animated.View>
 
-        <View style={styles.toolbar}>
-          <TO style={styles.toolBtn}>
-            <Ca size={24} color="#94a3b8" />
-          </TO>
+            <View style={styles.visualizerContainer}>
+              <VoiceVisualizer isActive={isRecording} metering={metering} />
+            </View>
 
-          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-            <TO
-              onPress={() => {
-                toggleRecording();
-              }}
-              style={[styles.recordBtn, isRecording && styles.recordBtnActive]}
-            >
-              <View style={[styles.innerRecord, isRecording && styles.innerRecordActive]}>
-                {isRecording ? <View style={styles.stopIcon} /> : <Mi size={28} color="white" />}
-              </View>
+            <Text style={styles.recordHint}>
+              {isRecording ? 'Grabando… toca para terminar' : 'Toca el micrófono y habla'}
+            </Text>
+
+            <TO onPress={() => setShowText(true)} style={{ marginTop: 28, padding: 8 }}>
+              <Text style={styles.writeLink}>Prefiero escribir</Text>
             </TO>
-          </Animated.View>
+          </View>
+        ) : (
+          // ─── ESCRIBIR / REVISAR (secundario) ──────────────────────────────
+          <>
+            <View style={styles.modeRow}>
+              <TO onPress={() => setShowText(false)} style={{ padding: 6 }}>
+                <Text style={styles.writeLink}>← Volver a voz</Text>
+              </TO>
+            </View>
 
-          <TO style={styles.toolBtn}>
-            <II size={24} color="#94a3b8" />
-          </TO>
-        </View>
+            <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
+              <TI
+                multiline
+                style={styles.contentInput}
+                placeholder="Escribe lo que cargas…"
+                placeholderTextColor="#475569"
+                autoFocus
+                value={content}
+                onChangeText={setContent}
+              />
+            </ScrollView>
+
+            <View style={styles.visualizerContainer}>
+              <VoiceVisualizer isActive={isRecording} metering={metering} />
+            </View>
+
+            <View style={styles.toolbar}>
+              <TO style={styles.toolBtn}>
+                <Ca size={24} color="#94a3b8" />
+              </TO>
+
+              <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                <TO
+                  onPress={() => { toggleRecording(); }}
+                  style={[styles.recordBtn, isRecording && styles.recordBtnActive]}
+                >
+                  <View style={[styles.innerRecord, isRecording && styles.innerRecordActive]}>
+                    {isRecording ? <View style={styles.stopIcon} /> : <Mi size={28} color="white" />}
+                  </View>
+                </TO>
+              </Animated.View>
+
+              <TO style={styles.toolBtn}>
+                <II size={24} color="#94a3b8" />
+              </TO>
+            </View>
+          </>
+        )}
       </KeyboardAvoidingView>
 
       <AILoadingOverlay visible={loading || isTranscribing} message={isTranscribing ? "Transcribiendo audio..." : "Ingresando a tu BlackboxMind..."} />
@@ -321,6 +371,54 @@ const styles = StyleSheet.create({
   innerRecord: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#6366f1', justifyContent: 'center', alignItems: 'center' },
   innerRecordActive: { backgroundColor: '#ef4444' },
   stopIcon: { width: 22, height: 22, backgroundColor: 'white', borderRadius: 4 },
+  stopIconLg: { width: 34, height: 34, backgroundColor: 'white', borderRadius: 6 },
+  voiceHero: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  voiceTitle: {
+    color: 'white',
+    fontSize: 30,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+  voiceSub: {
+    color: '#94a3b8',
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: 'center',
+    marginTop: 12,
+    maxWidth: 320,
+  },
+  heroRecordBtn: {
+    width: 132, height: 132, borderRadius: 66,
+    backgroundColor: 'rgba(99, 102, 241, 0.12)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  heroInnerRecord: {
+    width: 104, height: 104, borderRadius: 52,
+    backgroundColor: '#6366f1',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  recordHint: {
+    color: '#64748b',
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 1,
+    marginTop: 8,
+  },
+  writeLink: {
+    color: '#818cf8',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modeRow: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(2, 6, 23, 0.8)',
