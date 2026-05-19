@@ -12,6 +12,8 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { voiceService } from '../services/voice';
+import { aiService } from '../services/ai';
+import { NotificationService } from '../services/notificationService';
 import { SupabaseService } from '../services/SupabaseService';
 import AILoadingOverlay from '../components/AILoadingOverlay';
 import WelcomeModal from '../components/WelcomeModal';
@@ -112,27 +114,89 @@ const CaptureScreen = () => {
         if (!message) return;
         if (!user) { Alert.alert('Error', 'Debes estar conectado.'); return; }
 
+        // Image attachments stay in the conversational (vision) flow.
+        if (pickedImage) {
+            setLoading(true);
+            try {
+                const threadTitle = message.split('\n')[0].slice(0, 50) || 'Nueva conversación';
+                const thread = await SupabaseService.createChatThread(user.id, threadTitle, 'GENERAL');
+                if (!thread) throw new Error('No se pudo crear la conversación');
+
+                const imgParam = pickedImage;
+                setContent('');
+                setLastRecordingUri(null);
+                setPickedImage(null);
+
+                navigation.navigate('Chat', {
+                    threadId: thread.id,
+                    category: thread.category,
+                    title: thread.title,
+                    initialMessage: message,
+                    initialImage: imgParam,
+                });
+            } catch (err: any) {
+                console.error('CAPTURE_ERROR:', err);
+                Alert.alert('No se pudo iniciar', 'Hubo un problema al abrir la conversación. Verifica tu conexión e intenta de nuevo.');
+            } finally {
+                setLoading(false);
+            }
+            return;
+        }
+
+        // Text / voice brain-dump → analyze → clinical verdict (the ficha).
+        // From the ficha the user can tap "Profundizar en Chat" to converse.
+        const wc = message.trim().split(/\s+/).length;
+        if (message.length < 40 || wc < 8) {
+            Alert.alert(
+                'Cuéntame un poco más',
+                'Suéltalo con un poco más de detalle (un par de frases) para que BLACKBOX pueda darte un veredicto útil.',
+                [{ text: 'Entendido' }]
+            );
+            return;
+        }
+
         setLoading(true);
         try {
-            const threadTitle = message.split('\n')[0].slice(0, 50) || 'Nueva conversación';
-            const thread = await SupabaseService.createChatThread(user.id, threadTitle, 'GENERAL');
-            if (!thread) throw new Error('No se pudo crear la conversación');
+            let audioUrl = null;
+            if (lastRecordingUri) {
+                audioUrl = await SupabaseService.uploadAudio(lastRecordingUri, user.id);
+            }
 
-            const imgParam = pickedImage;
+            const analysis = await aiService.generateDailySummary([message], user.id);
+
+            const savedEntry = await SupabaseService.createEntry({
+                user_id: user.id,
+                title: analysis.title,
+                content: analysis.original_text || message,
+                sentiment_score: analysis.sentiment_score,
+                mood_label: analysis.mood_label,
+                summary: analysis.summary,
+                wellness_recommendation: analysis.wellness_recommendation,
+                strategic_insight: analysis.strategic_insight,
+                action_items: analysis.action_items,
+                audio_url: audioUrl,
+                original_text: analysis.original_text || message,
+                category: analysis.category || 'PERSONAL',
+            });
+
+            if (Array.isArray(analysis.action_items)) {
+                const highPriorities = analysis.action_items.filter((ai: any) => ai.priority === 'HIGH');
+                for (const hp of highPriorities) {
+                    await NotificationService.scheduleStrategicFollowup(hp.task || hp.description);
+                }
+            }
+
             setContent('');
             setLastRecordingUri(null);
-            setPickedImage(null);
 
-            navigation.navigate('Chat', {
-                threadId: thread.id,
-                category: thread.category,
-                title: thread.title,
-                initialMessage: message,
-                initialImage: imgParam,
-            });
+            if (savedEntry?.id) {
+                navigation.navigate('EntryDetail', { entryId: savedEntry.id });
+            } else {
+                Alert.alert('No se pudo guardar', 'Intenta de nuevo.');
+            }
         } catch (err: any) {
-            console.error('CAPTURE_ERROR:', err);
-            Alert.alert('No se pudo iniciar', 'Hubo un problema al abrir la conversación. Verifica tu conexión e intenta de nuevo.');
+            console.error('CAPTURE_ANALYZE_ERROR:', err);
+            Alert.alert('No se pudo analizar', 'Hubo un problema al generar tu veredicto. Verifica tu conexión e intenta de nuevo.');
         } finally {
             setLoading(false);
         }
