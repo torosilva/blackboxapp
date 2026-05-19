@@ -284,7 +284,7 @@ const NewEntryScreen = () => {
               <TI
                 multiline
                 style={styles.contentInput}
-                placeholder="Escribe lo que cargas…"
+                placeholder={"Suéltalo sin filtro. Ej: \"Cerré el trato grande pero arrastro 3 pendientes, choqué con mi socio y otra vez no avancé en lo de mi hija.\""}
                 placeholderTextColor="#475569"
                 autoFocus
                 value={content}

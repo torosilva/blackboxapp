@@ -247,7 +247,7 @@ const CaptureScreen = () => {
                         <TextInput
                             ref={inputRef}
                             style={styles.input}
-                            placeholder="¿Qué está en tu mente ahora mismo?"
+                            placeholder={"Suéltalo sin filtro. Ej: \"Cerré el trato grande pero arrastro 3 pendientes, choqué con mi socio y otra vez no avancé en lo de mi hija.\""}
                             placeholderTextColor="#475569"
                             multiline
                             value={content}
