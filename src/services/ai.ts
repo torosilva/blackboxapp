@@ -38,17 +38,17 @@ export const aiService = {
         }
 
         // ── Auto-trigger pattern analysis every 5 entries ─────────────────────
-        if (
-            userId &&
-            historicalContext &&
-            historicalContext.totalEntries + 1 >= 5 && // Ensure we have reached the first milestone
-            (historicalContext.totalEntries + 1) % 5 === 0
-        ) {
-            console.log(`[AI_SERVICE] Milestone Trigger: Entry #${historicalContext.totalEntries + 1} reached. Invoking background pattern audit for user: ${userId}`);
+        // entryNo = ordinal of the entry being created (it is NOT yet persisted
+        // at this point, so DB count + 1 is the new entry's number).
+        const entryNo = Number(historicalContext?.totalEntries ?? NaN) + 1;
+        if (userId && historicalContext && Number.isFinite(entryNo) && entryNo >= 5 && entryNo % 5 === 0) {
+            console.log(`[AI_SERVICE] Milestone Trigger: Entry #${entryNo} reached. Invoking background pattern audit for user: ${userId}`);
             // Fire-and-forget: does not block or throw
             SupabaseService.triggerPatternAnalysis(userId).catch(e =>
                 console.warn('[AI_SERVICE] Auto-trigger pattern analysis failed:', e.message)
             );
+        } else {
+            console.log(`[AI_SERVICE] Pattern audit skipped — userId=${userId ? 'set' : 'MISSING'}, entryNo=${Number.isFinite(entryNo) ? entryNo : 'unknown'} (fires at multiples of 5).`);
         }
 
         const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/analyze-entry`;

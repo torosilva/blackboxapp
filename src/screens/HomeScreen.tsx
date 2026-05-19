@@ -265,7 +265,7 @@ const HomeScreen = () => {
       }
 
       // 2. Generate with Gemini
-      const res = await aiService.generateDailySummary(contentArray, undefined, undefined, user.id);
+      const res = await aiService.generateDailySummary(contentArray, user.id);
       setSummary(res);
 
       // 3. Save to cache ONLY IF it's a real result (not the fallback)
