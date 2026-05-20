@@ -199,7 +199,6 @@ serve(async (req) => {
       system: [{ type: 'text', text: STATIC_PATTERNS_SYSTEM, cache_control: { type: 'ephemeral' } }],
       userContent: buildPatternUser(entries as EntrySnapshot[], openLoops, profile),
       maxTokens: 8192,
-      temperature: 0.4,
       meter: { component: 'pattern_synthesis', userId, req },
     });
 

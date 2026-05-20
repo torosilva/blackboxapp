@@ -30,13 +30,18 @@ export interface ClaudeCallOpts {
 }
 
 export async function callClaude(o: ClaudeCallOpts): Promise<string> {
-  const payload = {
+  // Newer Claude models (Opus 4.7+) deprecate the temperature parameter and
+  // return 400 if it's sent. Only include it when the caller explicitly
+  // opts in.
+  const payload: Record<string, unknown> = {
     model: o.model,
     max_tokens: o.maxTokens,
-    temperature: o.temperature ?? 0.7,
     system: o.system,
     messages: [{ role: "user", content: o.userContent }],
   };
+  if (typeof o.temperature === "number") {
+    payload.temperature = o.temperature;
+  }
 
   const res = await withRetry(
     () =>
