@@ -38,7 +38,8 @@ import {
     Box,
     Calendar,
     TrendingUp,
-    Activity
+    Activity,
+    RotateCcw
 } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { SupabaseService } from '../services/SupabaseService';
@@ -603,7 +604,30 @@ const DashboardScreen = () => {
                 <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>PATRONES DETECTADOS</Text>
-                        <Activity size={14} color="#6366f1" />
+                        <TouchableOpacity
+                            onPress={handleManualPatternAnalysis}
+                            disabled={isAnalyzingPatterns || stats.totalMemories < 5}
+                            activeOpacity={0.7}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                backgroundColor: 'rgba(99,102,241,0.12)',
+                                paddingHorizontal: 10,
+                                paddingVertical: 5,
+                                borderRadius: 12,
+                                opacity: stats.totalMemories < 5 ? 0.4 : 1,
+                            }}
+                        >
+                            {isAnalyzingPatterns ? (
+                                <ActivityIndicator size="small" color="#818cf8" />
+                            ) : (
+                                <RotateCcw size={12} color="#818cf8" />
+                            )}
+                            <Text style={{ color: '#c7d2fe', fontSize: 11, fontWeight: '700', marginLeft: 6, letterSpacing: 0.5 }}>
+                                {isAnalyzingPatterns ? 'ANALIZANDO…' : 'RE-ANALIZAR'}
+                            </Text>
+                        </TouchableOpacity>
                     </View>
 
                     {patterns.length === 0 ? (
