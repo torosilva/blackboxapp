@@ -392,8 +392,8 @@ const DashboardScreen = () => {
 
                 {/* QuickCapture Banner (v5.9.7 - NEW PROMINENT LOCATION) */}
                 <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
-                    <TO 
-                        onPress={() => navigation.navigate('QuickCapture')}
+                    <TO
+                        onPress={() => navigation.navigate('Main')}
                         activeOpacity={0.8}
                         style={styles.quickCaptureBanner}
                     >

@@ -827,7 +827,7 @@ const HomeScreen = () => {
       {/* Floating Action Buttons */}
       <View style={styles.fabContainer}>
         <TO
-          onPress={() => navigation.navigate('NewEntry', {})}
+          onPress={() => navigation.navigate('Main')}
           style={styles.fabMain}
         >
           <P size={24} color="white" style={{ marginRight: 8 }} />

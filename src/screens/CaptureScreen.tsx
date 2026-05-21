@@ -27,6 +27,7 @@ const CaptureScreen = () => {
     const [isRecording, setIsRecording] = useState(false);
     const [isTranscribing, setIsTranscribing] = useState(false);
     const [lastRecordingUri, setLastRecordingUri] = useState<string | null>(null);
+    const [pendingRetryUri, setPendingRetryUri] = useState<string | null>(null);
     const [recordSecs, setRecordSecs] = useState(0);
     const [pickedImage, setPickedImage] = useState<{ uri: string; mediaType: string; data: string } | null>(null);
     const [showText, setShowText] = useState(false);
@@ -212,33 +213,46 @@ const CaptureScreen = () => {
         await analyzeAndOpenVerdict(content, lastRecordingUri);
     };
 
+    // Transcribe a saved recording, then route to the verdict. On a
+    // connectivity failure keep the audio and surface a retry instead of
+    // losing the user's words; on no-speech say so plainly.
+    const transcribeAndAnalyze = async (uri: string) => {
+        setIsTranscribing(true);
+        let trans = '';
+        try {
+            trans = await voiceService.transcribeAudio(uri);
+        } catch {
+            setIsTranscribing(false);
+            setPendingRetryUri(uri);
+            Alert.alert(
+                'Sin conexión',
+                'No pude transcribir tu audio. Lo guardé — toca "Reintentar transcripción" cuando tengas señal.'
+            );
+            return;
+        }
+        setIsTranscribing(false);
+        setPendingRetryUri(null);
+        if (!trans.trim()) {
+            Alert.alert('No se escuchó nada', 'No detecté voz clara. Intenta grabar de nuevo.');
+            return;
+        }
+        // Voice → straight to verdict. If it can't proceed (too short / error),
+        // drop the transcription into the box so it isn't lost.
+        const ok = await analyzeAndOpenVerdict(trans, uri);
+        if (!ok) {
+            setContent(prev => prev ? `${prev} ${trans}` : trans);
+            setShowText(true);
+        }
+    };
+
     const toggleRecording = async () => {
         if (isRecording) {
             const uri = await voiceService.stopRecording();
             setLastRecordingUri(uri);
             setIsRecording(false);
-            if (uri) {
-                setIsTranscribing(true);
-                let trans = '';
-                try {
-                    trans = await voiceService.transcribeAudio(uri);
-                } catch {
-                    Alert.alert('Error de transcripción', 'No se pudo convertir el audio a texto.');
-                } finally {
-                    setIsTranscribing(false);
-                }
-                // Voice → straight to verdict. No detour through the text box,
-                // no manual "send". If it can't proceed (too short / error),
-                // drop the transcription into the box so it isn't lost.
-                if (trans && trans.trim()) {
-                    const ok = await analyzeAndOpenVerdict(trans, uri);
-                    if (!ok) {
-                        setContent(prev => prev ? `${prev} ${trans}` : trans);
-                        setShowText(true);
-                    }
-                }
-            }
+            if (uri) await transcribeAndAnalyze(uri);
         } else {
+            setPendingRetryUri(null);
             const started = await voiceService.startRecording(() => { });
             if (started) setIsRecording(true);
         }
@@ -318,6 +332,16 @@ const CaptureScreen = () => {
                                     ? `Escuchando ${fmtSecs(recordSecs)} · toca para terminar`
                                     : 'Toca el micrófono y habla'}
                         </Text>
+
+                        {pendingRetryUri && !isRecording && !isTranscribing && (
+                            <TO
+                                onPress={() => transcribeAndAnalyze(pendingRetryUri)}
+                                style={styles.retryBtn}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={styles.retryText}>↻ Reintentar transcripción</Text>
+                            </TO>
+                        )}
 
                         <TO onPress={() => setShowText(true)} style={styles.writeLinkBtn} activeOpacity={0.7}>
                             <Text style={styles.writeLinkBig}>Prefiero escribir</Text>
@@ -620,6 +644,20 @@ const styles = StyleSheet.create({
         fontSize: 17,
         fontWeight: '700',
         letterSpacing: 0.3,
+    },
+    retryBtn: {
+        marginTop: 22,
+        paddingVertical: 12,
+        paddingHorizontal: 22,
+        borderRadius: 16,
+        backgroundColor: 'rgba(251,191,36,0.12)',
+        borderWidth: 1,
+        borderColor: 'rgba(251,191,36,0.5)',
+    },
+    retryText: {
+        color: '#fbbf24',
+        fontSize: 15,
+        fontWeight: '700',
     },
     backToVoiceRow: {
         paddingVertical: 6,
