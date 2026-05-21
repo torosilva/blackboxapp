@@ -1393,14 +1393,16 @@ export const SupabaseService = {
 
     /**
      * Update the completion status of a single action item.
+     * Closing a loop also drops it into the 'hecha' lane.
      */
     async updateActionItemStatus(itemId: string, isCompleted: boolean) {
         try {
             const { error } = await supabase
                 .from('action_items')
-                .update({ 
+                .update({
                     is_completed: isCompleted,
-                    completed_at: isCompleted ? new Date().toISOString() : null
+                    completed_at: isCompleted ? new Date().toISOString() : null,
+                    status: isCompleted ? 'hecha' : 'hoy',
                 })
                 .eq('id', itemId);
 
@@ -1408,6 +1410,25 @@ export const SupabaseService = {
             return true;
         } catch (err: any) {
             console.error('SUPABASE_SERVICE: updateActionItemStatus failed:', err.message);
+            return false;
+        }
+    },
+
+    /**
+     * Manually move an open loop between the HOY / RONDANDO lanes.
+     * REGRESAN is set by the avoidance engine, not by hand.
+     */
+    async setActionItemLane(itemId: string, status: 'hoy' | 'rondando') {
+        try {
+            const { error } = await supabase
+                .from('action_items')
+                .update({ status })
+                .eq('id', itemId);
+
+            if (error) throw error;
+            return true;
+        } catch (err: any) {
+            console.error('SUPABASE_SERVICE: setActionItemLane failed:', err.message);
             return false;
         }
     },

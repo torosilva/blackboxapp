@@ -5,12 +5,13 @@ import {
     Platform, ActivityIndicator, StatusBar, Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Send, ChevronLeft, Bot, Sparkles, Brain } from 'lucide-react-native';
+import { Send, ChevronLeft, Bot, Sparkles, Brain, Mic, MicOff } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ChatService, ChatMessage } from '../services/ChatService';
 import { useAuth } from '../context/AuthContext';
 import { SupabaseService } from '../services/SupabaseService';
 import { aiService } from '../services/ai';
+import { voiceService } from '../services/voice';
 import { useSubscription } from '../hooks/useSubscription';
 import { Crown } from 'lucide-react-native';
 
@@ -28,10 +29,14 @@ const ChatScreen = () => {
     const Sn = Send as any;
     const CL = ChevronLeft as any;
     const Bo = Bot as any;
+    const Mi = Mic as any;
+    const MO = MicOff as any;
 
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputText, setInputText] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isRecording, setIsRecording] = useState(false);
+    const [isTranscribing, setIsTranscribing] = useState(false);
     const [fetchingHistory, setFetchingHistory] = useState(true);
     const scrollViewRef = useRef<ScrollView>(null);
     const initialSentRef = useRef(false);
@@ -204,6 +209,34 @@ const ChatScreen = () => {
         }
     };
 
+    // Voice in chat: record → transcribe → send. Lets the user keep
+    // dictating instead of being forced to type to continue the thread.
+    const toggleRecording = async () => {
+        if (loading || isTranscribing) return;
+        if (isRecording) {
+            const uri = await voiceService.stopRecording();
+            setIsRecording(false);
+            if (!uri) return;
+            setIsTranscribing(true);
+            let trans = '';
+            try {
+                trans = await voiceService.transcribeAudio(uri);
+            } catch {
+                Alert.alert('Error de transcripción', 'No se pudo convertir el audio a texto.');
+            } finally {
+                setIsTranscribing(false);
+            }
+            if (trans && trans.trim()) {
+                const combined = inputText.trim() ? `${inputText.trim()} ${trans.trim()}` : trans.trim();
+                setInputText('');
+                handleSend(combined);
+            }
+        } else {
+            const started = await voiceService.startRecording(() => {});
+            if (started) setIsRecording(true);
+        }
+    };
+
     // Create the memoria from the conversation and link it to this thread.
     // Called automatically when classified as "journal", or manually when
     // the user promotes an assist chat. Therapy chats are excluded.
@@ -344,6 +377,19 @@ const ChatScreen = () => {
         return unsub;
     }, [navigation]);
 
+    // Auto-sync the memoria a few seconds after new turns settle — replaces
+    // the manual "Actualizar" button users found unclear. syncMemory has its
+    // own guards against concurrent/no-op runs.
+    useEffect(() => {
+        const hasNew =
+            memoryState === 'saved' &&
+            messages.length > memorySyncedLen &&
+            messages.filter((m) => m.role === 'user').length >= 2;
+        if (!hasNew || loading) return;
+        const t = setTimeout(() => syncMemory(), 4000);
+        return () => clearTimeout(t);
+    }, [memoryState, messages, memorySyncedLen, loading]);
+
     if (isLimitReached) {
         return (
             <SAV style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 30 }]}>
@@ -415,14 +461,9 @@ const ChatScreen = () => {
                         {memoryState === 'assist' && 'Solo en historial de chats'}
                         {memoryState === 'ask' && '¿Guardar esto como memoria?'}
                         {memoryState === 'saved' && (memoryHasNew
-                            ? 'Guardado como memoria · hay mensajes nuevos'
+                            ? 'Guardado como memoria · sincronizando lo nuevo…'
                             : `Guardado como memoria ✓${memoryGoalsCount > 0 ? ` · ${memoryGoalsCount} meta${memoryGoalsCount > 1 ? 's' : ''} detectada${memoryGoalsCount > 1 ? 's' : ''}` : ''}`)}
                     </Text>
-                    {memoryState === 'saved' && memoryHasNew && (
-                        <TO onPress={syncMemory} style={styles.memoryBannerBtn}>
-                            <Text style={styles.memoryBannerBtnText}>Actualizar</Text>
-                        </TO>
-                    )}
                     {memoryState === 'assist' && (
                         <TO onPress={createMemoria} style={styles.memoryBannerBtn}>
                             <Text style={styles.memoryBannerBtnText}>Guardar como memoria</Text>
@@ -509,16 +550,36 @@ const ChatScreen = () => {
                 <View style={styles.inputArea}>
                     <TI
                         style={styles.input}
-                        placeholder={isTherapyMode ? "¿Cómo te hace sentir eso?" : "Escribe un mensaje..."}
+                        placeholder={
+                            isRecording
+                                ? 'Escuchando… toca el micrófono para enviar'
+                                : isTranscribing
+                                    ? 'Transcribiendo tu audio…'
+                                    : isTherapyMode ? '¿Cómo te hace sentir eso?' : 'Escribe o dicta un mensaje…'
+                        }
                         placeholderTextColor="#64748b"
                         value={inputText}
                         onChangeText={setInputText}
+                        editable={!isRecording && !isTranscribing}
                         multiline
                     />
                     <TO
+                        style={[styles.micBtn, isRecording && styles.micBtnActive]}
+                        onPress={toggleRecording}
+                        disabled={loading || isTranscribing}
+                    >
+                        {isTranscribing ? (
+                            <ActivityIndicator size="small" color="#818cf8" />
+                        ) : isRecording ? (
+                            <MO size={20} color="white" />
+                        ) : (
+                            <Mi size={20} color="#94a3b8" />
+                        )}
+                    </TO>
+                    <TO
                         style={[styles.sendBtn, !inputText.trim() && { opacity: 0.5 }]}
                         onPress={() => handleSend()}
-                        disabled={!inputText.trim() || loading}
+                        disabled={!inputText.trim() || loading || isRecording || isTranscribing}
                     >
                         <Sn size={20} color="white" />
                     </TO>
@@ -615,6 +676,21 @@ const styles = StyleSheet.create({
         maxHeight: 200,
         borderWidth: 1,
         borderColor: '#1e293b'
+    },
+    micBtn: {
+        width: 44,
+        height: 44,
+        backgroundColor: '#0f172a',
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginLeft: 10,
+        borderWidth: 1,
+        borderColor: '#1e293b',
+    },
+    micBtnActive: {
+        backgroundColor: '#ef4444',
+        borderColor: '#ef4444',
     },
     sendBtn: {
         width: 44,

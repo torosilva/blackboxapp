@@ -275,7 +275,11 @@ const CaptureScreen = () => {
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 keyboardVerticalOffset={20}
             >
-                <View style={styles.body}>
+                <ScrollView
+                    contentContainerStyle={styles.body}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
                     {/* Hero — big animated logo */}
                     <View style={styles.hero}>
                         <View style={styles.logoBox}>
@@ -315,8 +319,8 @@ const CaptureScreen = () => {
                                     : 'Toca el micrófono y habla'}
                         </Text>
 
-                        <TO onPress={() => setShowText(true)} style={{ marginTop: 26, padding: 8 }} activeOpacity={0.7}>
-                            <Text style={styles.writeLink}>Prefiero escribir</Text>
+                        <TO onPress={() => setShowText(true)} style={styles.writeLinkBtn} activeOpacity={0.7}>
+                            <Text style={styles.writeLinkBig}>Prefiero escribir</Text>
                         </TO>
                     </View>
                     ) : (
@@ -432,7 +436,7 @@ const CaptureScreen = () => {
                             })}
                         </ScrollView>
                     </View>
-                </View>
+                </ScrollView>
             </KeyboardAvoidingView>
 
             <AILoadingOverlay
@@ -448,8 +452,9 @@ const CaptureScreen = () => {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#0a0f1e' },
     body: {
-        flex: 1,
+        flexGrow: 1,
         paddingHorizontal: 20,
+        paddingVertical: 24,
         justifyContent: 'center',
         alignItems: 'stretch',
     },
@@ -600,6 +605,21 @@ const styles = StyleSheet.create({
         color: '#818cf8',
         fontSize: 14,
         fontWeight: '600',
+    },
+    writeLinkBtn: {
+        marginTop: 28,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(129,140,248,0.45)',
+        backgroundColor: 'rgba(129,140,248,0.08)',
+    },
+    writeLinkBig: {
+        color: '#a5b4fc',
+        fontSize: 17,
+        fontWeight: '700',
+        letterSpacing: 0.3,
     },
     backToVoiceRow: {
         paddingVertical: 6,
