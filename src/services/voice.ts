@@ -1,5 +1,6 @@
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { Alert, Linking } from 'react-native';
 import { supabase } from './supabase';
 import { getGlobalAccessToken } from '../context/AuthContext';
@@ -34,9 +35,12 @@ export class VoiceService {
             const { recording } = await Audio.Recording.createAsync(
                 Audio.RecordingOptionsPresets.HIGH_QUALITY,
                 onStatusUpdate,
-                100 
+                100
             );
             this.recording = recording;
+            // Stop the screen from auto-locking mid-dictation, which would
+            // background the app and cut the recording short.
+            activateKeepAwakeAsync('recording').catch(() => {});
             return true;
         } catch (err: any) {
             console.error('VoiceService: Failed to create recording:', err);
@@ -45,6 +49,7 @@ export class VoiceService {
     }
 
     async stopRecording() {
+        deactivateKeepAwake('recording').catch(() => {});
         if (!this.recording) return null;
 
         await this.recording.stopAndUnloadAsync();
