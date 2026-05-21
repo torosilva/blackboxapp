@@ -79,6 +79,7 @@ const CaptureScreen = () => {
     }, [isRecording, isTranscribing]);
 
     const fmtSecs = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    const MAX_RECORD_SECS = 300;
 
     const inputRef = useRef<any>(null);
     const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -258,6 +259,14 @@ const CaptureScreen = () => {
         }
     };
 
+    // Hard cap at 5 min so a forgotten/runaway recording can't rack up
+    // transcription cost. Auto-stop runs the normal transcribe flow.
+    useEffect(() => {
+        if (isRecording && recordSecs >= MAX_RECORD_SECS) {
+            toggleRecording();
+        }
+    }, [isRecording, recordSecs]);
+
     const SAV = SafeAreaView as any;
     const TO = TouchableOpacity as any;
     const Mi = Mic as any;
@@ -329,7 +338,7 @@ const CaptureScreen = () => {
                             {isTranscribing
                                 ? 'Transcribiendo tu audio…'
                                 : isRecording
-                                    ? `Escuchando ${fmtSecs(recordSecs)} · toca para terminar`
+                                    ? `Escuchando ${fmtSecs(recordSecs)} / 5:00 · toca para terminar`
                                     : 'Toca el micrófono y habla'}
                         </Text>
 
