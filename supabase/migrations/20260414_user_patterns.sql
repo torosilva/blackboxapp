@@ -37,6 +37,7 @@ CREATE TRIGGER trg_user_patterns_updated_at
 -- RLS
 ALTER TABLE public.user_patterns ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users manage own patterns" ON public.user_patterns;
 CREATE POLICY "Users manage own patterns"
     ON public.user_patterns
     FOR ALL

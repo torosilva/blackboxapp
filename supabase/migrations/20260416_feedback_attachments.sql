@@ -13,17 +13,20 @@ ON CONFLICT (id) DO NOTHING;
 
 -- 3. Set RLS Policies for Storage
 -- Allow anyone to read (public bucket)
-CREATE POLICY "Public Access" 
-ON storage.objects FOR SELECT 
+DROP POLICY IF EXISTS "Public Access" ON storage.objects;
+CREATE POLICY "Public Access"
+ON storage.objects FOR SELECT
 USING (bucket_id = 'feedback_attachments');
 
 -- Allow authenticated users to upload their feedback images
-CREATE POLICY "Authenticated users can upload feedback" 
-ON storage.objects FOR INSERT 
-TO authenticated 
+DROP POLICY IF EXISTS "Authenticated users can upload feedback" ON storage.objects;
+CREATE POLICY "Authenticated users can upload feedback"
+ON storage.objects FOR INSERT
+TO authenticated
 WITH CHECK (bucket_id = 'feedback_attachments');
 
 -- Allow users to delete their own attachments if needed
+DROP POLICY IF EXISTS "Users can delete their own feedback images" ON storage.objects;
 CREATE POLICY "Users can delete their own feedback images"
 ON storage.objects FOR DELETE
 TO authenticated
