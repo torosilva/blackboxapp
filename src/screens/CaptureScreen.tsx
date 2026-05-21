@@ -407,7 +407,7 @@ const CaptureScreen = () => {
                         <View style={styles.inputFooter}>
                             <View style={styles.leftActions}>
                                 <TO style={styles.iconBtn} activeOpacity={0.7} onPress={pickImage} disabled={loading}>
-                                    <Pl size={16} color="#64748b" />
+                                    <Pl size={20} color="#94a3b8" />
                                 </TO>
                                 {wordCount > 0 && (
                                     <Text style={styles.wordCount}>{wordCount} palabras</Text>
@@ -423,12 +423,12 @@ const CaptureScreen = () => {
                                 >
                                     {isTranscribing ? (
                                         <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                                            <Mi size={16} color="#6366f1" />
+                                            <Mi size={20} color="#6366f1" />
                                         </Animated.View>
                                     ) : isRecording ? (
-                                        <MO size={16} color="white" />
+                                        <MO size={20} color="white" />
                                     ) : (
-                                        <Mi size={16} color="#64748b" />
+                                        <Mi size={20} color="#94a3b8" />
                                     )}
                                 </TO>
 
@@ -438,7 +438,7 @@ const CaptureScreen = () => {
                                     style={[styles.sendBtn, canSubmit ? styles.sendBtnActive : styles.sendBtnDisabled]}
                                     activeOpacity={0.8}
                                 >
-                                    <Au size={16} color={canSubmit ? 'white' : '#475569'} strokeWidth={2.5} />
+                                    <Au size={20} color={canSubmit ? 'white' : '#475569'} strokeWidth={2.5} />
                                 </TO>
                             </View>
                         </View>
@@ -462,7 +462,7 @@ const CaptureScreen = () => {
                                         style={styles.chip}
                                         activeOpacity={0.7}
                                     >
-                                        <Icon size={12} color="#94a3b8" strokeWidth={2} />
+                                        <Icon size={15} color="#a5b4fc" strokeWidth={2} />
                                         <Text style={styles.chipText}>{s.label}</Text>
                                     </TO>
                                 );
@@ -542,10 +542,10 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     iconBtn: {
-        width: 30, height: 30, borderRadius: 15,
-        backgroundColor: 'rgba(255,255,255,0.03)',
+        width: 40, height: 40, borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.05)',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.06)',
+        borderColor: 'rgba(255,255,255,0.1)',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -585,7 +585,7 @@ const styles = StyleSheet.create({
     imageHint: { color: '#a5b4fc', fontSize: 12, fontWeight: '600', flex: 1 },
     imageRemove: { padding: 6 },
     sendBtn: {
-        width: 30, height: 30, borderRadius: 15,
+        width: 40, height: 40, borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -674,12 +674,12 @@ const styles = StyleSheet.create({
         alignSelf: 'flex-start',
     },
     chipsWrap: {
-        marginTop: 14,
+        marginTop: 18,
         flexGrow: 0,
         flexShrink: 0,
     },
     chipsRow: {
-        gap: 6,
+        gap: 8,
         paddingHorizontal: 2,
         alignItems: 'center',
         justifyContent: 'center',
@@ -687,18 +687,18 @@ const styles = StyleSheet.create({
     chip: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 5,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 14,
-        backgroundColor: 'transparent',
+        gap: 7,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255,255,255,0.04)',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.08)',
+        borderColor: 'rgba(255,255,255,0.14)',
     },
     chipText: {
-        color: '#94a3b8',
-        fontSize: 11,
-        fontWeight: '500',
+        color: '#cbd5e1',
+        fontSize: 13,
+        fontWeight: '600',
     },
 });
 
