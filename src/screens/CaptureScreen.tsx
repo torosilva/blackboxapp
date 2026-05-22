@@ -89,6 +89,8 @@ const CaptureScreen = () => {
     const [hasRegresa, setHasRegresa] = useState(false);
     const [stats, setStats] = useState<Stats | null>(null);
     const [memoriesOpen, setMemoriesOpen] = useState(true);
+    const [liveReflejo, setLiveReflejo] = useState<string | null>(null);
+    const [reflejoLoading, setReflejoLoading] = useState(false);
 
     const loadHome = useCallback(async () => {
         if (!user) return;
@@ -113,7 +115,35 @@ const CaptureScreen = () => {
                 moodLabel: ctx.recentMoods?.[0]?.label ?? null,
                 totalEntries: ctx.totalEntries ?? 0,
             });
+
+            // ── Live "Reflejo de hoy" — generated against current stats, cached
+            // by a stats fingerprint so it only regenerates when the backlog
+            // actually changes (controls cost/latency). ──────────────────────
+            if (s.open === 0 && s.closed === 0) {
+                setLiveReflejo(null);
+            } else {
+                const fp = `reflejo_${s.open}_${s.closed}_${s.stalled}_${s.stalledDays}_${s.ordered[0]?.id ?? 'none'}`;
+                const cached = await SupabaseService.getCachedInsight(user.id, 'daily', fp);
+                const cachedText = typeof cached === 'string' ? cached : cached?.text ?? null;
+                if (cachedText) {
+                    setLiveReflejo(cachedText);
+                } else {
+                    setReflejoLoading(true);
+                    const text = await aiService.generateLoopReflection({
+                        userId: user.id,
+                        open: s.open,
+                        closed: s.closed,
+                        stalled: s.stalled,
+                        stalledDays: s.stalledDays,
+                        topLoops: s.ordered.slice(0, 5),
+                    });
+                    setReflejoLoading(false);
+                    setLiveReflejo(text);
+                    if (text) await SupabaseService.saveCachedInsight(user.id, 'daily', fp, { text });
+                }
+            }
         } catch (e: any) {
+            setReflejoLoading(false);
             console.warn('CAPTURE: loadHome failed:', e?.message);
         }
     }, [user]);
@@ -455,8 +485,25 @@ const CaptureScreen = () => {
                     </TO>
                 )}
 
-                {/* REFLEJO DE HOY — third pillar: the AI with a take */}
-                {reflectionText && (
+                {/* REFLEJO DE HOY — third pillar: live read of the current backlog */}
+                {(reflejoLoading || liveReflejo) ? (
+                    <TO
+                        style={styles.reflejoCard}
+                        onPress={() => navigation.navigate('Loops')}
+                        activeOpacity={0.85}
+                        disabled={reflejoLoading}
+                    >
+                        <View style={styles.reflejoHead}>
+                            <Sp size={14} color="#c084fc" strokeWidth={2.2} />
+                            <Text style={styles.reflejoLabel}>REFLEJO DE HOY</Text>
+                        </View>
+                        {reflejoLoading ? (
+                            <Text style={[styles.reflejoText, { color: '#94a3b8' }]}>Leyendo tu backlog…</Text>
+                        ) : (
+                            <Text style={styles.reflejoText}>{liveReflejo}</Text>
+                        )}
+                    </TO>
+                ) : reflectionText ? (
                     <TO
                         style={styles.reflejoCard}
                         onPress={() => navigation.navigate('EntryDetail', { entryId: reflection.id })}
@@ -474,7 +521,7 @@ const CaptureScreen = () => {
                             <Text style={styles.reflejoMore}>Ver reflejo completo →</Text>
                         )}
                     </TO>
-                )}
+                ) : null}
 
                 {/* ── LOOPS — PRIMARY MODULE ───────────────────────────────────── */}
                 {topLoops.length > 0 ? (
