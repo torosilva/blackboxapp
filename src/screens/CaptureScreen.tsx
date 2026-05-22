@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
-    StatusBar, Alert, KeyboardAvoidingView, Platform, Animated, ScrollView, Image, Modal
+    StatusBar, Alert, KeyboardAvoidingView, Platform, Animated, ScrollView, Image, Modal, RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import {
     Mic, MicOff, ArrowUp, Plus, X, RefreshCw, ChevronRight, ChevronDown,
-    PenLine, LayoutDashboard, BarChart2, MessageCircle, ShieldAlert, Brain, Sparkles,
+    PenLine, LayoutDashboard, BarChart2, MessageCircle, ShieldAlert, Brain, Sparkles, MoreHorizontal,
 } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
@@ -22,10 +22,50 @@ type Stats = {
     closed: number;
     open: number;
     regresa: number;
-    stale: number;
-    staleDays: number;
+    stalled: number;
+    stalledDays: number;
     moodLabel: string | null;
     totalEntries: number;
+};
+
+const NB = String.fromCharCode(160); // non-breaking space — keeps "354 abiertos" as one unit
+const STALE_DAYS = 3;
+
+// SINGLE SOURCE OF TRUTH for loop counts. Every number on the home derives
+// from here. Note: `stalled` is a SUBSET of `open` (open loops untouched
+// ≥ STALE_DAYS), not an independent total — so open ≥ stalled always holds.
+const deriveLoopStats = (loops: any[], closedThisWeek: number) => {
+    const all = loops || [];
+    const daysOpen = (l: any) =>
+        l?.created_at ? Math.floor((Date.now() - new Date(l.created_at).getTime()) / 86400000) : 0;
+
+    const regresa = all.filter((l: any) => String(l.status) === 'regresa');
+    const stalled = all.filter((l: any) => daysOpen(l) >= STALE_DAYS); // ⊆ open
+    const stalledDays = stalled.length ? Math.max(...stalled.map(daysOpen)) : 0;
+    const high = all.filter((l: any) => String(l.priority).toUpperCase() === 'HIGH' && !regresa.includes(l));
+    const rest = all.filter((l: any) => !regresa.includes(l) && !high.includes(l));
+
+    return {
+        open: all.length,
+        closed: closedThisWeek,
+        regresa: regresa.length,
+        stalled: stalled.length,
+        stalledDays,
+        ordered: [...regresa, ...high, ...rest],
+    };
+};
+
+// Truncate at a sentence boundary (never mid-word). Falls back to the last
+// whole word + ellipsis. Returns whether it was cut so callers can offer a
+// "ver completo" link.
+const truncateSentence = (raw: string, max = 240): { text: string; truncated: boolean } => {
+    const s = raw.replace(/\s+/g, ' ').trim();
+    if (s.length <= max) return { text: s, truncated: false };
+    const slice = s.slice(0, max);
+    const lastEnd = Math.max(slice.lastIndexOf('. '), slice.lastIndexOf('? '), slice.lastIndexOf('! '));
+    if (lastEnd >= max * 0.55) return { text: slice.slice(0, lastEnd + 1).trim(), truncated: true };
+    const lastSpace = slice.lastIndexOf(' ');
+    return { text: (lastSpace > 0 ? slice.slice(0, lastSpace) : slice).trim() + '…', truncated: true };
 };
 
 const CaptureScreen = () => {
@@ -41,6 +81,7 @@ const CaptureScreen = () => {
     const [recordSecs, setRecordSecs] = useState(0);
     const [pickedImage, setPickedImage] = useState<{ uri: string; mediaType: string; data: string } | null>(null);
     const [showTextModal, setShowTextModal] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
     // ── Command-center data ───────────────────────────────────────────────────
     const [recentEntries, setRecentEntries] = useState<any[]>([]);
@@ -60,26 +101,15 @@ const CaptureScreen = () => {
             ]);
             setRecentEntries((entries || []).slice(0, 3));
 
-            const all = loops || [];
-            const dayMs = 86400000;
-            const daysOpen = (l: any) =>
-                l?.created_at ? Math.floor((Date.now() - new Date(l.created_at).getTime()) / dayMs) : 0;
-
-            const regresa = all.filter((l: any) => String(l.status) === 'regresa');
-            const stale = all.filter((l: any) => daysOpen(l) >= 3);
-            const staleDays = stale.length ? Math.max(...stale.map(daysOpen)) : 0;
-            const high = all.filter((l: any) => String(l.priority).toUpperCase() === 'HIGH' && !regresa.includes(l));
-            const rest = all.filter((l: any) => !regresa.includes(l) && !high.includes(l));
-            const ordered = [...regresa, ...high, ...rest];
-
-            setTopLoops(ordered.slice(0, 3));
-            setHasRegresa(regresa.length > 0);
+            const s = deriveLoopStats(loops, closed);
+            setTopLoops(s.ordered.slice(0, 3));
+            setHasRegresa(s.regresa > 0);
             setStats({
-                closed,
-                open: all.length,
-                regresa: regresa.length,
-                stale: stale.length,
-                staleDays,
+                closed: s.closed,
+                open: s.open,
+                regresa: s.regresa,
+                stalled: s.stalled,
+                stalledDays: s.stalledDays,
                 moodLabel: ctx.recentMoods?.[0]?.label ?? null,
                 totalEntries: ctx.totalEntries ?? 0,
             });
@@ -89,6 +119,12 @@ const CaptureScreen = () => {
     }, [user]);
 
     useFocusEffect(useCallback(() => { loadHome(); }, [loadHome]));
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await loadHome();
+        setRefreshing(false);
+    }, [loadHome]);
 
     const pickImage = async () => {
         try {
@@ -329,6 +365,7 @@ const CaptureScreen = () => {
     const PL = PenLine as any;
     const Sp = Sparkles as any;
     const Br = Brain as any;
+    const MH = MoreHorizontal as any;
     const LD = LayoutDashboard as any;
     const BC = BarChart2 as any;
     const MC = MessageCircle as any;
@@ -359,6 +396,7 @@ const CaptureScreen = () => {
     const reflectionToday = reflection?.created_at
         ? new Date(reflection.created_at).toDateString() === new Date().toDateString()
         : false;
+    const reflejo = reflectionText ? truncateSentence(reflectionText) : null;
 
     const cleanHead = stats != null && stats.open === 0 && stats.closed === 0;
 
@@ -369,13 +407,21 @@ const CaptureScreen = () => {
             <ScrollView
                 contentContainerStyle={styles.body}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366f1" colors={['#6366f1']} />
+                }
             >
-                {/* Brand mark — minimal, no wellness greeting */}
+                {/* Brand mark — minimal, no wellness greeting. Overflow lives here. */}
                 <View style={styles.brandRow}>
                     <Text style={styles.brand}>BLACKBOX</Text>
+                    <TO onPress={() => navigation.navigate('Settings')} style={styles.headerBtn} activeOpacity={0.7}>
+                        <MH size={20} color="#64748b" />
+                    </TO>
                 </View>
 
-                {/* SYSTEM STATE — momentum first, backlog after */}
+                {/* SYSTEM STATE — momentum first, backlog after. Units never break
+                    mid-stat (nbsp) and the bullet is bound to its stat, so no
+                    orphan "·" at the start of a wrapped line. */}
                 <View style={styles.statusBlock}>
                     {cleanHead ? (
                         <>
@@ -383,17 +429,23 @@ const CaptureScreen = () => {
                             <Text style={styles.statusSub}>Sin loops abiertos. Suelta lo que llegue.</Text>
                         </>
                     ) : (
-                        <Text style={styles.headline}>
+                        <View style={styles.headlineWrap}>
                             {!!stats && stats.closed > 0 && (
-                                <Text style={styles.hlPos}>{stats.closed} cerrado{stats.closed === 1 ? '' : 's'} esta semana</Text>
+                                <Text style={[styles.headline, styles.hlPos]}>
+                                    {stats.closed}{NB}cerrado{stats.closed === 1 ? '' : 's'}{NB}esta{NB}semana
+                                </Text>
                             )}
-                            {!!stats && stats.closed > 0 && <Text style={styles.hlDot}>{'   ·   '}</Text>}
-                            <Text style={styles.hlNeutral}>{stats?.open ?? 0} abierto{(stats?.open ?? 0) === 1 ? '' : 's'}</Text>
-                            {!!stats && stats.stale > 0 && <Text style={styles.hlDot}>{'   ·   '}</Text>}
-                            {!!stats && stats.stale > 0 && (
-                                <Text style={styles.hlWarn}>{stats.stale} estancado{stats.stale === 1 ? '' : 's'}</Text>
+                            <Text style={styles.headline}>
+                                {!!stats && stats.closed > 0 && <Text style={styles.hlDot}>·{NB}</Text>}
+                                <Text style={styles.hlNeutral}>{stats?.open ?? 0}{NB}abierto{(stats?.open ?? 0) === 1 ? '' : 's'}</Text>
+                            </Text>
+                            {!!stats && stats.stalled > 0 && (
+                                <Text style={styles.headline}>
+                                    <Text style={styles.hlDot}>·{NB}</Text>
+                                    <Text style={styles.hlWarn}>{stats.stalled}{NB}estancado{stats.stalled === 1 ? '' : 's'}</Text>
+                                </Text>
                             )}
-                        </Text>
+                        </View>
                     )}
                 </View>
 
@@ -413,8 +465,14 @@ const CaptureScreen = () => {
                         <View style={styles.reflejoHead}>
                             <Sp size={14} color="#c084fc" strokeWidth={2.2} />
                             <Text style={styles.reflejoLabel}>{reflectionToday ? 'REFLEJO DE HOY' : 'ÚLTIMO REFLEJO'}</Text>
+                            {!reflectionToday && !!reflection?.created_at && (
+                                <Text style={styles.reflejoDate}>· {fmtDate(reflection.created_at)}</Text>
+                            )}
                         </View>
-                        <Text style={styles.reflejoText} numberOfLines={4}>{reflectionText}</Text>
+                        <Text style={styles.reflejoText}>{reflejo?.text}</Text>
+                        {!!reflejo?.truncated && (
+                            <Text style={styles.reflejoMore}>Ver reflejo completo →</Text>
+                        )}
                     </TO>
                 )}
 
@@ -651,13 +709,19 @@ const styles = StyleSheet.create({
         paddingBottom: 110,
     },
 
-    brandRow: { marginBottom: 16 },
+    brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
     brand: { color: '#475569', fontSize: 12, fontWeight: '900', letterSpacing: 3 },
+    headerBtn: {
+        width: 34, height: 34, borderRadius: 17,
+        alignItems: 'center', justifyContent: 'center',
+        marginRight: -6,
+    },
 
     // System state — momentum headline
     statusBlock: { marginBottom: 22 },
     statusMain: { color: '#f8fafc', fontSize: 28, fontWeight: '800', letterSpacing: 0.2 },
     statusSub: { color: '#94a3b8', fontSize: 15, fontWeight: '600', marginTop: 6, lineHeight: 21 },
+    headlineWrap: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 8, rowGap: 2 },
     headline: { fontSize: 24, fontWeight: '800', lineHeight: 32, letterSpacing: 0.1 },
     hlPos: { color: '#34d399' },
     hlNeutral: { color: '#f1f5f9' },
@@ -675,7 +739,9 @@ const styles = StyleSheet.create({
     },
     reflejoHead: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 8 },
     reflejoLabel: { color: '#c084fc', fontSize: 11, fontWeight: '900', letterSpacing: 1.5 },
+    reflejoDate: { color: '#7c6a9c', fontSize: 11, fontWeight: '700' },
     reflejoText: { color: '#e2e8f0', fontSize: 15, lineHeight: 22, fontWeight: '500' },
+    reflejoMore: { color: '#c084fc', fontSize: 13, fontWeight: '800', marginTop: 10 },
 
     retryBanner: {
         backgroundColor: 'rgba(251,191,36,0.10)',
