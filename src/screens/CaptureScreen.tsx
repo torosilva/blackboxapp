@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import {
     Mic, MicOff, ArrowUp, Plus, X, RefreshCw, ChevronRight, ChevronDown,
-    PenLine, LayoutDashboard, BarChart2, MessageCircle, ShieldAlert, Brain,
+    PenLine, LayoutDashboard, BarChart2, MessageCircle, ShieldAlert, Brain, Sparkles,
 } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
@@ -19,6 +19,7 @@ import AILoadingOverlay from '../components/AILoadingOverlay';
 import WelcomeModal from '../components/WelcomeModal';
 
 type Stats = {
+    closed: number;
     open: number;
     regresa: number;
     stale: number;
@@ -51,10 +52,11 @@ const CaptureScreen = () => {
     const loadHome = useCallback(async () => {
         if (!user) return;
         try {
-            const [entries, loops, ctx] = await Promise.all([
+            const [entries, loops, ctx, closed] = await Promise.all([
                 SupabaseService.getEntries(user.id),
                 SupabaseService.getOpenActionItems(user.id),
                 SupabaseService.getHistoricalContext(user.id),
+                SupabaseService.getClosedLoopsCount(user.id, 7),
             ]);
             setRecentEntries((entries || []).slice(0, 3));
 
@@ -73,6 +75,7 @@ const CaptureScreen = () => {
             setTopLoops(ordered.slice(0, 3));
             setHasRegresa(regresa.length > 0);
             setStats({
+                closed,
                 open: all.length,
                 regresa: regresa.length,
                 stale: stale.length,
@@ -324,6 +327,7 @@ const CaptureScreen = () => {
     const CR = ChevronRight as any;
     const CD = ChevronDown as any;
     const PL = PenLine as any;
+    const Sp = Sparkles as any;
     const Br = Brain as any;
     const LD = LayoutDashboard as any;
     const BC = BarChart2 as any;
@@ -338,19 +342,14 @@ const CaptureScreen = () => {
         { label: 'Mis sesgos', icon: SA, onPress: () => navigation.navigate('Settings', { initialViewMode: 'biases' }) },
     ];
 
-    // ── System-state copy (data, not poetry) ─────────────────────────────────
-    const open = stats?.open ?? 0;
-    const statusMain = open === 0 ? 'Sin loops abiertos' : `${open} loop${open === 1 ? '' : 's'} abierto${open === 1 ? '' : 's'}`;
-    const statusSub = (() => {
-        if (!stats) return 'Cargando tu estado…';
-        if (stats.open === 0) return 'Tu cabeza está limpia. Suelta lo que llegue.';
-        const parts: string[] = [];
-        if (stats.regresa > 0) parts.push(`${stats.regresa} ${stats.regresa === 1 ? 'regresa' : 'regresan'}`);
-        if (stats.stale > 0) parts.push(`${stats.stale} sin tocar en ${stats.staleDays} días`);
-        if (parts.length === 0) parts.push('todos activos esta semana');
-        if (stats.moodLabel) parts.push(stats.moodLabel);
-        return parts.join(' · ');
-    })();
+    // ── Reflejo de hoy — the AI with an opinion (reuses the latest verdict) ───
+    const reflection = recentEntries[0];
+    const reflectionText: string | null = reflection?.strategic_insight || reflection?.summary || null;
+    const reflectionToday = reflection?.created_at
+        ? new Date(reflection.created_at).toDateString() === new Date().toDateString()
+        : false;
+
+    const cleanHead = stats != null && stats.open === 0 && stats.closed === 0;
 
     return (
         <SAV style={styles.container}>
@@ -365,10 +364,26 @@ const CaptureScreen = () => {
                     <Text style={styles.brand}>BLACKBOX</Text>
                 </View>
 
-                {/* SYSTEM STATE — the identity */}
+                {/* SYSTEM STATE — momentum first, backlog after */}
                 <View style={styles.statusBlock}>
-                    <Text style={styles.statusMain}>{statusMain}</Text>
-                    <Text style={[styles.statusSub, hasRegresa && { color: '#f87171' }]}>{statusSub}</Text>
+                    {cleanHead ? (
+                        <>
+                            <Text style={styles.statusMain}>Tu cabeza está limpia</Text>
+                            <Text style={styles.statusSub}>Sin loops abiertos. Suelta lo que llegue.</Text>
+                        </>
+                    ) : (
+                        <Text style={styles.headline}>
+                            {!!stats && stats.closed > 0 && (
+                                <Text style={styles.hlPos}>{stats.closed} cerrado{stats.closed === 1 ? '' : 's'} esta semana</Text>
+                            )}
+                            {!!stats && stats.closed > 0 && <Text style={styles.hlDot}>{'   ·   '}</Text>}
+                            <Text style={styles.hlNeutral}>{stats?.open ?? 0} abierto{(stats?.open ?? 0) === 1 ? '' : 's'}</Text>
+                            {!!stats && stats.stale > 0 && <Text style={styles.hlDot}>{'   ·   '}</Text>}
+                            {!!stats && stats.stale > 0 && (
+                                <Text style={styles.hlWarn}>{stats.stale} estancado{stats.stale === 1 ? '' : 's'}</Text>
+                            )}
+                        </Text>
+                    )}
                 </View>
 
                 {pendingRetryUri && !isRecording && !isTranscribing && (
@@ -377,16 +392,28 @@ const CaptureScreen = () => {
                     </TO>
                 )}
 
+                {/* REFLEJO DE HOY — third pillar: the AI with a take */}
+                {reflectionText && (
+                    <TO
+                        style={styles.reflejoCard}
+                        onPress={() => navigation.navigate('EntryDetail', { entryId: reflection.id })}
+                        activeOpacity={0.85}
+                    >
+                        <View style={styles.reflejoHead}>
+                            <Sp size={14} color="#c084fc" strokeWidth={2.2} />
+                            <Text style={styles.reflejoLabel}>{reflectionToday ? 'REFLEJO DE HOY' : 'ÚLTIMO REFLEJO'}</Text>
+                        </View>
+                        <Text style={styles.reflejoText} numberOfLines={4}>{reflectionText}</Text>
+                    </TO>
+                )}
+
                 {/* ── LOOPS — PRIMARY MODULE ───────────────────────────────────── */}
                 {topLoops.length > 0 ? (
                     <View style={styles.loopsModule}>
                         <View style={styles.loopsHeaderRow}>
-                            <View style={styles.loopsTitleWrap}>
-                                <Text style={styles.loopsTitle}>{hasRegresa ? 'LO QUE REGRESA' : 'ABIERTOS'}</Text>
-                                <View style={[styles.countBadge, hasRegresa && styles.countBadgeRegresa]}>
-                                    <Text style={styles.countBadgeText}>{open}</Text>
-                                </View>
-                            </View>
+                            <Text style={[styles.loopsTitle, hasRegresa && { color: '#f87171' }]}>
+                                {hasRegresa ? 'LO QUE REGRESA' : 'PRIORIDAD HOY'}
+                            </Text>
                             <TO onPress={() => navigation.navigate('Loops')} activeOpacity={0.7}>
                                 <Text style={styles.sectionLink}>Ver todos</Text>
                             </TO>
@@ -461,20 +488,6 @@ const CaptureScreen = () => {
                     </View>
                 )}
 
-                {/* Secondary nav */}
-                <View style={styles.chipsWrap}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
-                        {shortcuts.map((s) => {
-                            const Icon = s.icon;
-                            return (
-                                <TO key={s.label} onPress={s.onPress} style={styles.chip} activeOpacity={0.7}>
-                                    <Icon size={15} color="#a5b4fc" strokeWidth={2} />
-                                    <Text style={styles.chipText}>{s.label}</Text>
-                                </TO>
-                            );
-                        })}
-                    </ScrollView>
-                </View>
             </ScrollView>
 
             {/* ── CAPTURE: demoted to a corner action ──────────────────────────── */}
@@ -489,15 +502,29 @@ const CaptureScreen = () => {
                 </View>
             )}
 
-            <View style={styles.fabCluster} pointerEvents="box-none">
-                <TO
-                    style={styles.writeFab}
-                    onPress={() => setShowTextModal(true)}
-                    disabled={loading || isTranscribing}
-                    activeOpacity={0.8}
+            {/* Fixed bottom bar — nav (left, scrolls) + single primary mic FAB (right) */}
+            <View style={styles.bottomBar}>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.bottomBarScroll}
+                    contentContainerStyle={styles.bottomBarRow}
                 >
-                    <PL size={20} color="#a5b4fc" />
-                </TO>
+                    <TO onPress={() => setShowTextModal(true)} style={[styles.chip, styles.writeChip]} activeOpacity={0.8} disabled={loading || isTranscribing}>
+                        <PL size={15} color="#c7d2fe" strokeWidth={2.2} />
+                        <Text style={[styles.chipText, { color: '#c7d2fe' }]}>Escribir</Text>
+                    </TO>
+                    {shortcuts.map((s) => {
+                        const Icon = s.icon;
+                        return (
+                            <TO key={s.label} onPress={s.onPress} style={styles.chip} activeOpacity={0.7}>
+                                <Icon size={15} color="#a5b4fc" strokeWidth={2} />
+                                <Text style={styles.chipText}>{s.label}</Text>
+                            </TO>
+                        );
+                    })}
+                </ScrollView>
+
                 <TO
                     style={[styles.micFab, isRecording && styles.micFabRec]}
                     onPress={toggleRecording}
@@ -610,16 +637,34 @@ const styles = StyleSheet.create({
         flexGrow: 1,
         paddingHorizontal: 20,
         paddingTop: 12,
-        paddingBottom: 140,
+        paddingBottom: 110,
     },
 
-    brandRow: { marginBottom: 18 },
+    brandRow: { marginBottom: 16 },
     brand: { color: '#475569', fontSize: 12, fontWeight: '900', letterSpacing: 3 },
 
-    // System state — the hero
-    statusBlock: { marginBottom: 26 },
-    statusMain: { color: '#f8fafc', fontSize: 30, fontWeight: '800', letterSpacing: 0.2 },
+    // System state — momentum headline
+    statusBlock: { marginBottom: 22 },
+    statusMain: { color: '#f8fafc', fontSize: 28, fontWeight: '800', letterSpacing: 0.2 },
     statusSub: { color: '#94a3b8', fontSize: 15, fontWeight: '600', marginTop: 6, lineHeight: 21 },
+    headline: { fontSize: 24, fontWeight: '800', lineHeight: 32, letterSpacing: 0.1 },
+    hlPos: { color: '#34d399' },
+    hlNeutral: { color: '#f1f5f9' },
+    hlWarn: { color: '#fbbf24' },
+    hlDot: { color: '#334155' },
+
+    // Reflejo de hoy — third pillar
+    reflejoCard: {
+        backgroundColor: 'rgba(168,85,247,0.08)',
+        borderWidth: 1,
+        borderColor: 'rgba(168,85,247,0.28)',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 28,
+    },
+    reflejoHead: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 8 },
+    reflejoLabel: { color: '#c084fc', fontSize: 11, fontWeight: '900', letterSpacing: 1.5 },
+    reflejoText: { color: '#e2e8f0', fontSize: 15, lineHeight: 22, fontWeight: '500' },
 
     retryBanner: {
         backgroundColor: 'rgba(251,191,36,0.10)',
@@ -640,17 +685,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         marginBottom: 14,
     },
-    loopsTitleWrap: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     loopsTitle: { color: '#e2e8f0', fontSize: 16, fontWeight: '900', letterSpacing: 1.5 },
-    countBadge: {
-        minWidth: 24, height: 24, borderRadius: 12,
-        paddingHorizontal: 7,
-        backgroundColor: 'rgba(99,102,241,0.18)',
-        borderWidth: 1, borderColor: 'rgba(99,102,241,0.4)',
-        alignItems: 'center', justifyContent: 'center',
-    },
-    countBadgeRegresa: { backgroundColor: 'rgba(248,113,113,0.16)', borderColor: 'rgba(248,113,113,0.45)' },
-    countBadgeText: { color: '#c7d2fe', fontSize: 13, fontWeight: '800' },
     sectionLink: { color: '#6366f1', fontSize: 13, fontWeight: '800' },
 
     loopCard: {
@@ -709,8 +744,23 @@ const styles = StyleSheet.create({
     memMeta: { color: '#64748b', fontSize: 12, fontWeight: '600', marginTop: 3, textTransform: 'capitalize' },
     memAll: { paddingVertical: 6, alignSelf: 'flex-start', marginTop: 2 },
 
-    chipsWrap: { marginTop: 6 },
-    chipsRow: { gap: 8, paddingHorizontal: 2, alignItems: 'center' },
+    // Fixed bottom bar
+    bottomBar: {
+        position: 'absolute',
+        left: 0, right: 0, bottom: 0,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingLeft: 16,
+        paddingRight: 16,
+        paddingTop: 10,
+        paddingBottom: 16,
+        backgroundColor: '#0b1120',
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255,255,255,0.06)',
+    },
+    bottomBarScroll: { flex: 1 },
+    bottomBarRow: { gap: 8, alignItems: 'center', paddingRight: 4 },
     chip: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -722,23 +772,9 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.14)',
     },
+    writeChip: { backgroundColor: 'rgba(99,102,241,0.14)', borderColor: 'rgba(129,140,248,0.5)' },
     chipText: { color: '#cbd5e1', fontSize: 13, fontWeight: '600' },
 
-    // Capture FABs
-    fabCluster: {
-        position: 'absolute',
-        right: 20,
-        bottom: 28,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    writeFab: {
-        width: 46, height: 46, borderRadius: 23,
-        backgroundColor: 'rgba(99,102,241,0.12)',
-        borderWidth: 1, borderColor: 'rgba(129,140,248,0.45)',
-        alignItems: 'center', justifyContent: 'center',
-    },
     micFab: {
         width: 56, height: 56, borderRadius: 28,
         backgroundColor: '#6366f1',

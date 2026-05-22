@@ -1373,6 +1373,26 @@ export const SupabaseService = {
     },
 
     /**
+     * Count loops closed (completed) within the last `days` days — momentum.
+     */
+    async getClosedLoopsCount(userId: string, days: number = 7): Promise<number> {
+        try {
+            const since = new Date(Date.now() - days * 86400000).toISOString();
+            const { count, error } = await supabase
+                .from('action_items')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', userId)
+                .eq('is_completed', true)
+                .gte('completed_at', since);
+            if (error) throw error;
+            return count || 0;
+        } catch (err: any) {
+            console.error('SUPABASE_SERVICE: getClosedLoopsCount failed:', err.message);
+            return 0;
+        }
+    },
+
+    /**
      * Fetch all action items (open and completed) for a specific entry.
      */
     async getActionItemsByEntry(entryId: string) {
