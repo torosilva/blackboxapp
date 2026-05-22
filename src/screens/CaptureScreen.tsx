@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import {
     Mic, MicOff, ArrowUp, Plus, X, RefreshCw, ChevronRight, ChevronDown,
-    PenLine, LayoutDashboard, BarChart2, MessageCircle, ShieldAlert, Brain, Sparkles, MoreHorizontal,
+    LayoutDashboard, BarChart2, MessageCircle, ShieldAlert, Brain, Sparkles, MoreHorizontal,
 } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
@@ -392,7 +392,6 @@ const CaptureScreen = () => {
     const RC = RefreshCw as any;
     const CR = ChevronRight as any;
     const CD = ChevronDown as any;
-    const PL = PenLine as any;
     const Sp = Sparkles as any;
     const Br = Brain as any;
     const MH = MoreHorizontal as any;
@@ -604,6 +603,20 @@ const CaptureScreen = () => {
                     </View>
                 )}
 
+                {/* Secondary nav */}
+                <View style={styles.chipsWrap}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
+                        {shortcuts.map((s) => {
+                            const Icon = s.icon;
+                            return (
+                                <TO key={s.label} onPress={s.onPress} style={styles.chip} activeOpacity={0.7}>
+                                    <Icon size={15} color="#a5b4fc" strokeWidth={2} />
+                                    <Text style={styles.chipText}>{s.label}</Text>
+                                </TO>
+                            );
+                        })}
+                    </ScrollView>
+                </View>
             </ScrollView>
 
             {/* ── CAPTURE: demoted to a corner action ──────────────────────────── */}
@@ -618,40 +631,18 @@ const CaptureScreen = () => {
                 </View>
             )}
 
-            {/* Fixed bottom bar — nav (left, scrolls) + single primary mic FAB (right) */}
-            <View style={styles.bottomBar}>
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.bottomBarScroll}
-                    contentContainerStyle={styles.bottomBarRow}
-                >
-                    <TO onPress={() => setShowTextModal(true)} style={[styles.chip, styles.writeChip]} activeOpacity={0.8} disabled={loading || isTranscribing}>
-                        <PL size={15} color="#c7d2fe" strokeWidth={2.2} />
-                        <Text style={[styles.chipText, { color: '#c7d2fe' }]}>Escribir</Text>
-                    </TO>
-                    {shortcuts.map((s) => {
-                        const Icon = s.icon;
-                        return (
-                            <TO key={s.label} onPress={s.onPress} style={styles.chip} activeOpacity={0.7}>
-                                <Icon size={15} color="#a5b4fc" strokeWidth={2} />
-                                <Text style={styles.chipText}>{s.label}</Text>
-                            </TO>
-                        );
-                    })}
-                </ScrollView>
-
-                <TO
-                    style={[styles.micFab, isRecording && styles.micFabRec]}
-                    onPress={toggleRecording}
-                    disabled={loading || isTranscribing}
-                    activeOpacity={0.85}
-                >
-                    <Animated.View style={{ transform: [{ scale: isRecording ? dotAnim : pulseAnim }] }}>
-                        {isRecording ? <MO size={26} color="white" /> : <Mi size={26} color="white" />}
-                    </Animated.View>
-                </TO>
-            </View>
+            {/* Single voice-capture FAB. Long-press to type instead. */}
+            <TO
+                style={[styles.micFab, isRecording && styles.micFabRec]}
+                onPress={toggleRecording}
+                onLongPress={() => setShowTextModal(true)}
+                disabled={loading || isTranscribing}
+                activeOpacity={0.85}
+            >
+                <Animated.View style={{ transform: [{ scale: isRecording ? dotAnim : pulseAnim }] }}>
+                    {isRecording ? <MO size={26} color="white" /> : <Mi size={26} color="white" />}
+                </Animated.View>
+            </TO>
 
             {/* Text capture sheet */}
             <Modal visible={showTextModal} transparent animationType="slide" onRequestClose={() => setShowTextModal(false)}>
@@ -868,23 +859,9 @@ const styles = StyleSheet.create({
     memMeta: { color: '#64748b', fontSize: 12, fontWeight: '600', marginTop: 3, textTransform: 'capitalize' },
     memAll: { paddingVertical: 6, alignSelf: 'flex-start', marginTop: 2 },
 
-    // Fixed bottom bar
-    bottomBar: {
-        position: 'absolute',
-        left: 0, right: 0, bottom: 0,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        paddingLeft: 16,
-        paddingRight: 16,
-        paddingTop: 10,
-        paddingBottom: 16,
-        backgroundColor: '#0b1120',
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(255,255,255,0.06)',
-    },
-    bottomBarScroll: { flex: 1 },
-    bottomBarRow: { gap: 8, alignItems: 'center', paddingRight: 4 },
+    // Secondary nav chips (in scroll content)
+    chipsWrap: { marginTop: 6 },
+    chipsRow: { gap: 8, paddingHorizontal: 2, alignItems: 'center' },
     chip: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -896,10 +873,13 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.14)',
     },
-    writeChip: { backgroundColor: 'rgba(99,102,241,0.14)', borderColor: 'rgba(129,140,248,0.5)' },
     chipText: { color: '#cbd5e1', fontSize: 13, fontWeight: '600' },
 
+    // Single floating voice-capture FAB
     micFab: {
+        position: 'absolute',
+        right: 20,
+        bottom: 28,
         width: 56, height: 56, borderRadius: 28,
         backgroundColor: '#6366f1',
         alignItems: 'center', justifyContent: 'center',
