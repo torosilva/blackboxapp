@@ -343,8 +343,19 @@ const CaptureScreen = () => {
     ];
 
     // ── Reflejo de hoy — the AI with an opinion (reuses the latest verdict) ───
+    // strategic_insight is an object ({ detected_bias, counter_thought,
+    // warning_message }); pull the most opinionated line out of it.
     const reflection = recentEntries[0];
-    const reflectionText: string | null = reflection?.strategic_insight || reflection?.summary || null;
+    const reflectionText: string | null = (() => {
+        const si = reflection?.strategic_insight;
+        if (typeof si === 'string' && si.trim()) return si;
+        if (si && typeof si === 'object') {
+            const pick = si.warning_message || si.counter_thought || si.detected_bias;
+            if (typeof pick === 'string' && pick.trim()) return pick;
+        }
+        const sum = reflection?.summary;
+        return typeof sum === 'string' && sum.trim() ? sum : null;
+    })();
     const reflectionToday = reflection?.created_at
         ? new Date(reflection.created_at).toDateString() === new Date().toDateString()
         : false;
