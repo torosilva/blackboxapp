@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
     StatusBar, Alert, KeyboardAvoidingView, Platform, Animated, ScrollView, Image
@@ -7,9 +7,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import {
     Mic, MicOff, ArrowUp, Box, Brain, Plus, X,
-    LayoutDashboard, BarChart2, MessageCircle, ShieldAlert
+    LayoutDashboard, BarChart2, MessageCircle, ShieldAlert,
+    ChevronRight, RefreshCw,
 } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { voiceService } from '../services/voice';
 import { aiService } from '../services/ai';
@@ -31,6 +32,40 @@ const CaptureScreen = () => {
     const [recordSecs, setRecordSecs] = useState(0);
     const [pickedImage, setPickedImage] = useState<{ uri: string; mediaType: string; data: string } | null>(null);
     const [showText, setShowText] = useState(false);
+
+    // ── Command-center data (memory made visible) ─────────────────────────────
+    const [recentEntries, setRecentEntries] = useState<any[]>([]);
+    const [topLoops, setTopLoops] = useState<any[]>([]);
+    const [hasRegresa, setHasRegresa] = useState(false);
+    const [pulse, setPulse] = useState<{ openLoopsCount: number; moodLabel: string | null; totalEntries: number } | null>(null);
+
+    const loadHome = useCallback(async () => {
+        if (!user) return;
+        try {
+            const [entries, loops, ctx] = await Promise.all([
+                SupabaseService.getEntries(user.id),
+                SupabaseService.getOpenActionItems(user.id),
+                SupabaseService.getHistoricalContext(user.id),
+            ]);
+            setRecentEntries((entries || []).slice(0, 3));
+
+            const regresa = (loops || []).filter((l: any) => String(l.status) === 'regresa');
+            const high = (loops || []).filter((l: any) => String(l.priority).toUpperCase() === 'HIGH');
+            const pick = regresa.length ? regresa : high.length ? high : (loops || []);
+            setTopLoops(pick.slice(0, 3));
+            setHasRegresa(regresa.length > 0);
+
+            setPulse({
+                openLoopsCount: ctx.openLoopsCount ?? 0,
+                moodLabel: ctx.recentMoods?.[0]?.label ?? null,
+                totalEntries: ctx.totalEntries ?? 0,
+            });
+        } catch (e: any) {
+            console.warn('CAPTURE: loadHome failed:', e?.message);
+        }
+    }, [user]);
+
+    useFocusEffect(useCallback(() => { loadHome(); }, [loadHome]));
 
     const pickImage = async () => {
         try {
@@ -63,8 +98,7 @@ const CaptureScreen = () => {
         return () => clearInterval(id);
     }, [isRecording]);
 
-    // Pulse the recording dot while listening (dedicated value so it
-    // doesn't fight the ambient brain-breathing animation).
+    // Pulse the recording dot while listening.
     const dotAnim = useRef(new Animated.Value(1)).current;
     useEffect(() => {
         if (!isRecording && !isTranscribing) return;
@@ -81,21 +115,24 @@ const CaptureScreen = () => {
     const fmtSecs = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
     const MAX_RECORD_SECS = 300;
 
+    const fmtDate = (iso: string) => {
+        if (!iso) return '';
+        const d = new Date(iso);
+        const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+        if (days <= 0) return 'Hoy';
+        if (days === 1) return 'Ayer';
+        if (days < 7) return `Hace ${days} días`;
+        return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+    };
+
     const inputRef = useRef<any>(null);
     const pulseAnim = useRef(new Animated.Value(1)).current;
-    const brainAnim = useRef(new Animated.Value(0)).current;
 
-    React.useEffect(() => {
+    useEffect(() => {
         Animated.loop(
             Animated.sequence([
                 Animated.timing(pulseAnim, { toValue: 1.08, duration: 1800, useNativeDriver: true }),
                 Animated.timing(pulseAnim, { toValue: 1, duration: 1800, useNativeDriver: true }),
-            ])
-        ).start();
-        Animated.loop(
-            Animated.sequence([
-                Animated.timing(brainAnim, { toValue: -5, duration: 2200, useNativeDriver: true }),
-                Animated.timing(brainAnim, { toValue: 0, duration: 2200, useNativeDriver: true }),
             ])
         ).start();
     }, []);
@@ -237,8 +274,6 @@ const CaptureScreen = () => {
             Alert.alert('No se escuchó nada', 'No detecté voz clara. Intenta grabar de nuevo.');
             return;
         }
-        // Voice → straight to verdict. If it can't proceed (too short / error),
-        // drop the transcription into the box so it isn't lost.
         const ok = await analyzeAndOpenVerdict(trans, uri);
         if (!ok) {
             setContent(prev => prev ? `${prev} ${trans}` : trans);
@@ -272,7 +307,6 @@ const CaptureScreen = () => {
     const Mi = Mic as any;
     const MO = MicOff as any;
     const Au = ArrowUp as any;
-    const Bx = Box as any;
     const Br = Brain as any;
     const Pl = Plus as any;
     const Xx = X as any;
@@ -280,14 +314,18 @@ const CaptureScreen = () => {
     const BC = BarChart2 as any;
     const MC = MessageCircle as any;
     const SA = ShieldAlert as any;
+    const CR = ChevronRight as any;
+    const RC = RefreshCw as any;
 
     const shortcuts = [
-        { label: 'Mi BlackBoxMind', icon: Br, onPress: () => navigation.navigate('Home') },
+        { label: 'Mis memorias', icon: Br, onPress: () => navigation.navigate('Home') },
         { label: 'Dashboard', icon: LD, onPress: () => navigation.navigate('Dashboard') },
-        { label: 'Reporte Estratégico', icon: BC, onPress: () => navigation.navigate('WeeklyReport', {}) },
-        { label: 'Historial de Chats', icon: MC, onPress: () => navigation.navigate('ChatHub') },
-        { label: 'Mis Sesgos', icon: SA, onPress: () => navigation.navigate('Settings', { initialViewMode: 'biases' }) },
+        { label: 'Reporte', icon: BC, onPress: () => navigation.navigate('WeeklyReport', {}) },
+        { label: 'Chats', icon: MC, onPress: () => navigation.navigate('ChatHub') },
+        { label: 'Mis sesgos', icon: SA, onPress: () => navigation.navigate('Settings', { initialViewMode: 'biases' }) },
     ];
+
+    const captureMode = !showText && !content.trim() && !pickedImage;
 
     return (
         <SAV style={styles.container}>
@@ -303,150 +341,228 @@ const CaptureScreen = () => {
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                 >
-                    {/* Hero — big animated logo */}
-                    <View style={styles.hero}>
-                        <View style={styles.logoBox}>
-                            <Animated.View style={{ transform: [{ translateY: brainAnim }], position: 'absolute' }}>
-                                <Bx size={44} color="#818cf8" strokeWidth={1.8} />
-                            </Animated.View>
-                            <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                                <Br size={88} color="#a855f7" strokeWidth={1.3} />
-                            </Animated.View>
+                    {/* Greeting + brand mark */}
+                    <View style={styles.topRow}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.greetingSmall}>{greeting}</Text>
+                            {!!displayName && <Text style={styles.greetingName}>{displayName}</Text>}
                         </View>
-                        <Text style={styles.greeting}>
-                            {greeting}{displayName ? `, ${displayName}` : ''}
-                        </Text>
+                        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                            <Br size={36} color="#a855f7" strokeWidth={1.5} />
+                        </Animated.View>
                     </View>
 
-                    {(!showText && !content.trim() && !pickedImage) ? (
-                    <View style={styles.voiceHero}>
-                        <Text style={styles.voiceTitle}>Suelta lo que cargas</Text>
-                        <Text style={styles.voiceSub}>Habla. BLACKBOX lo ordena, detecta el sesgo y te devuelve el movimiento.</Text>
+                    {/* ── CAPTURE HERO (shared, not full-screen) ───────────────── */}
+                    {captureMode ? (
+                        <View style={styles.captureHero}>
+                            <Text style={styles.voiceTitle}>Suelta lo que cargas</Text>
+                            <Text style={styles.voiceSub}>
+                                Habla. Te devuelvo el veredicto — y recuerdo lo que importa.
+                            </Text>
 
-                        <TO
-                            onPress={toggleRecording}
-                            disabled={loading || isTranscribing}
-                            style={[styles.bigMicBtn, isRecording && styles.bigMicBtnActive]}
-                            activeOpacity={0.85}
-                        >
-                            <Animated.View style={{ transform: [{ scale: isRecording ? dotAnim : pulseAnim }] }}>
-                                {isRecording ? <MO size={48} color="white" /> : <Mi size={48} color="white" />}
-                            </Animated.View>
-                        </TO>
-
-                        <Text style={styles.recordHintBig}>
-                            {isTranscribing
-                                ? 'Transcribiendo tu audio…'
-                                : isRecording
-                                    ? `Escuchando ${fmtSecs(recordSecs)} / 5:00 · toca para terminar`
-                                    : 'Toca el micrófono y habla'}
-                        </Text>
-
-                        {pendingRetryUri && !isRecording && !isTranscribing && (
                             <TO
-                                onPress={() => transcribeAndAnalyze(pendingRetryUri)}
-                                style={styles.retryBtn}
-                                activeOpacity={0.8}
+                                onPress={toggleRecording}
+                                disabled={loading || isTranscribing}
+                                style={[styles.bigMicBtn, isRecording && styles.bigMicBtnActive]}
+                                activeOpacity={0.85}
                             >
-                                <Text style={styles.retryText}>↻ Reintentar transcripción</Text>
+                                <Animated.View style={{ transform: [{ scale: isRecording ? dotAnim : pulseAnim }] }}>
+                                    {isRecording ? <MO size={40} color="white" /> : <Mi size={40} color="white" />}
+                                </Animated.View>
                             </TO>
-                        )}
 
-                        <TO onPress={() => setShowText(true)} style={styles.writeLinkBtn} activeOpacity={0.7}>
-                            <Text style={styles.writeLinkBig}>Prefiero escribir</Text>
-                        </TO>
-                    </View>
-                    ) : (
-                    <>
-                    {(showText && !content.trim() && !pickedImage) && (
-                        <TO onPress={() => setShowText(false)} style={styles.backToVoiceRow} activeOpacity={0.7}>
-                            <Text style={styles.writeLink}>← Volver a voz</Text>
-                        </TO>
-                    )}
-                    {/* Input card — Claude style */}
-                    <View style={styles.inputCard}>
-                        <TextInput
-                            ref={inputRef}
-                            style={styles.input}
-                            placeholder={"Suéltalo sin filtro. Ej: \"Cerré el trato grande pero arrastro 3 pendientes, choqué con mi socio y otra vez no avancé en lo de mi hija.\""}
-                            placeholderTextColor="#475569"
-                            multiline
-                            value={content}
-                            onChangeText={setContent}
-                            textAlignVertical="top"
-                            editable={!loading}
-                        />
+                            <Text style={styles.recordHintBig}>
+                                {isTranscribing
+                                    ? 'Transcribiendo tu audio…'
+                                    : isRecording
+                                        ? `Escuchando ${fmtSecs(recordSecs)} / 5:00 · toca para terminar`
+                                        : 'Toca el micrófono y habla'}
+                            </Text>
 
-                        {(isRecording || isTranscribing) && (
-                            <View style={styles.recordingBar}>
-                                <Animated.View
-                                    style={[
-                                        styles.recordingDot,
-                                        isTranscribing && { backgroundColor: '#6366f1' },
-                                        { transform: [{ scale: dotAnim }] },
-                                    ]}
-                                />
-                                <Text style={styles.recordingText}>
-                                    {isTranscribing
-                                        ? 'Transcribiendo tu audio…'
-                                        : `Escuchando ${fmtSecs(recordSecs)} · toca el micrófono para detener`}
-                                </Text>
-                            </View>
-                        )}
-
-                        {pickedImage && (
-                            <View style={styles.imagePreview}>
-                                <Image source={{ uri: pickedImage.uri }} style={styles.imageThumb} />
-                                <Text style={styles.imageHint}>Imagen adjunta · BLACKBOX la interpretará</Text>
-                                <TO onPress={() => setPickedImage(null)} style={styles.imageRemove} activeOpacity={0.7}>
-                                    <Xx size={16} color="#fca5a5" />
-                                </TO>
-                            </View>
-                        )}
-
-                        <View style={styles.inputFooter}>
-                            <View style={styles.leftActions}>
-                                <TO style={styles.iconBtn} activeOpacity={0.7} onPress={pickImage} disabled={loading}>
-                                    <Pl size={20} color="#94a3b8" />
-                                </TO>
-                                {wordCount > 0 && (
-                                    <Text style={styles.wordCount}>{wordCount} palabras</Text>
-                                )}
-                            </View>
-
-                            <View style={styles.rightActions}>
+                            {pendingRetryUri && !isRecording && !isTranscribing && (
                                 <TO
-                                    onPress={toggleRecording}
-                                    disabled={loading || isTranscribing}
-                                    style={[styles.iconBtn, isRecording && styles.iconBtnRecording]}
-                                    activeOpacity={0.7}
-                                >
-                                    {isTranscribing ? (
-                                        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                                            <Mi size={20} color="#6366f1" />
-                                        </Animated.View>
-                                    ) : isRecording ? (
-                                        <MO size={20} color="white" />
-                                    ) : (
-                                        <Mi size={20} color="#94a3b8" />
-                                    )}
-                                </TO>
-
-                                <TO
-                                    onPress={handleSend}
-                                    disabled={!canSubmit || loading}
-                                    style={[styles.sendBtn, canSubmit ? styles.sendBtnActive : styles.sendBtnDisabled]}
+                                    onPress={() => transcribeAndAnalyze(pendingRetryUri)}
+                                    style={styles.retryBtn}
                                     activeOpacity={0.8}
                                 >
-                                    <Au size={20} color={canSubmit ? 'white' : '#475569'} strokeWidth={2.5} />
+                                    <Text style={styles.retryText}>↻ Reintentar transcripción</Text>
                                 </TO>
+                            )}
+
+                            <TO onPress={() => setShowText(true)} style={styles.writeLinkBtn} activeOpacity={0.7}>
+                                <Text style={styles.writeLinkBig}>Prefiero escribir</Text>
+                            </TO>
+                        </View>
+                    ) : (
+                        <View style={styles.captureHero}>
+                            {(showText && !content.trim() && !pickedImage) && (
+                                <TO onPress={() => setShowText(false)} style={styles.backToVoiceRow} activeOpacity={0.7}>
+                                    <Text style={styles.writeLink}>← Volver a voz</Text>
+                                </TO>
+                            )}
+                            <View style={styles.inputCard}>
+                                <TextInput
+                                    ref={inputRef}
+                                    style={styles.input}
+                                    placeholder={"Suéltalo sin filtro. Ej: \"Cerré el trato grande pero arrastro 3 pendientes, choqué con mi socio y otra vez no avancé en lo de mi hija.\""}
+                                    placeholderTextColor="#475569"
+                                    multiline
+                                    value={content}
+                                    onChangeText={setContent}
+                                    textAlignVertical="top"
+                                    editable={!loading}
+                                />
+
+                                {(isRecording || isTranscribing) && (
+                                    <View style={styles.recordingBar}>
+                                        <Animated.View
+                                            style={[
+                                                styles.recordingDot,
+                                                isTranscribing && { backgroundColor: '#6366f1' },
+                                                { transform: [{ scale: dotAnim }] },
+                                            ]}
+                                        />
+                                        <Text style={styles.recordingText}>
+                                            {isTranscribing
+                                                ? 'Transcribiendo tu audio…'
+                                                : `Escuchando ${fmtSecs(recordSecs)} · toca el micrófono para detener`}
+                                        </Text>
+                                    </View>
+                                )}
+
+                                {pickedImage && (
+                                    <View style={styles.imagePreview}>
+                                        <Image source={{ uri: pickedImage.uri }} style={styles.imageThumb} />
+                                        <Text style={styles.imageHint}>Imagen adjunta · BLACKBOX la interpretará</Text>
+                                        <TO onPress={() => setPickedImage(null)} style={styles.imageRemove} activeOpacity={0.7}>
+                                            <Xx size={16} color="#fca5a5" />
+                                        </TO>
+                                    </View>
+                                )}
+
+                                <View style={styles.inputFooter}>
+                                    <View style={styles.leftActions}>
+                                        <TO style={styles.iconBtn} activeOpacity={0.7} onPress={pickImage} disabled={loading}>
+                                            <Pl size={20} color="#94a3b8" />
+                                        </TO>
+                                        {wordCount > 0 && (
+                                            <Text style={styles.wordCount}>{wordCount} palabras</Text>
+                                        )}
+                                    </View>
+
+                                    <View style={styles.rightActions}>
+                                        <TO
+                                            onPress={toggleRecording}
+                                            disabled={loading || isTranscribing}
+                                            style={[styles.iconBtn, isRecording && styles.iconBtnRecording]}
+                                            activeOpacity={0.7}
+                                        >
+                                            {isTranscribing ? (
+                                                <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                                                    <Mi size={20} color="#6366f1" />
+                                                </Animated.View>
+                                            ) : isRecording ? (
+                                                <MO size={20} color="white" />
+                                            ) : (
+                                                <Mi size={20} color="#94a3b8" />
+                                            )}
+                                        </TO>
+
+                                        <TO
+                                            onPress={handleSend}
+                                            disabled={!canSubmit || loading}
+                                            style={[styles.sendBtn, canSubmit ? styles.sendBtnActive : styles.sendBtnDisabled]}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Au size={20} color={canSubmit ? 'white' : '#475569'} strokeWidth={2.5} />
+                                        </TO>
+                                    </View>
+                                </View>
                             </View>
                         </View>
-                    </View>
-                    </>
                     )}
 
-                    {/* Shortcut chips — small, delicate, centered */}
+                    {/* ── LO QUE REGRESA / LOOPS ABIERTOS ──────────────────────── */}
+                    {topLoops.length > 0 && (
+                        <View style={styles.section}>
+                            <View style={styles.sectionHeader}>
+                                <View style={styles.sectionTitleRow}>
+                                    {hasRegresa && <RC size={14} color="#f87171" strokeWidth={2.5} />}
+                                    <Text style={[styles.sectionTitle, hasRegresa && { color: '#f87171' }]}>
+                                        {hasRegresa ? 'LO QUE REGRESA' : 'LOOPS ABIERTOS'}
+                                    </Text>
+                                </View>
+                                <TO onPress={() => navigation.navigate('Loops')} activeOpacity={0.7}>
+                                    <Text style={styles.sectionLink}>Ver todos</Text>
+                                </TO>
+                            </View>
+                            {hasRegresa && (
+                                <Text style={styles.sectionSub}>Lo que sigues evitando. No es falta de tiempo.</Text>
+                            )}
+                            {topLoops.map((l) => (
+                                <TO
+                                    key={l.id}
+                                    style={[styles.loopCard, hasRegresa && styles.loopCardRegresa]}
+                                    onPress={() => navigation.navigate('Loops')}
+                                    activeOpacity={0.8}
+                                >
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.loopText} numberOfLines={2}>
+                                            {l.avoidance_reason || l.task}
+                                        </Text>
+                                        {!!l.avoidance_reason && (
+                                            <Text style={styles.loopTask} numberOfLines={1}>{l.task}</Text>
+                                        )}
+                                    </View>
+                                    <CR size={18} color="#475569" />
+                                </TO>
+                            ))}
+                        </View>
+                    )}
+
+                    {/* ── MEMORIAS RECIENTES ───────────────────────────────────── */}
+                    {recentEntries.length > 0 && (
+                        <View style={styles.section}>
+                            <View style={styles.sectionHeader}>
+                                <Text style={styles.sectionTitle}>MEMORIAS RECIENTES</Text>
+                                <TO onPress={() => navigation.navigate('Home')} activeOpacity={0.7}>
+                                    <Text style={styles.sectionLink}>Ver todas</Text>
+                                </TO>
+                            </View>
+                            {recentEntries.map((e) => (
+                                <TO
+                                    key={e.id}
+                                    style={styles.memCard}
+                                    onPress={() => navigation.navigate('EntryDetail', { entryId: e.id })}
+                                    activeOpacity={0.8}
+                                >
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.memTitle} numberOfLines={1}>{e.title || 'Registro'}</Text>
+                                        <Text style={styles.memMeta}>
+                                            {fmtDate(e.created_at)}{e.category ? ` · ${e.category}` : ''}
+                                        </Text>
+                                    </View>
+                                    <CR size={18} color="#475569" />
+                                </TO>
+                            ))}
+                        </View>
+                    )}
+
+                    {/* ── TU PULSO ─────────────────────────────────────────────── */}
+                    {pulse && pulse.totalEntries > 0 && (
+                        <TO style={styles.pulseCard} onPress={() => navigation.navigate('Dashboard')} activeOpacity={0.85}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.pulseLabel}>TU PULSO</Text>
+                                <Text style={styles.pulseMain}>
+                                    {pulse.openLoopsCount} loop{pulse.openLoopsCount === 1 ? '' : 's'} abierto{pulse.openLoopsCount === 1 ? '' : 's'}
+                                    {pulse.moodLabel ? ` · ${pulse.moodLabel}` : ''}
+                                </Text>
+                            </View>
+                            <CR size={18} color="#475569" />
+                        </TO>
+                    )}
+
+                    {/* Shortcut chips */}
                     <View style={styles.chipsWrap}>
                         <ScrollView
                             horizontal
@@ -487,41 +603,103 @@ const styles = StyleSheet.create({
     body: {
         flexGrow: 1,
         paddingHorizontal: 20,
-        paddingVertical: 24,
-        justifyContent: 'center',
-        alignItems: 'stretch',
+        paddingTop: 16,
+        paddingBottom: 32,
     },
-    hero: {
+    topRow: {
+        flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 36,
+        marginBottom: 8,
     },
-    logoBox: {
-        width: 120, height: 120,
-        justifyContent: 'center',
+    greetingSmall: { color: '#94a3b8', fontSize: 15, fontWeight: '400' },
+    greetingName: { color: '#f1f5f9', fontSize: 26, fontWeight: '700', letterSpacing: 0.2, marginTop: 2 },
+
+    captureHero: {
         alignItems: 'center',
-        marginBottom: 20,
+        paddingTop: 18,
+        paddingBottom: 8,
     },
-    greeting: {
+    voiceTitle: {
         color: '#e2e8f0',
-        fontSize: 24,
-        fontWeight: '400',
-        letterSpacing: 0.2,
+        fontSize: 22,
+        fontWeight: '700',
         textAlign: 'center',
+        letterSpacing: 0.3,
     },
+    voiceSub: {
+        color: '#94a3b8',
+        fontSize: 14,
+        lineHeight: 21,
+        textAlign: 'center',
+        marginTop: 8,
+        maxWidth: 320,
+    },
+    bigMicBtn: {
+        width: 96, height: 96, borderRadius: 48,
+        backgroundColor: '#6366f1',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 22,
+        shadowColor: '#6366f1',
+        shadowOpacity: 0.45,
+        shadowRadius: 22,
+        shadowOffset: { width: 0, height: 0 },
+    },
+    bigMicBtnActive: { backgroundColor: '#ef4444', shadowColor: '#ef4444' },
+    recordHintBig: {
+        color: '#64748b',
+        fontSize: 13,
+        fontWeight: '600',
+        letterSpacing: 0.4,
+        marginTop: 14,
+    },
+    writeLink: {
+        color: '#818cf8',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    writeLinkBtn: {
+        marginTop: 18,
+        paddingVertical: 10,
+        paddingHorizontal: 22,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(129,140,248,0.45)',
+        backgroundColor: 'rgba(129,140,248,0.08)',
+    },
+    writeLinkBig: {
+        color: '#a5b4fc',
+        fontSize: 16,
+        fontWeight: '700',
+        letterSpacing: 0.3,
+    },
+    retryBtn: {
+        marginTop: 16,
+        paddingVertical: 12,
+        paddingHorizontal: 22,
+        borderRadius: 16,
+        backgroundColor: 'rgba(251,191,36,0.12)',
+        borderWidth: 1,
+        borderColor: 'rgba(251,191,36,0.5)',
+    },
+    retryText: { color: '#fbbf24', fontSize: 15, fontWeight: '700' },
+    backToVoiceRow: { paddingVertical: 6, marginBottom: 8, alignSelf: 'flex-start' },
+
     inputCard: {
+        width: '100%',
         backgroundColor: '#141b2e',
         borderRadius: 24,
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.06)',
         padding: 16,
-        minHeight: 140,
+        minHeight: 150,
     },
     input: {
         color: '#e2e8f0',
         fontSize: 16,
         lineHeight: 24,
         fontWeight: '300',
-        minHeight: 60,
+        minHeight: 70,
         paddingTop: 4,
         paddingBottom: 12,
     },
@@ -531,16 +709,8 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         marginTop: 8,
     },
-    leftActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    rightActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
+    leftActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    rightActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     iconBtn: {
         width: 40, height: 40, borderRadius: 20,
         backgroundColor: 'rgba(255,255,255,0.05)',
@@ -549,10 +719,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    iconBtnRecording: {
-        backgroundColor: 'rgba(239,68,68,0.2)',
-        borderColor: '#ef4444',
-    },
+    iconBtnRecording: { backgroundColor: 'rgba(239,68,68,0.2)', borderColor: '#ef4444' },
     wordCount: { color: '#475569', fontSize: 12 },
     recordingBar: {
         flexDirection: 'row',
@@ -564,13 +731,7 @@ const styles = StyleSheet.create({
         marginTop: 4,
         marginBottom: 8,
     },
-    recordingDot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: '#ef4444',
-        marginRight: 10,
-    },
+    recordingDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#ef4444', marginRight: 10 },
     recordingText: { color: '#fca5a5', fontSize: 13, fontWeight: '700', flex: 1 },
     imagePreview: {
         flexDirection: 'row',
@@ -584,106 +745,76 @@ const styles = StyleSheet.create({
     imageThumb: { width: 44, height: 44, borderRadius: 8, marginRight: 10 },
     imageHint: { color: '#a5b4fc', fontSize: 12, fontWeight: '600', flex: 1 },
     imageRemove: { padding: 6 },
-    sendBtn: {
-        width: 40, height: 40, borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
+    sendBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
     sendBtnActive: { backgroundColor: '#6366f1' },
     sendBtnDisabled: {
         backgroundColor: 'rgba(255,255,255,0.03)',
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.06)',
     },
-    voiceHero: {
+
+    // ── Sections ──────────────────────────────────────────────────────────
+    section: { marginTop: 28 },
+    sectionHeader: {
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 4,
+        justifyContent: 'space-between',
+        marginBottom: 10,
     },
-    voiceTitle: {
-        color: '#e2e8f0',
-        fontSize: 24,
-        fontWeight: '600',
-        textAlign: 'center',
-        letterSpacing: 0.3,
-    },
-    voiceSub: {
-        color: '#94a3b8',
-        fontSize: 14,
-        lineHeight: 21,
-        textAlign: 'center',
-        marginTop: 10,
-        maxWidth: 300,
-    },
-    bigMicBtn: {
-        width: 122, height: 122, borderRadius: 61,
-        backgroundColor: '#6366f1',
-        justifyContent: 'center',
+    sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+    sectionTitle: { color: '#94a3b8', fontSize: 12, fontWeight: '900', letterSpacing: 1.8 },
+    sectionSub: { color: '#475569', fontSize: 12, marginTop: -4, marginBottom: 10, lineHeight: 16 },
+    sectionLink: { color: '#6366f1', fontSize: 12, fontWeight: '800' },
+
+    loopCard: {
+        flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 30,
-        shadowColor: '#6366f1',
-        shadowOpacity: 0.45,
-        shadowRadius: 22,
-        shadowOffset: { width: 0, height: 0 },
+        backgroundColor: '#141b2e',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.07)',
+        padding: 15,
+        marginBottom: 10,
     },
-    bigMicBtnActive: { backgroundColor: '#ef4444', shadowColor: '#ef4444' },
-    recordHintBig: {
-        color: '#64748b',
-        fontSize: 13,
-        fontWeight: '600',
-        letterSpacing: 0.5,
-        marginTop: 18,
+    loopCardRegresa: {
+        backgroundColor: '#1a1020',
+        borderColor: 'rgba(248,113,113,0.18)',
+        borderLeftWidth: 3,
+        borderLeftColor: '#f87171',
     },
-    writeLink: {
-        color: '#818cf8',
-        fontSize: 14,
-        fontWeight: '600',
+    loopText: { color: '#f1f5f9', fontSize: 15, fontWeight: '600', lineHeight: 21 },
+    loopTask: { color: '#94a3b8', fontSize: 13, marginTop: 4, lineHeight: 18 },
+
+    memCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#141b2e',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.07)',
+        paddingHorizontal: 15,
+        paddingVertical: 14,
+        marginBottom: 10,
     },
-    writeLinkBtn: {
+    memTitle: { color: '#f1f5f9', fontSize: 15, fontWeight: '600' },
+    memMeta: { color: '#64748b', fontSize: 12, fontWeight: '600', marginTop: 3, textTransform: 'capitalize' },
+
+    pulseCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(99,102,241,0.08)',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(99,102,241,0.25)',
+        paddingHorizontal: 16,
+        paddingVertical: 15,
         marginTop: 28,
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(129,140,248,0.45)',
-        backgroundColor: 'rgba(129,140,248,0.08)',
     },
-    writeLinkBig: {
-        color: '#a5b4fc',
-        fontSize: 17,
-        fontWeight: '700',
-        letterSpacing: 0.3,
-    },
-    retryBtn: {
-        marginTop: 22,
-        paddingVertical: 12,
-        paddingHorizontal: 22,
-        borderRadius: 16,
-        backgroundColor: 'rgba(251,191,36,0.12)',
-        borderWidth: 1,
-        borderColor: 'rgba(251,191,36,0.5)',
-    },
-    retryText: {
-        color: '#fbbf24',
-        fontSize: 15,
-        fontWeight: '700',
-    },
-    backToVoiceRow: {
-        paddingVertical: 6,
-        marginBottom: 8,
-        alignSelf: 'flex-start',
-    },
-    chipsWrap: {
-        marginTop: 18,
-        flexGrow: 0,
-        flexShrink: 0,
-    },
-    chipsRow: {
-        gap: 8,
-        paddingHorizontal: 2,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
+    pulseLabel: { color: '#818cf8', fontSize: 10, fontWeight: '900', letterSpacing: 1.5, marginBottom: 4 },
+    pulseMain: { color: '#e2e8f0', fontSize: 16, fontWeight: '700' },
+
+    chipsWrap: { marginTop: 28, flexGrow: 0, flexShrink: 0 },
+    chipsRow: { gap: 8, paddingHorizontal: 2, alignItems: 'center' },
     chip: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -695,11 +826,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.14)',
     },
-    chipText: {
-        color: '#cbd5e1',
-        fontSize: 13,
-        fontWeight: '600',
-    },
+    chipText: { color: '#cbd5e1', fontSize: 13, fontWeight: '600' },
 });
 
 export default CaptureScreen;
