@@ -23,6 +23,7 @@ import PrivacyScreen from '../screens/PrivacyScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import ChatHubScreen from '../screens/ChatHubScreen';
 import CaptureScreen from '../screens/CaptureScreen';
+import ReflexionDetalleScreen from '../screens/ReflexionDetalleScreen';
 import ForgotPasswordScreen from '../auth/ForgotPasswordScreen';
 import FeedbackHistoryScreen from '../screens/FeedbackHistoryScreen';
 import LoopsScreen from '../screens/LoopsScreen';
@@ -116,6 +117,7 @@ function AppNavigator() {
                         options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
                     />
                     <Stack.Screen name="EntryDetail" component={EntryDetailScreen as any} />
+                    <Stack.Screen name="ReflexionDetalle" component={ReflexionDetalleScreen as any} />
                     <Stack.Screen name="WeeklyReport" component={WeeklyReportScreen as any} />
                     <Stack.Screen name="ChatHub" component={ChatHubScreen as any} />
                     <Stack.Screen name="Chat" component={ChatScreen as any} />

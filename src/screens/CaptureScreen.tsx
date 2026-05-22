@@ -488,7 +488,7 @@ const CaptureScreen = () => {
                 {(reflejoLoading || liveReflejo) ? (
                     <TO
                         style={styles.reflejoCard}
-                        onPress={() => navigation.navigate('Loops')}
+                        onPress={() => liveReflejo && navigation.navigate('ReflexionDetalle', { reflejo: liveReflejo, loops: topLoops, memories: recentEntries })}
                         activeOpacity={0.85}
                         disabled={reflejoLoading}
                     >
@@ -499,7 +499,10 @@ const CaptureScreen = () => {
                         {reflejoLoading ? (
                             <Text style={[styles.reflejoText, { color: '#94a3b8' }]}>Leyendo tu backlog…</Text>
                         ) : (
-                            <Text style={styles.reflejoText}>{liveReflejo}</Text>
+                            <>
+                                <Text style={styles.reflejoText} numberOfLines={3}>{liveReflejo}</Text>
+                                <Text style={styles.reflejoMore}>Ver reflejo completo →</Text>
+                            </>
                         )}
                     </TO>
                 ) : reflectionText ? (
@@ -533,6 +536,9 @@ const CaptureScreen = () => {
                                 <Text style={styles.sectionLink}>Ver todos</Text>
                             </TO>
                         </View>
+                        {!!stats && stats.closed > 0 && (
+                            <Text style={styles.loopsCounter}>{stats.closed} cerrados esta semana</Text>
+                        )}
 
                         {topLoops.map((l) => {
                             const isReg = String(l.status) === 'regresa';
@@ -543,14 +549,11 @@ const CaptureScreen = () => {
                                     onPress={() => navigation.navigate('Loops')}
                                     activeOpacity={0.85}
                                 >
-                                    {isReg && <RC size={16} color="#f87171" strokeWidth={2.5} style={{ marginTop: 2 }} />}
+                                    {isReg && <RC size={16} color="#c084fc" strokeWidth={2.5} style={{ marginTop: 2 }} />}
                                     <View style={{ flex: 1 }}>
                                         <Text style={styles.loopText} numberOfLines={2}>
                                             {l.avoidance_reason || l.task}
                                         </Text>
-                                        {!!l.avoidance_reason && (
-                                            <Text style={styles.loopTask} numberOfLines={1}>{l.task}</Text>
-                                        )}
                                     </View>
                                     <CR size={18} color="#475569" />
                                 </TO>
@@ -801,6 +804,7 @@ const styles = StyleSheet.create({
         marginBottom: 14,
     },
     loopsTitle: { color: '#e2e8f0', fontSize: 16, fontWeight: '900', letterSpacing: 1.5 },
+    loopsCounter: { color: '#34d399', fontSize: 12, fontWeight: '400', marginTop: -6, marginBottom: 12 },
     sectionLink: { color: '#6366f1', fontSize: 13, fontWeight: '800' },
 
     loopCard: {
@@ -816,13 +820,12 @@ const styles = StyleSheet.create({
         marginBottom: 11,
     },
     loopCardRegresa: {
-        backgroundColor: '#1a1020',
-        borderColor: 'rgba(248,113,113,0.20)',
+        backgroundColor: 'rgba(168,85,247,0.07)',
+        borderColor: 'rgba(168,85,247,0.22)',
         borderLeftWidth: 3,
-        borderLeftColor: '#f87171',
+        borderLeftColor: '#a855f7',
     },
     loopText: { color: '#f1f5f9', fontSize: 16, fontWeight: '600', lineHeight: 22 },
-    loopTask: { color: '#94a3b8', fontSize: 13, marginTop: 5, lineHeight: 18 },
 
     emptyLoops: {
         backgroundColor: '#141b2e',
