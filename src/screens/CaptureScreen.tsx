@@ -1,14 +1,13 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
-    StatusBar, Alert, KeyboardAvoidingView, Platform, Animated, ScrollView, Image
+    StatusBar, Alert, KeyboardAvoidingView, Platform, Animated, ScrollView, Image, Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import {
-    Mic, MicOff, ArrowUp, Box, Brain, Plus, X,
-    LayoutDashboard, BarChart2, MessageCircle, ShieldAlert,
-    ChevronRight, RefreshCw,
+    Mic, MicOff, ArrowUp, Plus, X, RefreshCw, ChevronRight, ChevronDown,
+    PenLine, LayoutDashboard, BarChart2, MessageCircle, ShieldAlert, Brain,
 } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
@@ -18,6 +17,15 @@ import { NotificationService } from '../services/notificationService';
 import { SupabaseService } from '../services/SupabaseService';
 import AILoadingOverlay from '../components/AILoadingOverlay';
 import WelcomeModal from '../components/WelcomeModal';
+
+type Stats = {
+    open: number;
+    regresa: number;
+    stale: number;
+    staleDays: number;
+    moodLabel: string | null;
+    totalEntries: number;
+};
 
 const CaptureScreen = () => {
     const navigation = useNavigation<any>();
@@ -31,13 +39,14 @@ const CaptureScreen = () => {
     const [pendingRetryUri, setPendingRetryUri] = useState<string | null>(null);
     const [recordSecs, setRecordSecs] = useState(0);
     const [pickedImage, setPickedImage] = useState<{ uri: string; mediaType: string; data: string } | null>(null);
-    const [showText, setShowText] = useState(false);
+    const [showTextModal, setShowTextModal] = useState(false);
 
-    // ── Command-center data (memory made visible) ─────────────────────────────
+    // ── Command-center data ───────────────────────────────────────────────────
     const [recentEntries, setRecentEntries] = useState<any[]>([]);
     const [topLoops, setTopLoops] = useState<any[]>([]);
     const [hasRegresa, setHasRegresa] = useState(false);
-    const [pulse, setPulse] = useState<{ openLoopsCount: number; moodLabel: string | null; totalEntries: number } | null>(null);
+    const [stats, setStats] = useState<Stats | null>(null);
+    const [memoriesOpen, setMemoriesOpen] = useState(true);
 
     const loadHome = useCallback(async () => {
         if (!user) return;
@@ -49,14 +58,25 @@ const CaptureScreen = () => {
             ]);
             setRecentEntries((entries || []).slice(0, 3));
 
-            const regresa = (loops || []).filter((l: any) => String(l.status) === 'regresa');
-            const high = (loops || []).filter((l: any) => String(l.priority).toUpperCase() === 'HIGH');
-            const pick = regresa.length ? regresa : high.length ? high : (loops || []);
-            setTopLoops(pick.slice(0, 3));
-            setHasRegresa(regresa.length > 0);
+            const all = loops || [];
+            const dayMs = 86400000;
+            const daysOpen = (l: any) =>
+                l?.created_at ? Math.floor((Date.now() - new Date(l.created_at).getTime()) / dayMs) : 0;
 
-            setPulse({
-                openLoopsCount: ctx.openLoopsCount ?? 0,
+            const regresa = all.filter((l: any) => String(l.status) === 'regresa');
+            const stale = all.filter((l: any) => daysOpen(l) >= 3);
+            const staleDays = stale.length ? Math.max(...stale.map(daysOpen)) : 0;
+            const high = all.filter((l: any) => String(l.priority).toUpperCase() === 'HIGH' && !regresa.includes(l));
+            const rest = all.filter((l: any) => !regresa.includes(l) && !high.includes(l));
+            const ordered = [...regresa, ...high, ...rest];
+
+            setTopLoops(ordered.slice(0, 3));
+            setHasRegresa(regresa.length > 0);
+            setStats({
+                open: all.length,
+                regresa: regresa.length,
+                stale: stale.length,
+                staleDays,
                 moodLabel: ctx.recentMoods?.[0]?.label ?? null,
                 totalEntries: ctx.totalEntries ?? 0,
             });
@@ -90,7 +110,6 @@ const CaptureScreen = () => {
         }
     };
 
-    // Recording timer for the "Escuchando…" indicator.
     useEffect(() => {
         if (!isRecording) { setRecordSecs(0); return; }
         setRecordSecs(0);
@@ -98,7 +117,6 @@ const CaptureScreen = () => {
         return () => clearInterval(id);
     }, [isRecording]);
 
-    // Pulse the recording dot while listening.
     const dotAnim = useRef(new Animated.Value(1)).current;
     useEffect(() => {
         if (!isRecording && !isTranscribing) return;
@@ -127,7 +145,6 @@ const CaptureScreen = () => {
 
     const inputRef = useRef<any>(null);
     const pulseAnim = useRef(new Animated.Value(1)).current;
-
     useEffect(() => {
         Animated.loop(
             Animated.sequence([
@@ -139,14 +156,6 @@ const CaptureScreen = () => {
 
     const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
     const canSubmit = content.trim().length > 0 || !!pickedImage;
-
-    const displayName = (profile?.full_name || user?.email?.split('@')[0] || '').split(' ')[0];
-    const greeting = (() => {
-        const h = new Date().getHours();
-        if (h < 12) return 'Buenos días';
-        if (h < 19) return 'Buenas tardes';
-        return 'Buenas noches';
-    })();
 
     // Core: text/voice → analyze → clinical verdict (ficha). Returns false
     // if it didn't proceed (too short / error) so callers can recover.
@@ -198,6 +207,7 @@ const CaptureScreen = () => {
 
             setContent('');
             setLastRecordingUri(null);
+            setShowTextModal(false);
 
             if (savedEntry?.id) {
                 navigation.navigate('EntryDetail', { entryId: savedEntry.id });
@@ -230,6 +240,7 @@ const CaptureScreen = () => {
                 setContent('');
                 setLastRecordingUri(null);
                 setPickedImage(null);
+                setShowTextModal(false);
 
                 navigation.navigate('Chat', {
                     threadId: thread.id,
@@ -276,8 +287,10 @@ const CaptureScreen = () => {
         }
         const ok = await analyzeAndOpenVerdict(trans, uri);
         if (!ok) {
+            // Couldn't proceed (too short / error) — drop the words into the
+            // text sheet so they aren't lost.
             setContent(prev => prev ? `${prev} ${trans}` : trans);
-            setShowText(true);
+            setShowTextModal(true);
         }
     };
 
@@ -294,8 +307,6 @@ const CaptureScreen = () => {
         }
     };
 
-    // Hard cap at 5 min so a forgotten/runaway recording can't rack up
-    // transcription cost. Auto-stop runs the normal transcribe flow.
     useEffect(() => {
         if (isRecording && recordSecs >= MAX_RECORD_SECS) {
             toggleRecording();
@@ -307,15 +318,17 @@ const CaptureScreen = () => {
     const Mi = Mic as any;
     const MO = MicOff as any;
     const Au = ArrowUp as any;
-    const Br = Brain as any;
     const Pl = Plus as any;
     const Xx = X as any;
+    const RC = RefreshCw as any;
+    const CR = ChevronRight as any;
+    const CD = ChevronDown as any;
+    const PL = PenLine as any;
+    const Br = Brain as any;
     const LD = LayoutDashboard as any;
     const BC = BarChart2 as any;
     const MC = MessageCircle as any;
     const SA = ShieldAlert as any;
-    const CR = ChevronRight as any;
-    const RC = RefreshCw as any;
 
     const shortcuts = [
         { label: 'Mis memorias', icon: Br, onPress: () => navigation.navigate('Home') },
@@ -325,187 +338,70 @@ const CaptureScreen = () => {
         { label: 'Mis sesgos', icon: SA, onPress: () => navigation.navigate('Settings', { initialViewMode: 'biases' }) },
     ];
 
-    const captureMode = !showText && !content.trim() && !pickedImage;
+    // ── System-state copy (data, not poetry) ─────────────────────────────────
+    const open = stats?.open ?? 0;
+    const statusMain = open === 0 ? 'Sin loops abiertos' : `${open} loop${open === 1 ? '' : 's'} abierto${open === 1 ? '' : 's'}`;
+    const statusSub = (() => {
+        if (!stats) return 'Cargando tu estado…';
+        if (stats.open === 0) return 'Tu cabeza está limpia. Suelta lo que llegue.';
+        const parts: string[] = [];
+        if (stats.regresa > 0) parts.push(`${stats.regresa} ${stats.regresa === 1 ? 'regresa' : 'regresan'}`);
+        if (stats.stale > 0) parts.push(`${stats.stale} sin tocar en ${stats.staleDays} días`);
+        if (parts.length === 0) parts.push('todos activos esta semana');
+        if (stats.moodLabel) parts.push(stats.moodLabel);
+        return parts.join(' · ');
+    })();
 
     return (
         <SAV style={styles.container}>
             <StatusBar barStyle="light-content" />
 
-            <KeyboardAvoidingView
-                style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                keyboardVerticalOffset={20}
+            <ScrollView
+                contentContainerStyle={styles.body}
+                showsVerticalScrollIndicator={false}
             >
-                <ScrollView
-                    contentContainerStyle={styles.body}
-                    keyboardShouldPersistTaps="handled"
-                    showsVerticalScrollIndicator={false}
-                >
-                    {/* Greeting + brand mark */}
-                    <View style={styles.topRow}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.greetingSmall}>{greeting}</Text>
-                            {!!displayName && <Text style={styles.greetingName}>{displayName}</Text>}
-                        </View>
-                        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                            <Br size={36} color="#a855f7" strokeWidth={1.5} />
-                        </Animated.View>
-                    </View>
+                {/* Brand mark — minimal, no wellness greeting */}
+                <View style={styles.brandRow}>
+                    <Text style={styles.brand}>BLACKBOX</Text>
+                </View>
 
-                    {/* ── CAPTURE HERO (shared, not full-screen) ───────────────── */}
-                    {captureMode ? (
-                        <View style={styles.captureHero}>
-                            <Text style={styles.voiceTitle}>Suelta lo que cargas</Text>
-                            <Text style={styles.voiceSub}>
-                                Habla. Te devuelvo el veredicto — y recuerdo lo que importa.
-                            </Text>
+                {/* SYSTEM STATE — the identity */}
+                <View style={styles.statusBlock}>
+                    <Text style={styles.statusMain}>{statusMain}</Text>
+                    <Text style={[styles.statusSub, hasRegresa && { color: '#f87171' }]}>{statusSub}</Text>
+                </View>
 
-                            <TO
-                                onPress={toggleRecording}
-                                disabled={loading || isTranscribing}
-                                style={[styles.bigMicBtn, isRecording && styles.bigMicBtnActive]}
-                                activeOpacity={0.85}
-                            >
-                                <Animated.View style={{ transform: [{ scale: isRecording ? dotAnim : pulseAnim }] }}>
-                                    {isRecording ? <MO size={40} color="white" /> : <Mi size={40} color="white" />}
-                                </Animated.View>
-                            </TO>
+                {pendingRetryUri && !isRecording && !isTranscribing && (
+                    <TO style={styles.retryBanner} onPress={() => transcribeAndAnalyze(pendingRetryUri)} activeOpacity={0.8}>
+                        <Text style={styles.retryBannerText}>↻ Tienes un audio sin transcribir · toca para reintentar</Text>
+                    </TO>
+                )}
 
-                            <Text style={styles.recordHintBig}>
-                                {isTranscribing
-                                    ? 'Transcribiendo tu audio…'
-                                    : isRecording
-                                        ? `Escuchando ${fmtSecs(recordSecs)} / 5:00 · toca para terminar`
-                                        : 'Toca el micrófono y habla'}
-                            </Text>
-
-                            {pendingRetryUri && !isRecording && !isTranscribing && (
-                                <TO
-                                    onPress={() => transcribeAndAnalyze(pendingRetryUri)}
-                                    style={styles.retryBtn}
-                                    activeOpacity={0.8}
-                                >
-                                    <Text style={styles.retryText}>↻ Reintentar transcripción</Text>
-                                </TO>
-                            )}
-
-                            <TO onPress={() => setShowText(true)} style={styles.writeLinkBtn} activeOpacity={0.7}>
-                                <Text style={styles.writeLinkBig}>Prefiero escribir</Text>
-                            </TO>
-                        </View>
-                    ) : (
-                        <View style={styles.captureHero}>
-                            {(showText && !content.trim() && !pickedImage) && (
-                                <TO onPress={() => setShowText(false)} style={styles.backToVoiceRow} activeOpacity={0.7}>
-                                    <Text style={styles.writeLink}>← Volver a voz</Text>
-                                </TO>
-                            )}
-                            <View style={styles.inputCard}>
-                                <TextInput
-                                    ref={inputRef}
-                                    style={styles.input}
-                                    placeholder={"Suéltalo sin filtro. Ej: \"Cerré el trato grande pero arrastro 3 pendientes, choqué con mi socio y otra vez no avancé en lo de mi hija.\""}
-                                    placeholderTextColor="#475569"
-                                    multiline
-                                    value={content}
-                                    onChangeText={setContent}
-                                    textAlignVertical="top"
-                                    editable={!loading}
-                                />
-
-                                {(isRecording || isTranscribing) && (
-                                    <View style={styles.recordingBar}>
-                                        <Animated.View
-                                            style={[
-                                                styles.recordingDot,
-                                                isTranscribing && { backgroundColor: '#6366f1' },
-                                                { transform: [{ scale: dotAnim }] },
-                                            ]}
-                                        />
-                                        <Text style={styles.recordingText}>
-                                            {isTranscribing
-                                                ? 'Transcribiendo tu audio…'
-                                                : `Escuchando ${fmtSecs(recordSecs)} · toca el micrófono para detener`}
-                                        </Text>
-                                    </View>
-                                )}
-
-                                {pickedImage && (
-                                    <View style={styles.imagePreview}>
-                                        <Image source={{ uri: pickedImage.uri }} style={styles.imageThumb} />
-                                        <Text style={styles.imageHint}>Imagen adjunta · BLACKBOX la interpretará</Text>
-                                        <TO onPress={() => setPickedImage(null)} style={styles.imageRemove} activeOpacity={0.7}>
-                                            <Xx size={16} color="#fca5a5" />
-                                        </TO>
-                                    </View>
-                                )}
-
-                                <View style={styles.inputFooter}>
-                                    <View style={styles.leftActions}>
-                                        <TO style={styles.iconBtn} activeOpacity={0.7} onPress={pickImage} disabled={loading}>
-                                            <Pl size={20} color="#94a3b8" />
-                                        </TO>
-                                        {wordCount > 0 && (
-                                            <Text style={styles.wordCount}>{wordCount} palabras</Text>
-                                        )}
-                                    </View>
-
-                                    <View style={styles.rightActions}>
-                                        <TO
-                                            onPress={toggleRecording}
-                                            disabled={loading || isTranscribing}
-                                            style={[styles.iconBtn, isRecording && styles.iconBtnRecording]}
-                                            activeOpacity={0.7}
-                                        >
-                                            {isTranscribing ? (
-                                                <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                                                    <Mi size={20} color="#6366f1" />
-                                                </Animated.View>
-                                            ) : isRecording ? (
-                                                <MO size={20} color="white" />
-                                            ) : (
-                                                <Mi size={20} color="#94a3b8" />
-                                            )}
-                                        </TO>
-
-                                        <TO
-                                            onPress={handleSend}
-                                            disabled={!canSubmit || loading}
-                                            style={[styles.sendBtn, canSubmit ? styles.sendBtnActive : styles.sendBtnDisabled]}
-                                            activeOpacity={0.8}
-                                        >
-                                            <Au size={20} color={canSubmit ? 'white' : '#475569'} strokeWidth={2.5} />
-                                        </TO>
-                                    </View>
+                {/* ── LOOPS — PRIMARY MODULE ───────────────────────────────────── */}
+                {topLoops.length > 0 ? (
+                    <View style={styles.loopsModule}>
+                        <View style={styles.loopsHeaderRow}>
+                            <View style={styles.loopsTitleWrap}>
+                                <Text style={styles.loopsTitle}>{hasRegresa ? 'LO QUE REGRESA' : 'ABIERTOS'}</Text>
+                                <View style={[styles.countBadge, hasRegresa && styles.countBadgeRegresa]}>
+                                    <Text style={styles.countBadgeText}>{open}</Text>
                                 </View>
                             </View>
+                            <TO onPress={() => navigation.navigate('Loops')} activeOpacity={0.7}>
+                                <Text style={styles.sectionLink}>Ver todos</Text>
+                            </TO>
                         </View>
-                    )}
 
-                    {/* ── LO QUE REGRESA / LOOPS ABIERTOS ──────────────────────── */}
-                    {topLoops.length > 0 && (
-                        <View style={styles.section}>
-                            <View style={styles.sectionHeader}>
-                                <View style={styles.sectionTitleRow}>
-                                    {hasRegresa && <RC size={14} color="#f87171" strokeWidth={2.5} />}
-                                    <Text style={[styles.sectionTitle, hasRegresa && { color: '#f87171' }]}>
-                                        {hasRegresa ? 'LO QUE REGRESA' : 'LOOPS ABIERTOS'}
-                                    </Text>
-                                </View>
-                                <TO onPress={() => navigation.navigate('Loops')} activeOpacity={0.7}>
-                                    <Text style={styles.sectionLink}>Ver todos</Text>
-                                </TO>
-                            </View>
-                            {hasRegresa && (
-                                <Text style={styles.sectionSub}>Lo que sigues evitando. No es falta de tiempo.</Text>
-                            )}
-                            {topLoops.map((l) => (
+                        {topLoops.map((l) => {
+                            const isReg = String(l.status) === 'regresa';
+                            return (
                                 <TO
                                     key={l.id}
-                                    style={[styles.loopCard, hasRegresa && styles.loopCardRegresa]}
+                                    style={[styles.loopCard, isReg && styles.loopCardRegresa]}
                                     onPress={() => navigation.navigate('Loops')}
-                                    activeOpacity={0.8}
+                                    activeOpacity={0.85}
                                 >
+                                    {isReg && <RC size={16} color="#f87171" strokeWidth={2.5} style={{ marginTop: 2 }} />}
                                     <View style={{ flex: 1 }}>
                                         <Text style={styles.loopText} numberOfLines={2}>
                                             {l.avoidance_reason || l.task}
@@ -516,77 +412,187 @@ const CaptureScreen = () => {
                                     </View>
                                     <CR size={18} color="#475569" />
                                 </TO>
-                            ))}
-                        </View>
-                    )}
+                            );
+                        })}
+                    </View>
+                ) : (
+                    <View style={styles.emptyLoops}>
+                        <Text style={styles.emptyLoopsText}>
+                            Nada abierto en tu cabeza ahora mismo. Cuando algo te dé vueltas, suéltalo abajo.
+                        </Text>
+                    </View>
+                )}
 
-                    {/* ── MEMORIAS RECIENTES ───────────────────────────────────── */}
-                    {recentEntries.length > 0 && (
-                        <View style={styles.section}>
-                            <View style={styles.sectionHeader}>
-                                <Text style={styles.sectionTitle}>MEMORIAS RECIENTES</Text>
-                                <TO onPress={() => navigation.navigate('Home')} activeOpacity={0.7}>
-                                    <Text style={styles.sectionLink}>Ver todas</Text>
-                                </TO>
-                            </View>
-                            {recentEntries.map((e) => (
-                                <TO
-                                    key={e.id}
-                                    style={styles.memCard}
-                                    onPress={() => navigation.navigate('EntryDetail', { entryId: e.id })}
-                                    activeOpacity={0.8}
-                                >
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={styles.memTitle} numberOfLines={1}>{e.title || 'Registro'}</Text>
-                                        <Text style={styles.memMeta}>
-                                            {fmtDate(e.created_at)}{e.category ? ` · ${e.category}` : ''}
-                                        </Text>
-                                    </View>
-                                    <CR size={18} color="#475569" />
-                                </TO>
-                            ))}
-                        </View>
-                    )}
-
-                    {/* ── TU PULSO ─────────────────────────────────────────────── */}
-                    {pulse && pulse.totalEntries > 0 && (
-                        <TO style={styles.pulseCard} onPress={() => navigation.navigate('Dashboard')} activeOpacity={0.85}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.pulseLabel}>TU PULSO</Text>
-                                <Text style={styles.pulseMain}>
-                                    {pulse.openLoopsCount} loop{pulse.openLoopsCount === 1 ? '' : 's'} abierto{pulse.openLoopsCount === 1 ? '' : 's'}
-                                    {pulse.moodLabel ? ` · ${pulse.moodLabel}` : ''}
-                                </Text>
-                            </View>
-                            <CR size={18} color="#475569" />
-                        </TO>
-                    )}
-
-                    {/* Shortcut chips */}
-                    <View style={styles.chipsWrap}>
-                        <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={styles.chipsRow}
+                {/* ── MEMORIAS — SECONDARY, collapsible ────────────────────────── */}
+                {recentEntries.length > 0 && (
+                    <View style={styles.memModule}>
+                        <TO
+                            style={styles.memHeaderRow}
+                            onPress={() => setMemoriesOpen(o => !o)}
+                            activeOpacity={0.7}
                         >
-                            {shortcuts.map((s) => {
-                                const Icon = s.icon;
-                                return (
+                            <Text style={styles.memHeader}>Memorias recientes</Text>
+                            <Animated.View style={{ transform: [{ rotate: memoriesOpen ? '0deg' : '-90deg' }] }}>
+                                <CD size={16} color="#64748b" />
+                            </Animated.View>
+                        </TO>
+
+                        {memoriesOpen && recentEntries.map((e) => (
+                            <TO
+                                key={e.id}
+                                style={styles.memCard}
+                                onPress={() => navigation.navigate('EntryDetail', { entryId: e.id })}
+                                activeOpacity={0.8}
+                            >
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.memTitle} numberOfLines={1}>{e.title || 'Registro'}</Text>
+                                    <Text style={styles.memMeta}>
+                                        {fmtDate(e.created_at)}{e.category ? ` · ${e.category}` : ''}
+                                    </Text>
+                                </View>
+                                <CR size={16} color="#475569" />
+                            </TO>
+                        ))}
+                        {memoriesOpen && (
+                            <TO onPress={() => navigation.navigate('Home')} activeOpacity={0.7} style={styles.memAll}>
+                                <Text style={styles.sectionLink}>Ver todas</Text>
+                            </TO>
+                        )}
+                    </View>
+                )}
+
+                {/* Secondary nav */}
+                <View style={styles.chipsWrap}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
+                        {shortcuts.map((s) => {
+                            const Icon = s.icon;
+                            return (
+                                <TO key={s.label} onPress={s.onPress} style={styles.chip} activeOpacity={0.7}>
+                                    <Icon size={15} color="#a5b4fc" strokeWidth={2} />
+                                    <Text style={styles.chipText}>{s.label}</Text>
+                                </TO>
+                            );
+                        })}
+                    </ScrollView>
+                </View>
+            </ScrollView>
+
+            {/* ── CAPTURE: demoted to a corner action ──────────────────────────── */}
+            {(isRecording || isTranscribing) && (
+                <View style={styles.recPill} pointerEvents="none">
+                    <Animated.View
+                        style={[styles.recDot, isTranscribing && { backgroundColor: '#6366f1' }, { transform: [{ scale: dotAnim }] }]}
+                    />
+                    <Text style={styles.recPillText}>
+                        {isTranscribing ? 'Transcribiendo…' : `Escuchando ${fmtSecs(recordSecs)} · toca para terminar`}
+                    </Text>
+                </View>
+            )}
+
+            <View style={styles.fabCluster} pointerEvents="box-none">
+                <TO
+                    style={styles.writeFab}
+                    onPress={() => setShowTextModal(true)}
+                    disabled={loading || isTranscribing}
+                    activeOpacity={0.8}
+                >
+                    <PL size={20} color="#a5b4fc" />
+                </TO>
+                <TO
+                    style={[styles.micFab, isRecording && styles.micFabRec]}
+                    onPress={toggleRecording}
+                    disabled={loading || isTranscribing}
+                    activeOpacity={0.85}
+                >
+                    <Animated.View style={{ transform: [{ scale: isRecording ? dotAnim : pulseAnim }] }}>
+                        {isRecording ? <MO size={26} color="white" /> : <Mi size={26} color="white" />}
+                    </Animated.View>
+                </TO>
+            </View>
+
+            {/* Text capture sheet */}
+            <Modal visible={showTextModal} transparent animationType="slide" onRequestClose={() => setShowTextModal(false)}>
+                <KeyboardAvoidingView
+                    style={styles.modalRoot}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    keyboardVerticalOffset={20}
+                >
+                    <TO style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowTextModal(false)} />
+                    <View style={styles.modalSheet}>
+                        <View style={styles.sheetHandle} />
+                        <View style={styles.inputCard}>
+                            <TextInput
+                                ref={inputRef}
+                                style={styles.input}
+                                placeholder={"Suéltalo sin filtro. Ej: \"Cerré el trato grande pero arrastro 3 pendientes, choqué con mi socio y otra vez no avancé en lo de mi hija.\""}
+                                placeholderTextColor="#475569"
+                                multiline
+                                value={content}
+                                onChangeText={setContent}
+                                textAlignVertical="top"
+                                editable={!loading}
+                                autoFocus
+                            />
+
+                            {(isRecording || isTranscribing) && (
+                                <View style={styles.recordingBar}>
+                                    <Animated.View
+                                        style={[styles.recordingDot, isTranscribing && { backgroundColor: '#6366f1' }, { transform: [{ scale: dotAnim }] }]}
+                                    />
+                                    <Text style={styles.recordingText}>
+                                        {isTranscribing ? 'Transcribiendo tu audio…' : `Escuchando ${fmtSecs(recordSecs)} · toca el micrófono para detener`}
+                                    </Text>
+                                </View>
+                            )}
+
+                            {pickedImage && (
+                                <View style={styles.imagePreview}>
+                                    <Image source={{ uri: pickedImage.uri }} style={styles.imageThumb} />
+                                    <Text style={styles.imageHint}>Imagen adjunta · BLACKBOX la interpretará</Text>
+                                    <TO onPress={() => setPickedImage(null)} style={styles.imageRemove} activeOpacity={0.7}>
+                                        <Xx size={16} color="#fca5a5" />
+                                    </TO>
+                                </View>
+                            )}
+
+                            <View style={styles.inputFooter}>
+                                <View style={styles.leftActions}>
+                                    <TO style={styles.iconBtn} activeOpacity={0.7} onPress={pickImage} disabled={loading}>
+                                        <Pl size={20} color="#94a3b8" />
+                                    </TO>
+                                    {wordCount > 0 && <Text style={styles.wordCount}>{wordCount} palabras</Text>}
+                                </View>
+                                <View style={styles.rightActions}>
                                     <TO
-                                        key={s.label}
-                                        onPress={s.onPress}
-                                        style={styles.chip}
+                                        onPress={toggleRecording}
+                                        disabled={loading || isTranscribing}
+                                        style={[styles.iconBtn, isRecording && styles.iconBtnRecording]}
                                         activeOpacity={0.7}
                                     >
-                                        <Icon size={15} color="#a5b4fc" strokeWidth={2} />
-                                        <Text style={styles.chipText}>{s.label}</Text>
+                                        {isTranscribing ? (
+                                            <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                                                <Mi size={20} color="#6366f1" />
+                                            </Animated.View>
+                                        ) : isRecording ? (
+                                            <MO size={20} color="white" />
+                                        ) : (
+                                            <Mi size={20} color="#94a3b8" />
+                                        )}
                                     </TO>
-                                );
-                            })}
-                        </ScrollView>
+                                    <TO
+                                        onPress={handleSend}
+                                        disabled={!canSubmit || loading}
+                                        style={[styles.sendBtn, canSubmit ? styles.sendBtnActive : styles.sendBtnDisabled]}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Au size={20} color={canSubmit ? 'white' : '#475569'} strokeWidth={2.5} />
+                                    </TO>
+                                </View>
+                            </View>
+                        </View>
                     </View>
-                </ScrollView>
-            </KeyboardAvoidingView>
+                </KeyboardAvoidingView>
+            </Modal>
 
             <AILoadingOverlay
                 visible={loading || isTranscribing}
@@ -603,92 +609,182 @@ const styles = StyleSheet.create({
     body: {
         flexGrow: 1,
         paddingHorizontal: 20,
-        paddingTop: 16,
-        paddingBottom: 32,
+        paddingTop: 12,
+        paddingBottom: 140,
     },
-    topRow: {
+
+    brandRow: { marginBottom: 18 },
+    brand: { color: '#475569', fontSize: 12, fontWeight: '900', letterSpacing: 3 },
+
+    // System state — the hero
+    statusBlock: { marginBottom: 26 },
+    statusMain: { color: '#f8fafc', fontSize: 30, fontWeight: '800', letterSpacing: 0.2 },
+    statusSub: { color: '#94a3b8', fontSize: 15, fontWeight: '600', marginTop: 6, lineHeight: 21 },
+
+    retryBanner: {
+        backgroundColor: 'rgba(251,191,36,0.10)',
+        borderWidth: 1,
+        borderColor: 'rgba(251,191,36,0.4)',
+        borderRadius: 12,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        marginBottom: 22,
+    },
+    retryBannerText: { color: '#fbbf24', fontSize: 13, fontWeight: '700' },
+
+    // Loops — primary module
+    loopsModule: { marginBottom: 30 },
+    loopsHeaderRow: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 14,
+    },
+    loopsTitleWrap: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    loopsTitle: { color: '#e2e8f0', fontSize: 16, fontWeight: '900', letterSpacing: 1.5 },
+    countBadge: {
+        minWidth: 24, height: 24, borderRadius: 12,
+        paddingHorizontal: 7,
+        backgroundColor: 'rgba(99,102,241,0.18)',
+        borderWidth: 1, borderColor: 'rgba(99,102,241,0.4)',
+        alignItems: 'center', justifyContent: 'center',
+    },
+    countBadgeRegresa: { backgroundColor: 'rgba(248,113,113,0.16)', borderColor: 'rgba(248,113,113,0.45)' },
+    countBadgeText: { color: '#c7d2fe', fontSize: 13, fontWeight: '800' },
+    sectionLink: { color: '#6366f1', fontSize: 13, fontWeight: '800' },
+
+    loopCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        backgroundColor: '#141b2e',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.07)',
+        paddingVertical: 16,
+        paddingHorizontal: 16,
+        marginBottom: 11,
+    },
+    loopCardRegresa: {
+        backgroundColor: '#1a1020',
+        borderColor: 'rgba(248,113,113,0.20)',
+        borderLeftWidth: 3,
+        borderLeftColor: '#f87171',
+    },
+    loopText: { color: '#f1f5f9', fontSize: 16, fontWeight: '600', lineHeight: 22 },
+    loopTask: { color: '#94a3b8', fontSize: 13, marginTop: 5, lineHeight: 18 },
+
+    emptyLoops: {
+        backgroundColor: '#141b2e',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.06)',
+        padding: 20,
+        marginBottom: 30,
+    },
+    emptyLoopsText: { color: '#94a3b8', fontSize: 15, lineHeight: 22 },
+
+    // Memorias — secondary
+    memModule: { marginBottom: 24 },
+    memHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 4,
         marginBottom: 8,
     },
-    greetingSmall: { color: '#94a3b8', fontSize: 15, fontWeight: '400' },
-    greetingName: { color: '#f1f5f9', fontSize: 26, fontWeight: '700', letterSpacing: 0.2, marginTop: 2 },
-
-    captureHero: {
+    memHeader: { color: '#64748b', fontSize: 13, fontWeight: '700', letterSpacing: 0.3 },
+    memCard: {
+        flexDirection: 'row',
         alignItems: 'center',
-        paddingTop: 18,
-        paddingBottom: 8,
-    },
-    voiceTitle: {
-        color: '#e2e8f0',
-        fontSize: 22,
-        fontWeight: '700',
-        textAlign: 'center',
-        letterSpacing: 0.3,
-    },
-    voiceSub: {
-        color: '#94a3b8',
-        fontSize: 14,
-        lineHeight: 21,
-        textAlign: 'center',
-        marginTop: 8,
-        maxWidth: 320,
-    },
-    bigMicBtn: {
-        width: 96, height: 96, borderRadius: 48,
-        backgroundColor: '#6366f1',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 22,
-        shadowColor: '#6366f1',
-        shadowOpacity: 0.45,
-        shadowRadius: 22,
-        shadowOffset: { width: 0, height: 0 },
-    },
-    bigMicBtnActive: { backgroundColor: '#ef4444', shadowColor: '#ef4444' },
-    recordHintBig: {
-        color: '#64748b',
-        fontSize: 13,
-        fontWeight: '600',
-        letterSpacing: 0.4,
-        marginTop: 14,
-    },
-    writeLink: {
-        color: '#818cf8',
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    writeLinkBtn: {
-        marginTop: 18,
-        paddingVertical: 10,
-        paddingHorizontal: 22,
-        borderRadius: 16,
+        backgroundColor: 'rgba(20,27,46,0.6)',
+        borderRadius: 12,
         borderWidth: 1,
-        borderColor: 'rgba(129,140,248,0.45)',
-        backgroundColor: 'rgba(129,140,248,0.08)',
-    },
-    writeLinkBig: {
-        color: '#a5b4fc',
-        fontSize: 16,
-        fontWeight: '700',
-        letterSpacing: 0.3,
-    },
-    retryBtn: {
-        marginTop: 16,
+        borderColor: 'rgba(255,255,255,0.05)',
+        paddingHorizontal: 14,
         paddingVertical: 12,
-        paddingHorizontal: 22,
-        borderRadius: 16,
-        backgroundColor: 'rgba(251,191,36,0.12)',
-        borderWidth: 1,
-        borderColor: 'rgba(251,191,36,0.5)',
+        marginBottom: 8,
     },
-    retryText: { color: '#fbbf24', fontSize: 15, fontWeight: '700' },
-    backToVoiceRow: { paddingVertical: 6, marginBottom: 8, alignSelf: 'flex-start' },
+    memTitle: { color: '#cbd5e1', fontSize: 14, fontWeight: '600' },
+    memMeta: { color: '#64748b', fontSize: 12, fontWeight: '600', marginTop: 3, textTransform: 'capitalize' },
+    memAll: { paddingVertical: 6, alignSelf: 'flex-start', marginTop: 2 },
 
+    chipsWrap: { marginTop: 6 },
+    chipsRow: { gap: 8, paddingHorizontal: 2, alignItems: 'center' },
+    chip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 7,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255,255,255,0.04)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.14)',
+    },
+    chipText: { color: '#cbd5e1', fontSize: 13, fontWeight: '600' },
+
+    // Capture FABs
+    fabCluster: {
+        position: 'absolute',
+        right: 20,
+        bottom: 28,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    writeFab: {
+        width: 46, height: 46, borderRadius: 23,
+        backgroundColor: 'rgba(99,102,241,0.12)',
+        borderWidth: 1, borderColor: 'rgba(129,140,248,0.45)',
+        alignItems: 'center', justifyContent: 'center',
+    },
+    micFab: {
+        width: 56, height: 56, borderRadius: 28,
+        backgroundColor: '#6366f1',
+        alignItems: 'center', justifyContent: 'center',
+        shadowColor: '#6366f1', shadowOpacity: 0.5, shadowRadius: 16, shadowOffset: { width: 0, height: 4 },
+        elevation: 6,
+    },
+    micFabRec: { backgroundColor: '#ef4444', shadowColor: '#ef4444' },
+
+    recPill: {
+        position: 'absolute',
+        bottom: 96,
+        right: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#1e293b',
+        borderRadius: 20,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.08)',
+    },
+    recDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#ef4444', marginRight: 9 },
+    recPillText: { color: '#e2e8f0', fontSize: 13, fontWeight: '700' },
+
+    // Text sheet (modal)
+    modalRoot: { flex: 1, justifyContent: 'flex-end' },
+    modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)' },
+    modalSheet: {
+        backgroundColor: '#0d1424',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingHorizontal: 16,
+        paddingTop: 10,
+        paddingBottom: 28,
+        borderTopWidth: 1,
+        borderColor: 'rgba(255,255,255,0.08)',
+    },
+    sheetHandle: {
+        width: 40, height: 4, borderRadius: 2,
+        backgroundColor: 'rgba(255,255,255,0.18)',
+        alignSelf: 'center', marginBottom: 14,
+    },
     inputCard: {
-        width: '100%',
         backgroundColor: '#141b2e',
-        borderRadius: 24,
+        borderRadius: 20,
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.06)',
         padding: 16,
@@ -703,130 +799,36 @@ const styles = StyleSheet.create({
         paddingTop: 4,
         paddingBottom: 12,
     },
-    inputFooter: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginTop: 8,
-    },
+    inputFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
     leftActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     rightActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     iconBtn: {
         width: 40, height: 40, borderRadius: 20,
         backgroundColor: 'rgba(255,255,255,0.05)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
-        justifyContent: 'center',
-        alignItems: 'center',
+        borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+        justifyContent: 'center', alignItems: 'center',
     },
     iconBtnRecording: { backgroundColor: 'rgba(239,68,68,0.2)', borderColor: '#ef4444' },
     wordCount: { color: '#475569', fontSize: 12 },
     recordingBar: {
-        flexDirection: 'row',
-        alignItems: 'center',
+        flexDirection: 'row', alignItems: 'center',
         backgroundColor: 'rgba(239,68,68,0.10)',
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        marginTop: 4,
-        marginBottom: 8,
+        borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8,
+        marginTop: 4, marginBottom: 8,
     },
     recordingDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#ef4444', marginRight: 10 },
     recordingText: { color: '#fca5a5', fontSize: 13, fontWeight: '700', flex: 1 },
     imagePreview: {
-        flexDirection: 'row',
-        alignItems: 'center',
+        flexDirection: 'row', alignItems: 'center',
         backgroundColor: 'rgba(99,102,241,0.10)',
-        borderRadius: 12,
-        padding: 8,
-        marginTop: 4,
-        marginBottom: 8,
+        borderRadius: 12, padding: 8, marginTop: 4, marginBottom: 8,
     },
     imageThumb: { width: 44, height: 44, borderRadius: 8, marginRight: 10 },
     imageHint: { color: '#a5b4fc', fontSize: 12, fontWeight: '600', flex: 1 },
     imageRemove: { padding: 6 },
     sendBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
     sendBtnActive: { backgroundColor: '#6366f1' },
-    sendBtnDisabled: {
-        backgroundColor: 'rgba(255,255,255,0.03)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.06)',
-    },
-
-    // ── Sections ──────────────────────────────────────────────────────────
-    section: { marginTop: 28 },
-    sectionHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 10,
-    },
-    sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-    sectionTitle: { color: '#94a3b8', fontSize: 12, fontWeight: '900', letterSpacing: 1.8 },
-    sectionSub: { color: '#475569', fontSize: 12, marginTop: -4, marginBottom: 10, lineHeight: 16 },
-    sectionLink: { color: '#6366f1', fontSize: 12, fontWeight: '800' },
-
-    loopCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#141b2e',
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.07)',
-        padding: 15,
-        marginBottom: 10,
-    },
-    loopCardRegresa: {
-        backgroundColor: '#1a1020',
-        borderColor: 'rgba(248,113,113,0.18)',
-        borderLeftWidth: 3,
-        borderLeftColor: '#f87171',
-    },
-    loopText: { color: '#f1f5f9', fontSize: 15, fontWeight: '600', lineHeight: 21 },
-    loopTask: { color: '#94a3b8', fontSize: 13, marginTop: 4, lineHeight: 18 },
-
-    memCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#141b2e',
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.07)',
-        paddingHorizontal: 15,
-        paddingVertical: 14,
-        marginBottom: 10,
-    },
-    memTitle: { color: '#f1f5f9', fontSize: 15, fontWeight: '600' },
-    memMeta: { color: '#64748b', fontSize: 12, fontWeight: '600', marginTop: 3, textTransform: 'capitalize' },
-
-    pulseCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(99,102,241,0.08)',
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(99,102,241,0.25)',
-        paddingHorizontal: 16,
-        paddingVertical: 15,
-        marginTop: 28,
-    },
-    pulseLabel: { color: '#818cf8', fontSize: 10, fontWeight: '900', letterSpacing: 1.5, marginBottom: 4 },
-    pulseMain: { color: '#e2e8f0', fontSize: 16, fontWeight: '700' },
-
-    chipsWrap: { marginTop: 28, flexGrow: 0, flexShrink: 0 },
-    chipsRow: { gap: 8, paddingHorizontal: 2, alignItems: 'center' },
-    chip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 7,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: 18,
-        backgroundColor: 'rgba(255,255,255,0.04)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.14)',
-    },
-    chipText: { color: '#cbd5e1', fontSize: 13, fontWeight: '600' },
+    sendBtnDisabled: { backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
 });
 
 export default CaptureScreen;
