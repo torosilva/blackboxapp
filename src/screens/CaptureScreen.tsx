@@ -460,19 +460,27 @@ const CaptureScreen = () => {
                     ) : (
                         <View style={styles.headlineWrap}>
                             {!!stats && stats.closed > 0 && (
-                                <Text style={[styles.headline, styles.hlPos]}>
-                                    {stats.closed}{NB}cerrado{stats.closed === 1 ? '' : 's'}{NB}esta{NB}semana
-                                </Text>
+                                <View style={styles.hlGroup}>
+                                    <Text style={[styles.headline, styles.hlPos]}>
+                                        {stats.closed}{NB}cerrado{stats.closed === 1 ? '' : 's'}{NB}esta{NB}semana
+                                    </Text>
+                                    <Text style={[styles.headline, styles.hlDot]}>{NB}·</Text>
+                                </View>
                             )}
-                            <Text style={styles.headline}>
-                                {!!stats && stats.closed > 0 && <Text style={styles.hlDot}>·{NB}</Text>}
-                                <Text style={styles.hlNeutral}>{stats?.open ?? 0}{NB}abierto{(stats?.open ?? 0) === 1 ? '' : 's'}</Text>
-                            </Text>
-                            {!!stats && stats.stalled > 0 && (
-                                <Text style={styles.headline}>
-                                    <Text style={styles.hlDot}>·{NB}</Text>
-                                    <Text style={styles.hlWarn}>{stats.stalled}{NB}estancado{stats.stalled === 1 ? '' : 's'}</Text>
+                            <View style={styles.hlGroup}>
+                                <Text style={[styles.headline, styles.hlNeutral]}>
+                                    {stats?.open ?? 0}{NB}abierto{(stats?.open ?? 0) === 1 ? '' : 's'}
                                 </Text>
+                                {!!stats && stats.stalled > 0 && (
+                                    <Text style={[styles.headline, styles.hlDot]}>{NB}·</Text>
+                                )}
+                            </View>
+                            {!!stats && stats.stalled > 0 && (
+                                <View style={styles.hlGroup}>
+                                    <Text style={[styles.headline, styles.hlWarn]}>
+                                        {stats.stalled}{NB}estancado{stats.stalled === 1 ? '' : 's'}
+                                    </Text>
+                                </View>
                             )}
                         </View>
                     )}
@@ -763,6 +771,7 @@ const styles = StyleSheet.create({
     statusMain: { color: '#f8fafc', fontSize: 28, fontWeight: '800', letterSpacing: 0.2 },
     statusSub: { color: '#94a3b8', fontSize: 15, fontWeight: '600', marginTop: 6, lineHeight: 21 },
     headlineWrap: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 8, rowGap: 2 },
+    hlGroup: { flexDirection: 'row', alignItems: 'baseline' },
     headline: { fontSize: 24, fontWeight: '800', lineHeight: 32, letterSpacing: 0.1 },
     hlPos: { color: '#34d399' },
     hlNeutral: { color: '#f1f5f9' },

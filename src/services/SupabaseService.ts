@@ -1507,7 +1507,7 @@ export const SupabaseService = {
             console.log(`SUPABASE_SERVICE: Pattern analysis done — ${count} patterns saved`);
             return { success: true, count };
         } catch (err: any) {
-            console.error('SUPABASE_SERVICE: FATAL - triggerPatternAnalysis crashed:', err.message);
+            console.warn('SUPABASE_SERVICE: FATAL - triggerPatternAnalysis crashed:', err.message);
             return { success: false, count: 0 };
         }
     },

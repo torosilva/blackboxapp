@@ -1,12 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { callClaude, parseJsonLoose } from "../_shared/claude.ts";
+import { callClaude, parseJsonLoose, SystemBlock } from "../_shared/claude.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-// Opus 4.7: deepest reasoning, used for longitudinal pattern synthesis.
-const MODEL_NAME = 'claude-opus-4-7';
+// Sonnet 4.6 is ~3x faster than Opus 4.7 for the same JSON output, which is
+// what dominates latency here (the model writes a long structured response).
+// Combined with prompt caching on the static system block and the user's
+// strategic profile, this cuts cold-call wall time from ~75s to ~20-25s.
+const MODEL_NAME = 'claude-sonnet-4-6';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -99,8 +102,7 @@ Responde SOLO con el JSON. Sin texto adicional.
 
 function buildPatternUser(
   entries: EntrySnapshot[],
-  openLoops: { id: string; task: string; created_at?: string }[],
-  strategicProfile?: StrategicProfile | null
+  openLoops: { id: string; task: string; created_at?: string }[]
 ): string {
   const entrySummaries = entries.map((e, i) => {
     let bias = "N/A";
@@ -122,10 +124,23 @@ function buildPatternUser(
 ${entrySummaries}
 
 LOOPS ABIERTOS SIN CERRAR (${openLoops.length}) — diagnostica la evasión de los que llevan tiempo abiertos, usando su loop_id EXACTO:
-${loopList}
+${loopList}`;
+}
 
-RESUMEN ESTRATÉGICO ACTUAL (MEMORIA): ${strategicProfile?.cognitive_summary || 'N/A'}
-TEMAS RECURRENTES ACTUALES: ${(strategicProfile?.recurring_themes ?? []).join(', ') || 'N/A'}`;
+// Strategic profile lives in its own cacheable system block. It only changes
+// when analyze-patterns rewrites it (~every 5 entries), so most calls for
+// the same user hit a warm cache for this block.
+function buildProfileBlock(p: StrategicProfile | null): SystemBlock | null {
+  if (!p) return null;
+  return {
+    type: 'text',
+    text: `PERFIL ESTRATÉGICO DEL USUARIO (memoria de largo plazo):
+Resumen cognitivo: ${p.cognitive_summary || 'N/A'}
+Temas recurrentes: ${(p.recurring_themes ?? []).join(', ') || 'N/A'}
+Objetivos clave: ${(p.key_goals ?? []).join(', ') || 'N/A'}
+Sesgos identificados: ${(p.identified_biases ?? []).join(', ') || 'N/A'}`,
+    cache_control: { type: 'ephemeral' },
+  };
 }
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
@@ -192,12 +207,22 @@ serve(async (req) => {
       .eq("user_id", userId)
       .maybeSingle();
 
-    // 4. Build prompt and call Claude (Opus 4.7)
+    // 4. Build prompt and call Claude. Two cache breakpoints:
+    //    [0] static instructions (frozen across all users/calls)
+    //    [1] this user's strategic profile (changes only when we rewrite it)
+    // Entries + open loops are the volatile tail and go in the user message,
+    // after both breakpoints, so the cache stays warm across calls.
+    const systemBlocks: SystemBlock[] = [
+      { type: 'text', text: STATIC_PATTERNS_SYSTEM, cache_control: { type: 'ephemeral' } },
+    ];
+    const profileBlock = buildProfileBlock((profile ?? null) as StrategicProfile | null);
+    if (profileBlock) systemBlocks.push(profileBlock);
+
     const rawText = await callClaude({
       apiKey: ANTHROPIC_API_KEY!,
       model: MODEL_NAME,
-      system: [{ type: 'text', text: STATIC_PATTERNS_SYSTEM, cache_control: { type: 'ephemeral' } }],
-      userContent: buildPatternUser(entries as EntrySnapshot[], openLoops, profile),
+      system: systemBlocks,
+      userContent: buildPatternUser(entries as EntrySnapshot[], openLoops),
       maxTokens: 8192,
       meter: { component: 'pattern_synthesis', userId, req },
     });
