@@ -24,6 +24,7 @@ import DashboardScreen from '../screens/DashboardScreen';
 import ChatHubScreen from '../screens/ChatHubScreen';
 import CaptureScreen from '../screens/CaptureScreen';
 import ReflexionDetalleScreen from '../screens/ReflexionDetalleScreen';
+import SearchScreen from '../screens/SearchScreen';
 import ForgotPasswordScreen from '../auth/ForgotPasswordScreen';
 import FeedbackHistoryScreen from '../screens/FeedbackHistoryScreen';
 import LoopsScreen from '../screens/LoopsScreen';
@@ -118,6 +119,7 @@ function AppNavigator() {
                     />
                     <Stack.Screen name="EntryDetail" component={EntryDetailScreen as any} />
                     <Stack.Screen name="ReflexionDetalle" component={ReflexionDetalleScreen as any} />
+                    <Stack.Screen name="Search" component={SearchScreen as any} />
                     <Stack.Screen name="WeeklyReport" component={WeeklyReportScreen as any} />
                     <Stack.Screen name="ChatHub" component={ChatHubScreen as any} />
                     <Stack.Screen name="Chat" component={ChatScreen as any} />

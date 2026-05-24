@@ -8,6 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import {
     Mic, MicOff, ArrowUp, Plus, X, RefreshCw, ChevronRight, ChevronDown,
     LayoutDashboard, BarChart2, MessageCircle, ShieldAlert, Brain, Sparkles, MoreHorizontal,
+    Search as SearchIcon,
 } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
@@ -395,6 +396,7 @@ const CaptureScreen = () => {
     const Sp = Sparkles as any;
     const Br = Brain as any;
     const MH = MoreHorizontal as any;
+    const SI = SearchIcon as any;
     const LD = LayoutDashboard as any;
     const BC = BarChart2 as any;
     const MC = MessageCircle as any;
@@ -443,9 +445,14 @@ const CaptureScreen = () => {
                 {/* Brand mark — minimal, no wellness greeting. Overflow lives here. */}
                 <View style={styles.brandRow}>
                     <Text style={styles.brand}>BLACKBOX</Text>
-                    <TO onPress={() => navigation.navigate('Settings')} style={styles.headerBtn} activeOpacity={0.7}>
-                        <MH size={20} color="#64748b" />
-                    </TO>
+                    <View style={styles.brandActions}>
+                        <TO onPress={() => navigation.navigate('Search')} style={styles.headerBtn} activeOpacity={0.7}>
+                            <SI size={20} color="rgba(255,255,255,0.8)" strokeWidth={2} />
+                        </TO>
+                        <TO onPress={() => navigation.navigate('Settings')} style={styles.headerBtn} activeOpacity={0.7}>
+                            <MH size={20} color="#64748b" />
+                        </TO>
+                    </View>
                 </View>
 
                 {/* SYSTEM STATE — momentum first, backlog after. Units never break
@@ -759,6 +766,7 @@ const styles = StyleSheet.create({
     },
 
     brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+    brandActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     brand: { color: '#475569', fontSize: 12, fontWeight: '900', letterSpacing: 3 },
     headerBtn: {
         width: 34, height: 34, borderRadius: 17,
