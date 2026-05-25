@@ -30,7 +30,7 @@ type Stats = {
 };
 
 const NB = String.fromCharCode(160); // non-breaking space — keeps "354 abiertos" as one unit
-const STALE_DAYS = 3;
+const STALE_DAYS = 14;
 
 // SINGLE SOURCE OF TRUTH for loop counts. Every number on the home derives
 // from here. Note: `stalled` is a SUBSET of `open` (open loops untouched
