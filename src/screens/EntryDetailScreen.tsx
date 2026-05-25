@@ -12,6 +12,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import AILoadingOverlay from '../components/AILoadingOverlay';
 
+const formatRelativeDate = (iso: string) => {
+  const d = new Date(iso);
+  const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (days <= 0) return 'Hoy';
+  if (days === 1) return 'Ayer';
+  if (days < 7) return `Hace ${days} días`;
+  return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+};
+
 const EntryDetailScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute();
@@ -47,6 +56,8 @@ const EntryDetailScreen = () => {
   const [editedContent, setEditedContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [actionItems, setActionItems] = useState<any[]>([]);
+  const [related, setRelated] = useState<any[]>([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
 
   useEffect(() => {
     const loadEntry = async () => {
@@ -76,6 +87,16 @@ const EntryDetailScreen = () => {
     };
     loadEntry();
   }, [entryId]);
+
+  useEffect(() => {
+    if (!entryId || !user?.id) return;
+    let cancelled = false;
+    setRelatedLoading(true);
+    SupabaseService.relatedEntries(user.id, entryId, { limit: 5 })
+      .then(res => { if (!cancelled) setRelated(res); })
+      .finally(() => { if (!cancelled) setRelatedLoading(false); });
+    return () => { cancelled = true; };
+  }, [entryId, user?.id]);
 
   const handleShare = async () => {
     if (!entry) return;
@@ -370,6 +391,42 @@ const EntryDetailScreen = () => {
           <T2 size={18} color="#ef4444" style={{ marginRight: 8 }} />
           <Text style={styles.deleteText}>Delete memory</Text>
         </TO>
+
+        {related.length > 0 && (
+          <View style={styles.relatedSection}>
+            <View style={styles.relatedHeader}>
+              <Sp size={14} color="#c084fc" strokeWidth={2.2} />
+              <Text style={styles.relatedTitle}>MEMORIAS RELACIONADAS</Text>
+            </View>
+            {related.map((r) => (
+              <TO
+                key={r.id}
+                style={styles.relatedCard}
+                onPress={() => navigation.replace('EntryDetail', { entryId: r.id })}
+                activeOpacity={0.85}
+              >
+                <View style={styles.relatedCardHead}>
+                  <Text style={styles.relatedCardTitle} numberOfLines={1}>
+                    {r.title || 'Sin título'}
+                  </Text>
+                  <View style={styles.relatedScorePill}>
+                    <Text style={styles.relatedScoreText}>
+                      {(r.similarity ?? 0).toFixed(2)}
+                    </Text>
+                  </View>
+                </View>
+                {!!r.summary && (
+                  <Text style={styles.relatedCardSnippet} numberOfLines={2}>
+                    {r.summary}
+                  </Text>
+                )}
+                <Text style={styles.relatedCardMeta}>
+                  {formatRelativeDate(r.created_at)} · {r.category || 'GENERAL'}
+                </Text>
+              </TO>
+            ))}
+          </View>
+        )}
       </ScrollView>
 
       <AILoadingOverlay visible={isSaving} message="Procesando tu BlackBoxMind.ai..." />
@@ -530,7 +587,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     letterSpacing: 0.5
-  }
+  },
+  relatedSection: { marginTop: 32, marginBottom: 16 },
+  relatedHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  relatedTitle: { color: '#c084fc', fontSize: 11, fontWeight: '700', letterSpacing: 1.8 },
+  relatedCard: {
+    backgroundColor: '#151B2C',
+    borderColor: '#1E293B',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+  },
+  relatedCardHead: { flexDirection: 'row', justifyContent: 'space-between',
+                     alignItems: 'flex-start', marginBottom: 6, gap: 8 },
+  relatedCardTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '700', flex: 1 },
+  relatedScorePill: { backgroundColor: 'rgba(192,132,252,0.15)',
+                      paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
+  relatedScoreText: { color: '#c084fc', fontSize: 11, fontWeight: '700' },
+  relatedCardSnippet: { color: '#94a3b8', fontSize: 12, lineHeight: 18, marginBottom: 6 },
+  relatedCardMeta: { color: '#64748b', fontSize: 10, letterSpacing: 0.5 },
 });
 
 const LG = LinearGradient as any;

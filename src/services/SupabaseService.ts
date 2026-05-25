@@ -438,6 +438,50 @@ export const SupabaseService = {
     },
 
     /**
+     * Find entries semantically related to a given entry, using its existing
+     * embedding (no new embedding generation needed). Excludes the entry itself
+     * from results. Returns ranked by similarity desc.
+     */
+    async relatedEntries(userId: string, entryId: string, opts?: {
+        threshold?: number; limit?: number;
+    }): Promise<any[]> {
+        if (!userId || !entryId) return [];
+        try {
+            const { data: src, error: srcErr } = await supabase
+                .from('entries')
+                .select('embedding')
+                .eq('id', entryId)
+                .eq('user_id', userId)
+                .maybeSingle();
+
+            if (srcErr || !src?.embedding) {
+                SupabaseService.triggerEntryEmbedding(entryId).catch(() => {});
+                return [];
+            }
+
+            const limit = opts?.limit ?? 5;
+            const { data, error } = await supabase.rpc('match_entries', {
+                p_user_id: userId,
+                p_query_embedding: src.embedding,
+                p_match_threshold: opts?.threshold ?? 0.5,
+                p_match_count: limit + 1,
+            });
+
+            if (error) {
+                console.warn('SUPABASE_SERVICE: relatedEntries RPC failed:', error.message);
+                return [];
+            }
+
+            return (data ?? [])
+                .filter((e: any) => e.id !== entryId)
+                .slice(0, limit);
+        } catch (e: any) {
+            console.warn('SUPABASE_SERVICE: relatedEntries error:', e?.message);
+            return [];
+        }
+    },
+
+    /**
      * Fetch recent AI summaries for historical context (legacy string format).
      * Kept for internal backwards compatibility — prefer getHistoricalContext().
      */
