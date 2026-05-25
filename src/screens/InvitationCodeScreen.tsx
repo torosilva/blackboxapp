@@ -62,7 +62,7 @@ const InvitationCodeScreen = () => {
                 Alert.alert(
                     '¡Éxito!',
                     'Código de invitación aplicado. Ahora eres usuario PRO.',
-                    [{ text: 'Explorar Blackbox', onPress: () => navigation.navigate('Home') }]
+                    [{ text: 'Explorar BlackBoxMind', onPress: () => navigation.navigate('Home') }]
                 );
             } else {
                 Alert.alert('Código Inválido', 'El código ingresado no es válido o ya ha sido utilizado.');

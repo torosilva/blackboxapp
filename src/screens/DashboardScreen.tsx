@@ -784,7 +784,7 @@ const DashboardScreen = () => {
                     <LG colors={['rgba(250, 204, 21, 0.1)', 'rgba(0, 0, 0, 0)']} style={styles.insightGradient}>
                         <View style={styles.insightHeader}>
                             <Target size={16} color="#facc15" />
-                            <Text style={[styles.insightTitle, { color: '#facc15' }]}>GUÍA ESTRATÉGICA: BLACKBOX</Text>
+                            <Text style={[styles.insightTitle, { color: '#facc15' }]}>GUÍA ESTRATÉGICA: BlackBoxMind.ai</Text>
                         </View>
                         <Text style={styles.latestInsight}>
                             Domina el equilibrio entre Metas y Loops Activos para maximizar tu ejecución clínica.

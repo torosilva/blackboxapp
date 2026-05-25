@@ -217,7 +217,7 @@ const SettingsScreen = () => {
             const { error } = await FeedbackService.submitFeedback(user!.id, feedbackContent, feedbackType, attachmentUrl);
             if (error) throw error;
 
-            Alert.alert('¡Gracias!', 'Tu feedback ha sido recibido. ¡Gracias por ayudarnos a mejorar BLACKBOX!');
+            Alert.alert('¡Gracias!', 'Tu feedback ha sido recibido. ¡Gracias por ayudarnos a mejorar BlackBoxMind!');
             setFeedbackContent('');
             setFeedbackImage(null);
             setShowFeedbackModal(false);
@@ -232,7 +232,7 @@ const SettingsScreen = () => {
     const handleDeleteAccount = () => {
         Alert.alert(
             "⚠️ Eliminar Cuenta",
-            "Esta acción eliminará permanentemente todos tus registros y datos de BLACKBOX. No se puede deshacer.\n\n¿Estás absolutamente seguro?",
+            "Esta acción eliminará permanentemente todos tus registros y datos de BlackBoxMind. No se puede deshacer.\n\n¿Estás absolutamente seguro?",
             [
                 { text: "Cancelar", style: "cancel" },
                 {
@@ -377,7 +377,7 @@ const SettingsScreen = () => {
                                     </View>
 
                                     <View style={styles.editSection}>
-                                        <Text style={styles.clinicalDesc}>¿Cómo quieres que BLACKBOX te llame?</Text>
+                                        <Text style={styles.clinicalDesc}>¿Cómo quieres que BlackBoxMind te llame?</Text>
                                         <View style={styles.inputContainer}>
                                             <TI
                                                 style={styles.profileInput}
@@ -696,7 +696,7 @@ const SettingsScreen = () => {
                                             <B size={18} color="#facc15" />
                                         </View>
                                         <View style={styles.policyTextContainer}>
-                                            <Text style={styles.policyLabel}>Guía Estratégica: BLACKBOX</Text>
+                                            <Text style={styles.policyLabel}>Guía Estratégica: BlackBoxMind.ai</Text>
                                             <Text style={styles.policyValue}>Ver explicación de Metas vs Loops y protocolos de ejecución.</Text>
                                         </View>
                                         <CL size={20} color="#475569" style={{ transform: [{ rotate: '180deg' }] }} />
@@ -746,7 +746,7 @@ const SettingsScreen = () => {
                             {expandedSections.privacy && (
                                 <View style={styles.legalCard}>
                                     <Text style={styles.legalIntro}>
-                                        En BLACKBOX, la privacidad y el control de tus datos son pilares fundamentales.
+                                        En BlackBoxMind, la privacidad y el control de tus datos son pilares fundamentales.
                                     </Text>
                                     <TO style={styles.policyRow} onPress={() => WebBrowser.openBrowserAsync('https://blackboxmind.ai/privacy')}>
                                         <View style={styles.iconCircle}>
@@ -775,7 +775,7 @@ const SettingsScreen = () => {
                                             <Sparkles size={18} color="#38bdf8" />
                                         </View>
                                         <View style={styles.policyTextContainer}>
-                                            <Text style={[styles.policyLabel, { color: '#38bdf8' }]}>Portal Web Blackbox</Text>
+                                            <Text style={[styles.policyLabel, { color: '#38bdf8' }]}>Portal Web BlackBoxMind</Text>
                                             <Text style={styles.policyValue}>Accede a tu dashboard avanzado en blackboxmind.ai</Text>
                                         </View>
                                         <AR size={20} color="#38bdf8" />
@@ -792,7 +792,7 @@ const SettingsScreen = () => {
                                 <View style={styles.biasEmpty}>
                                     <Text style={styles.biasEmptyText}>
                                         Aún no se detectan sesgos recurrentes. Aparecerán aquí
-                                        conforme BLACKBOX analice tus memorias.
+                                        conforme BlackBoxMind analice tus memorias.
                                     </Text>
                                 </View>
                             ) : (
@@ -942,8 +942,8 @@ const SettingsScreen = () => {
                 </View>
 
                 <View style={styles.footer}>
-                    <Text style={styles.versionText}>BLACKBOX MIND v1.3.0</Text>
-                    <Text style={styles.footerLegal}>© 2026 Blackbox Mind. Todos los derechos reservados.</Text>
+                    <Text style={styles.versionText}>BlackBoxMind.ai v1.3.0</Text>
+                    <Text style={styles.footerLegal}>© 2026 BlackBoxMind.ai. Todos los derechos reservados.</Text>
                 </View>
             </ScrollView>
 

@@ -13,7 +13,7 @@ const changes = [
         icon: MessageSquare,
         color: '#a855f7',
         title: 'Sesión Estratégica Post-Entrada',
-        description: 'Después de registrar tu memoria, BLACKBOX abre una conversación profunda contigo — como una sesión con tu coach personal.',
+        description: 'Después de registrar tu memoria, BlackBoxMind abre una conversación profunda contigo — como una sesión con tu coach personal.',
     },
     {
         icon: Crown,
@@ -115,7 +115,7 @@ const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ forceShow, onClose }) => 
 
                     {/* CTA */}
                     <TouchableOpacity style={styles.cta} onPress={handleClose}>
-                        <Text style={styles.ctaText}>Explorar BLACKBOX 2.0 ✦</Text>
+                        <Text style={styles.ctaText}>Explorar BlackBoxMind 2.0 ✦</Text>
                     </TouchableOpacity>
                 </View>
             </View>

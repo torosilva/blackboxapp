@@ -146,7 +146,7 @@ export const NotificationService = {
             const titles = scheduled.map(n => n.content.title);
 
             // 9:00 AM — Morning kick
-            const morningTitle = '⚡ BLACKBOX te desafía';
+            const morningTitle = '⚡ BlackBoxMind te desafía';
             if (!titles.includes(morningTitle)) {
                 await Notifications.scheduleNotificationAsync({
                     content: {
@@ -179,7 +179,7 @@ export const NotificationService = {
      */
     async scheduleSmartDailyReminder(opts: { streak: number; hasEntryToday: boolean; topLoopTitle?: string | null }) {
         try {
-            const SMART_TITLE = 'BLACKBOX 🌙';
+            const SMART_TITLE = 'BlackBoxMind 🌙';
             const scheduled = await Notifications.getAllScheduledNotificationsAsync();
             for (const n of scheduled) {
                 const t = n.content.title ?? '';

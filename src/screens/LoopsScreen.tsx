@@ -82,7 +82,7 @@ export default function LoopsScreen() {
                     <Text style={styles.emptyTitle}>Sin loops abiertos</Text>
                     <Text style={styles.emptyText}>
                         Cuando registres una memoria o converses en el chat, los
-                        accionables que detecte BLACKBOX aparecerán aquí para que
+                        accionables que detecte BlackBoxMind aparecerán aquí para que
                         los cierres.
                     </Text>
                 </View>

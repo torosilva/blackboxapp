@@ -245,7 +245,7 @@ const NewEntryScreen = () => {
           <View style={styles.voiceHero}>
             <Text style={styles.voiceTitle}>Suelta lo que cargas</Text>
             <Text style={styles.voiceSub}>
-              Habla. BLACKBOX lo ordena, detecta el sesgo y te devuelve el movimiento.
+              Habla. BlackBoxMind lo ordena, detecta el sesgo y te devuelve el movimiento.
             </Text>
 
             <Animated.View style={{ transform: [{ scale: isRecording ? 1 : pulseAnim }], marginTop: 20 }}>
@@ -320,7 +320,7 @@ const NewEntryScreen = () => {
         )}
       </KeyboardAvoidingView>
 
-      <AILoadingOverlay visible={loading || isTranscribing} message={isTranscribing ? "Transcribiendo audio..." : "Ingresando a tu BlackboxMind..."} />
+      <AILoadingOverlay visible={loading || isTranscribing} message={isTranscribing ? "Transcribiendo audio..." : "Ingresando a tu BlackBoxMind..."} />
     </SAV>
   );
 };

@@ -292,7 +292,7 @@ const ChatScreen = () => {
         memoryDecidedRef.current = true;
         setMemoryState('classifying');
         const transcript = msgs
-            .map(m => `${m.role === 'user' ? 'Usuario' : 'BLACKBOX'}: ${m.parts[0]?.text ?? ''}`)
+            .map(m => `${m.role === 'user' ? 'Usuario' : 'BlackBoxMind'}: ${m.parts[0]?.text ?? ''}`)
             .join('\n\n');
         const kind = await SupabaseService.classifyThread(transcript);
         if (kind === 'journal') {
@@ -316,7 +316,7 @@ const ChatScreen = () => {
         setMemoryState('updating');
         const len = msgs.length;
         const transcript = msgs
-            .map((m) => `${m.role === 'user' ? 'Usuario' : 'BLACKBOX'}: ${m.parts[0]?.text ?? ''}`)
+            .map((m) => `${m.role === 'user' ? 'Usuario' : 'BlackBoxMind'}: ${m.parts[0]?.text ?? ''}`)
             .join('\n\n');
         aiService.generateDailySummary([transcript], user.id)
             .then((a) => SupabaseService.updateEntryAnalysis(id, {
@@ -399,7 +399,7 @@ const ChatScreen = () => {
                         Función PRO
                     </Text>
                     <Text style={{ color: '#94a3b8', fontSize: 16, textAlign: 'center', marginBottom: 30, lineHeight: 24 }}>
-                        El <Text style={{ color: '#6366f1', fontWeight: 'bold' }}>Chat Estratégico BLACKBOX</Text> es exclusivo de usuarios PRO.{"\n\n"}
+                        El <Text style={{ color: '#6366f1', fontWeight: 'bold' }}>Chat Estratégico BlackBoxMind.ai</Text> es exclusivo de usuarios PRO.{"\n\n"}
                         Accede a consultas ilimitadas con tu asesor de IA.
                     </Text>
                     <TouchableOpacity

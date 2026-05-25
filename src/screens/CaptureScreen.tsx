@@ -238,7 +238,7 @@ const CaptureScreen = () => {
         if (message.length < 40 || wc < 8) {
             Alert.alert(
                 'Cuéntame un poco más',
-                'Suéltalo con un poco más de detalle (un par de frases) para que BLACKBOX pueda darte un veredicto útil.',
+                'Suéltalo con un poco más de detalle (un par de frases) para que BlackBoxMind pueda darte un veredicto útil.',
                 [{ text: 'Entendido' }]
             );
             return false;
@@ -444,7 +444,7 @@ const CaptureScreen = () => {
             >
                 {/* Brand mark — minimal, no wellness greeting. Overflow lives here. */}
                 <View style={styles.brandRow}>
-                    <Text style={styles.brand}>BLACKBOX</Text>
+                    <Text style={styles.brand}>BlackBoxMind.ai</Text>
                     <View style={styles.brandActions}>
                         <TO onPress={() => navigation.navigate('Search')} style={styles.headerBtn} activeOpacity={0.7}>
                             <SI size={20} color="rgba(255,255,255,0.8)" strokeWidth={2} />
@@ -700,7 +700,7 @@ const CaptureScreen = () => {
                             {pickedImage && (
                                 <View style={styles.imagePreview}>
                                     <Image source={{ uri: pickedImage.uri }} style={styles.imageThumb} />
-                                    <Text style={styles.imageHint}>Imagen adjunta · BLACKBOX la interpretará</Text>
+                                    <Text style={styles.imageHint}>Imagen adjunta · BlackBoxMind la interpretará</Text>
                                     <TO onPress={() => setPickedImage(null)} style={styles.imageRemove} activeOpacity={0.7}>
                                         <Xx size={16} color="#fca5a5" />
                                     </TO>
@@ -767,7 +767,7 @@ const styles = StyleSheet.create({
 
     brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
     brandActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    brand: { color: '#475569', fontSize: 12, fontWeight: '900', letterSpacing: 3 },
+    brand: { color: '#475569', fontSize: 12, fontWeight: '900', letterSpacing: 0 },
     headerBtn: {
         width: 34, height: 34, borderRadius: 17,
         alignItems: 'center', justifyContent: 'center',

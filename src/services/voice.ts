@@ -13,7 +13,7 @@ export class VoiceService {
         if (permission.status !== 'granted') {
             Alert.alert(
                 'Micrófono bloqueado',
-                'Blackbox necesita acceso al micrófono para grabar tu voz. Actívalo en Configuración.',
+                'BlackBoxMind necesita acceso al micrófono para grabar tu voz. Actívalo en Configuración.',
                 [
                     { text: 'Cancelar', style: 'cancel' },
                     {

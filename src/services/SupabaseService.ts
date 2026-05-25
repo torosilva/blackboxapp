@@ -1204,11 +1204,11 @@ export const SupabaseService = {
      */
     async seedWelcomeEntry(userId: string) {
         try {
-            const welcomeTitle = "Bienvenida a BLACKBOX: Tu Primera Sesión";
-            const welcomeContent = "Esta es una entrada de ejemplo para que veas cómo BLACKBOX funciona. Aquí puedes registrar tus pensamientos, grabaciones de voz o planes estratégicos. Una vez que guardas, mi motor de IA analiza tu contenido para detectar sesgos, resumir puntos clave y sugerir pasos accionables.";
+            const welcomeTitle = "Bienvenida a BlackBoxMind: Tu Primera Sesión";
+            const welcomeContent = "Esta es una entrada de ejemplo para que veas cómo BlackBoxMind funciona. Aquí puedes registrar tus pensamientos, grabaciones de voz o planes estratégicos. Una vez que guardas, mi motor de IA analiza tu contenido para detectar sesgos, resumir puntos clave y sugerir pasos accionables.";
             
             const analysis = {
-                summary: "Bienvenido a tu nueva herramienta de claridad mental. Esta sesión demuestra cómo BLACKBOX transforma texto en estrategia. Se ha detectado un tono positivo y enfocado en el crecimiento.",
+                summary: "Bienvenido a tu nueva herramienta de claridad mental. Esta sesión demuestra cómo BlackBoxMind transforma texto en estrategia. Se ha detectado un tono positivo y enfocado en el crecimiento.",
                 sentiment_score: 0.9,
                 mood_label: "Inspirado",
                 strategic_insight: "Tu mayor activo es la capacidad de reflexionar sobre tus propios procesos cognitivos. No dejes que el sesgo de confirmación limite tus decisiones hoy.",

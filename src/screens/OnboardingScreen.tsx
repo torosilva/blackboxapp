@@ -27,9 +27,9 @@ const { width, height } = Dimensions.get('window');
 const SLIDES = [
     {
         id: '1',
-        title: 'BIENVENIDO A BLACKBOX',
+        title: 'BIENVENIDO A BlackBoxMind.ai',
         subtitle: 'Tu Coach de Alto Rendimiento',
-        description: 'BLACKBOX no es un diario; es un motor de ejecución clínica para mentes que no se detienen.',
+        description: 'BlackBoxMind no es un diario; es un motor de ejecución clínica para mentes que no se detienen.',
         icon: <Brain size={120} color="#6366f1" />,
         color: '#6366f1'
     },
@@ -37,7 +37,7 @@ const SLIDES = [
         id: '2',
         title: 'PASO 1: CAPTURA',
         subtitle: 'Vacía tu mente al instante',
-        description: 'Usa el botón "QuickCapture" o el icono del Micrófono. Habla sin filtros. BLACKBOX extraerá lo esencial.',
+        description: 'Usa el botón "QuickCapture" o el icono del Micrófono. Habla sin filtros. BlackBoxMind extraerá lo esencial.',
         icon: <Zap size={120} color="#c084fc" />,
         color: '#c084fc'
     },
@@ -53,7 +53,7 @@ const SLIDES = [
         id: '4',
         title: 'PASO 3: LOOPS',
         subtitle: 'Cierra el Ciclo Ejecutivo',
-        description: 'Gestiona tus tareas en el Centro Estratégico. Lo que no marcas como verde, BLACKBOX lo perseguirá con alertas de 72h.',
+        description: 'Gestiona tus tareas en el Centro Estratégico. Lo que no marcas como verde, BlackBoxMind lo perseguirá con alertas de 72h.',
         icon: <TrendingUp size={120} color="#22c55e" />,
         color: '#22c55e'
     },

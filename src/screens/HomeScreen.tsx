@@ -300,7 +300,7 @@ const HomeScreen = () => {
               await SupabaseService.createEntry({
                 user_id: user.id,
                 title: `ACCION: ${rec.title}`,
-                content: `Iniciando acción sugerida por BLACKBOX: ${rec.description}`,
+                content: `Iniciando acción sugerida por BlackBoxMind: ${rec.description}`,
                 sentiment_score: 0.5,
                 mood_label: "Determinado",
                 summary: "Acción estratégica iniciada desde el Daily Insight.",
@@ -466,7 +466,7 @@ const HomeScreen = () => {
       {/* Premium AI Loading Overlay */}
       <Overlay
         visible={summaryLoading}
-        message="Procesando tu BlackBoxMind.ai..."
+        message="Procesando tu BlackBoxMind..."
       />
 
       <View style={styles.header}>
@@ -631,7 +631,7 @@ const HomeScreen = () => {
                 <View style={styles.sparkleIcon}>
                   <Sparkles size={16} color="white" />
                 </View>
-                <Text style={styles.summaryTitle}>Insight Diario - BLACKBOX</Text>
+                <Text style={styles.summaryTitle}>Insight Diario - BlackBoxMind.ai</Text>
               </View>
               <TouchableOpacity onPress={() => setIsMinimized(true)} style={styles.minimizeBtn}>
                 <X size={16} color="#94a3b8" />
@@ -799,7 +799,7 @@ const HomeScreen = () => {
                   <View style={styles.analysisDivider} />
                   <View style={styles.analysisHeader}>
                     <Sparkles size={14} color="#a855f7" />
-                    <Text style={styles.analysisLabel}>REPORTE BLACKBOX</Text>
+                    <Text style={styles.analysisLabel}>REPORTE BlackBoxMind.ai</Text>
                   </View>
                   {!!entry.summary && (
                     <Text style={styles.analysisSummary} numberOfLines={3}>

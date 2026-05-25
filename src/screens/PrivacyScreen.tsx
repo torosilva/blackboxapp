@@ -73,7 +73,7 @@ const PrivacyScreen = ({ isMandatory: propIsMandatory }: { isMandatory?: boolean
                 <Text style={styles.lastUpdate}>Última actualización: 20 de Enero de 2026</Text>
 
                 <Text style={styles.bodyText}>
-                    Macarena Group PS Mexico (en adelante, el "Responsable"), quien opera comercialmente bajo la marca "Blackbox Mind" o "Blackboxmind.ai", con domicilio ubicado en la Ciudad de México, México, es el responsable del uso, tratamiento y protección de sus datos personales, y al respecto le informa lo siguiente:
+                    Macarena Group PS Mexico (en adelante, el "Responsable"), quien opera comercialmente bajo la marca "BlackBoxMind.ai", con domicilio ubicado en la Ciudad de México, México, es el responsable del uso, tratamiento y protección de sus datos personales, y al respecto le informa lo siguiente:
                 </Text>
 
                 <Text style={styles.sectionTitle}>1. ¿PARA QUÉ FINES UTILIZAREMOS SUS DATOS PERSONALES?</Text>
@@ -89,7 +89,7 @@ const PrivacyScreen = ({ isMandatory: propIsMandatory }: { isMandatory?: boolean
                 <Text style={styles.bulletItem}>• Atención al cliente y soporte técnico.</Text>
 
                 <Text style={styles.subSectionTitle}>Finalidades Secundarias (Opcionales):</Text>
-                <Text style={styles.bulletItem}>• Envío de boletines informativos y promociones de Blackbox Mind.</Text>
+                <Text style={styles.bulletItem}>• Envío de boletines informativos y promociones de BlackBoxMind.ai.</Text>
                 <Text style={styles.bulletItem}>• Uso de datos anonimizados para el entrenamiento y mejora de nuestros algoritmos de IA.</Text>
                 <Text style={styles.bulletItem}>• Estudios estadísticos y de mercado internos.</Text>
 

@@ -88,14 +88,14 @@ const EntryDetailScreen = () => {
           : `\n\n🎯 Take Action: ${rec.title || 'Insight'}\n${rec.description || ''}`;
       }
 
-      const shareMessage = `BLACKBOX SESSION: ${entry.title || 'Untitled'}\n\n` +
+      const shareMessage = `BlackBoxMind SESSION: ${entry.title || 'Untitled'}\n\n` +
         `📝 Content:\n${entry.content}\n\n` +
         `🧠 AI Insight:\n${entry.summary || 'No analytics yet.'}` +
         recommendationText;
 
       await Share.share({
         message: shareMessage,
-        title: 'Share Blackbox Entry'
+        title: 'Share BlackBoxMind Entry'
       });
     } catch (error) {
       console.error('SHARE_ERROR:', error);
@@ -159,7 +159,7 @@ const EntryDetailScreen = () => {
 
       setEntry(data);
       setIsEditing(false);
-      Alert.alert("Éxito", "Tu memoria y el análisis de BLACKBOX han sido actualizados.");
+      Alert.alert("Éxito", "Tu memoria y el análisis de BlackBoxMind han sido actualizados.");
     } catch (error) {
       console.error('SAVE_ERROR:', error);
       Alert.alert("Error", "No se pudieron guardar los cambios.");
