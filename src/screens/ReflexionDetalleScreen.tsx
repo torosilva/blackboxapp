@@ -1,13 +1,18 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ChevronLeft, Sparkles, RefreshCw, ChevronRight } from 'lucide-react-native';
+import { SupabaseService } from '../services/SupabaseService';
+import { useAuth } from '../context/AuthContext';
 
 const ReflexionDetalleScreen = () => {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const { reflejo, loops = [], memories = [] } = route.params || {};
+    const { user } = useAuth();
+    const [historicalEvidence, setHistoricalEvidence] = useState<any[]>([]);
+    const [historicalLoading, setHistoricalLoading] = useState(false);
 
     const SAV = SafeAreaView as any;
     const TO = TouchableOpacity as any;
@@ -25,6 +30,22 @@ const ReflexionDetalleScreen = () => {
         if (days < 7) return `Hace ${days} días`;
         return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
     };
+
+    useEffect(() => {
+        if (!reflejo || !user?.id) return;
+        let cancelled = false;
+        setHistoricalLoading(true);
+        SupabaseService
+            .semanticSearch(user.id, String(reflejo).slice(0, 1500), { limit: 10 })
+            .then((res) => {
+                if (cancelled) return;
+                const recentIds = new Set((memories ?? []).map((m: any) => m.id));
+                const filtered = (res ?? []).filter((e: any) => !recentIds.has(e.id));
+                setHistoricalEvidence(filtered.slice(0, 5));
+            })
+            .finally(() => { if (!cancelled) setHistoricalLoading(false); });
+        return () => { cancelled = true; };
+    }, [reflejo, user?.id]);
 
     return (
         <SAV style={styles.container}>
@@ -77,7 +98,7 @@ const ReflexionDetalleScreen = () => {
                 {/* Related memories */}
                 {Array.isArray(memories) && memories.length > 0 && (
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>MEMORIAS RELACIONADAS</Text>
+                        <Text style={styles.sectionTitle}>EVIDENCIA RECIENTE</Text>
                         {memories.map((e: any) => (
                             <TO
                                 key={e.id}
@@ -87,6 +108,40 @@ const ReflexionDetalleScreen = () => {
                             >
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.memTitle} numberOfLines={1}>{e.title || 'Registro'}</Text>
+                                    <Text style={styles.memMeta}>
+                                        {fmtDate(e.created_at)}{e.category ? ` · ${e.category}` : ''}
+                                    </Text>
+                                </View>
+                                <CR size={16} color="#475569" />
+                            </TO>
+                        ))}
+                    </View>
+                )}
+
+                {historicalEvidence.length > 0 && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>EVIDENCIA HISTÓRICA</Text>
+                        <Text style={styles.sectionSub}>
+                            Tu propio historial confirma el patrón.
+                        </Text>
+                        {historicalEvidence.map((e: any) => (
+                            <TO
+                                key={e.id}
+                                style={styles.memCard}
+                                onPress={() => navigation.navigate('EntryDetail', { entryId: e.id })}
+                                activeOpacity={0.8}
+                            >
+                                <View style={{ flex: 1 }}>
+                                    <View style={styles.histCardHead}>
+                                        <Text style={styles.memTitle} numberOfLines={1}>
+                                            {e.title || 'Registro'}
+                                        </Text>
+                                        <View style={styles.histScorePill}>
+                                            <Text style={styles.histScoreText}>
+                                                {(e.similarity ?? 0).toFixed(2)}
+                                            </Text>
+                                        </View>
+                                    </View>
                                     <Text style={styles.memMeta}>
                                         {fmtDate(e.created_at)}{e.category ? ` · ${e.category}` : ''}
                                     </Text>
@@ -156,6 +211,33 @@ const styles = StyleSheet.create({
     },
     memTitle: { color: '#cbd5e1', fontSize: 14, fontWeight: '600' },
     memMeta: { color: '#64748b', fontSize: 12, fontWeight: '600', marginTop: 3, textTransform: 'capitalize' },
+
+    sectionSub: {
+        color: '#94a3b8',
+        fontSize: 12,
+        fontStyle: 'italic',
+        marginTop: -4,
+        marginBottom: 10,
+        letterSpacing: 0.3,
+    },
+    histCardHead: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 2,
+    },
+    histScorePill: {
+        backgroundColor: 'rgba(192,132,252,0.15)',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 8,
+    },
+    histScoreText: {
+        color: '#c084fc',
+        fontSize: 11,
+        fontWeight: '700',
+    },
 });
 
 export default ReflexionDetalleScreen;
