@@ -465,28 +465,30 @@ const CaptureScreen = () => {
                             <Text style={styles.statusSub}>Sin loops abiertos. Suelta lo que llegue.</Text>
                         </>
                     ) : (
-                        <View style={styles.headlineWrap}>
+                        <View style={styles.statsGrid}>
                             {!!stats && stats.closed > 0 && (
-                                <View style={styles.hlGroup}>
-                                    <Text style={[styles.headline, styles.hlPos]}>
-                                        {stats.closed}{NB}cerrado{stats.closed === 1 ? '' : 's'}{NB}esta{NB}semana
+                                <View style={styles.statCard}>
+                                    <Text style={[styles.statValue, styles.statValuePos]}>
+                                        {stats.closed}
                                     </Text>
-                                    <Text style={[styles.headline, styles.hlDot]}>{NB}·</Text>
+                                    <Text style={styles.statLabel}>CERRADOS</Text>
+                                    <Text style={styles.statSub}>esta semana</Text>
                                 </View>
                             )}
-                            <View style={styles.hlGroup}>
-                                <Text style={[styles.headline, styles.hlNeutral]}>
-                                    {stats?.open ?? 0}{NB}abierto{(stats?.open ?? 0) === 1 ? '' : 's'}
+                            <View style={styles.statCard}>
+                                <Text style={[styles.statValue, styles.statValueNeutral]}>
+                                    {stats?.open ?? 0}
                                 </Text>
-                                {!!stats && stats.stalled > 0 && (
-                                    <Text style={[styles.headline, styles.hlDot]}>{NB}·</Text>
-                                )}
+                                <Text style={styles.statLabel}>ABIERTOS</Text>
+                                <Text style={styles.statSub}> </Text>
                             </View>
                             {!!stats && stats.stalled > 0 && (
-                                <View style={styles.hlGroup}>
-                                    <Text style={[styles.headline, styles.hlWarn]}>
-                                        {stats.stalled}{NB}estancado{stats.stalled === 1 ? '' : 's'}
+                                <View style={styles.statCard}>
+                                    <Text style={[styles.statValue, styles.statValueWarn]}>
+                                        {stats.stalled}
                                     </Text>
+                                    <Text style={styles.statLabel}>ESTANCADOS</Text>
+                                    <Text style={styles.statSub}>{`>${STALE_DAYS} días`}</Text>
                                 </View>
                             )}
                         </View>
@@ -774,17 +776,46 @@ const styles = StyleSheet.create({
         marginRight: -6,
     },
 
-    // System state — momentum headline
+    // System state
     statusBlock: { marginBottom: 22 },
     statusMain: { color: '#f8fafc', fontSize: 28, fontWeight: '800', letterSpacing: 0.2 },
     statusSub: { color: '#94a3b8', fontSize: 15, fontWeight: '600', marginTop: 6, lineHeight: 21 },
-    headlineWrap: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 8, rowGap: 2 },
-    hlGroup: { flexDirection: 'row', alignItems: 'baseline' },
-    headline: { fontSize: 24, fontWeight: '800', lineHeight: 32, letterSpacing: 0.1 },
-    hlPos: { color: '#34d399' },
-    hlNeutral: { color: '#f1f5f9' },
-    hlWarn: { color: '#fbbf24' },
-    hlDot: { color: '#334155' },
+    statsGrid: {
+        flexDirection: 'row',
+        gap: 8,
+        marginBottom: 22,
+    },
+    statCard: {
+        flex: 1,
+        backgroundColor: '#151B2C',
+        borderColor: '#1E293B',
+        borderWidth: StyleSheet.hairlineWidth,
+        borderRadius: 12,
+        paddingVertical: 14,
+        paddingHorizontal: 12,
+    },
+    statValue: {
+        fontSize: 28,
+        fontWeight: '800',
+        lineHeight: 32,
+        letterSpacing: 0.2,
+    },
+    statValuePos: { color: '#34d399' },
+    statValueNeutral: { color: '#f1f5f9' },
+    statValueWarn: { color: '#f59e0b' },
+    statLabel: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#94a3b8',
+        letterSpacing: 1.5,
+        marginTop: 6,
+        textTransform: 'uppercase',
+    },
+    statSub: {
+        fontSize: 10,
+        color: '#64748b',
+        marginTop: 2,
+    },
 
     // Reflejo de hoy — third pillar
     reflejoCard: {
