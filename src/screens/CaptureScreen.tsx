@@ -8,7 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import {
     Mic, MicOff, ArrowUp, Plus, X, RefreshCw, ChevronRight, ChevronDown,
     LayoutDashboard, BarChart2, MessageCircle, ShieldAlert, Brain, Sparkles, MoreHorizontal,
-    Search as SearchIcon, Edit3, Settings as SettingsIcon,
+    Search as SearchIcon, Edit3, Settings as SettingsIcon, Send,
 } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
@@ -74,6 +74,8 @@ const CaptureScreen = () => {
     const { user, profile } = useAuth();
 
     const [content, setContent] = useState('');
+    const [draftText, setDraftText] = useState('');
+    const [isComposing, setIsComposing] = useState(false);
     const [loading, setLoading] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
     const [isTranscribing, setIsTranscribing] = useState(false);
@@ -332,6 +334,19 @@ const CaptureScreen = () => {
         await analyzeAndOpenVerdict(content, lastRecordingUri);
     };
 
+    // Inline text capture from the home input. Reuses analyzeAndOpenVerdict
+    // which already handles short-text alerts, network errors, and navigation
+    // to the verdict screen on success.
+    const submitTextCapture = async (text: string) => {
+        const trimmed = text.trim();
+        if (!trimmed) return;
+        const ok = await analyzeAndOpenVerdict(trimmed, null);
+        if (ok) {
+            setDraftText('');
+            setIsComposing(false);
+        }
+    };
+
     // Transcribe a saved recording, then route to the verdict. On a
     // connectivity failure keep the audio and surface a retry instead of
     // losing the user's words; on no-speech say so plainly.
@@ -399,6 +414,7 @@ const CaptureScreen = () => {
     const SI = SearchIcon as any;
     const E3 = Edit3 as any;
     const SG = SettingsIcon as any;
+    const Sn = Send as any;
     const LD = LayoutDashboard as any;
     const BC = BarChart2 as any;
     const MC = MessageCircle as any;
@@ -457,22 +473,44 @@ const CaptureScreen = () => {
                     </View>
                 </View>
 
-                {/* Dual input — text first, mic second. The floating mic FAB
-                    remains; this card is the day-1 wayfinder for new users
-                    who don't yet know they can long-press to type. */}
-                <TO
-                    onPress={() => navigation.navigate('NewEntry')}
-                    style={styles.textCaptureCard}
-                    activeOpacity={0.85}
-                >
-                    <View style={styles.textCaptureContent}>
-                        <E3 size={20} color="#94a3b8" strokeWidth={2} />
-                        <Text style={styles.textCapturePlaceholder}>
-                            ¿Qué tienes en mente? Escribe o habla.
-                        </Text>
-                    </View>
-                    <Mi size={18} color="#c084fc" strokeWidth={2.2} />
-                </TO>
+                {/* Inline dual input — type in place or tap the mic to dictate.
+                    The mic icon adapts to Send when there's draft text. No
+                    secondary floating FAB; this is the single capture entry. */}
+                <View style={styles.textCaptureCard}>
+                    <E3 size={18} color="#94a3b8" strokeWidth={2} />
+                    <TextInput
+                        style={styles.textCaptureInput}
+                        placeholder="¿Qué tienes en mente?"
+                        placeholderTextColor="#64748b"
+                        value={draftText}
+                        onChangeText={(t) => {
+                            setDraftText(t);
+                            setIsComposing(t.length > 0);
+                        }}
+                        onFocus={() => setIsComposing(true)}
+                        onBlur={() => setIsComposing(draftText.length > 0)}
+                        multiline
+                        maxLength={5000}
+                        editable={!loading && !isTranscribing}
+                    />
+                    {draftText.trim().length === 0 ? (
+                        <TO
+                            onPress={toggleRecording}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            disabled={loading || isTranscribing}
+                        >
+                            <Mi size={20} color="#c084fc" strokeWidth={2.2} />
+                        </TO>
+                    ) : (
+                        <TO
+                            onPress={() => submitTextCapture(draftText)}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            disabled={loading}
+                        >
+                            <Sn size={20} color="#c084fc" strokeWidth={2.2} />
+                        </TO>
+                    )}
+                </View>
 
                 {/* SYSTEM STATE — momentum first, backlog after. Units never break
                     mid-stat (nbsp) and the bullet is bound to its stat, so no
@@ -673,19 +711,6 @@ const CaptureScreen = () => {
                 </View>
             )}
 
-            {/* Single voice-capture FAB. Long-press to type instead. */}
-            <TO
-                style={[styles.micFab, isRecording && styles.micFabRec]}
-                onPress={toggleRecording}
-                onLongPress={() => setShowTextModal(true)}
-                disabled={loading || isTranscribing}
-                activeOpacity={0.85}
-            >
-                <Animated.View style={{ transform: [{ scale: isRecording ? dotAnim : pulseAnim }] }}>
-                    {isRecording ? <MO size={26} color="white" /> : <Mi size={26} color="white" />}
-                </Animated.View>
-            </TO>
-
             {/* Text capture sheet */}
             <Modal visible={showTextModal} transparent animationType="slide" onRequestClose={() => setShowTextModal(false)}>
                 <KeyboardAvoidingView
@@ -884,26 +909,24 @@ const styles = StyleSheet.create({
     textCaptureCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        gap: 12,
         backgroundColor: '#151B2C',
         borderColor: '#1E293B',
         borderWidth: 1,
         borderRadius: 14,
-        paddingVertical: 16,
+        paddingVertical: 14,
         paddingHorizontal: 16,
         marginTop: 8,
         marginBottom: 16,
+        minHeight: 56,
+        maxHeight: 200,
     },
-    textCaptureContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
+    textCaptureInput: {
         flex: 1,
-    },
-    textCapturePlaceholder: {
-        color: '#94a3b8',
+        color: '#f1f5f9',
         fontSize: 15,
-        flex: 1,
+        paddingVertical: 0,
+        textAlignVertical: 'center',
     },
     loopsCounter: { color: '#34d399', fontSize: 12, fontWeight: '400', marginTop: -6, marginBottom: 12 },
     sectionLink: { color: '#6366f1', fontSize: 13, fontWeight: '800' },
@@ -980,18 +1003,6 @@ const styles = StyleSheet.create({
     chipText: { color: '#cbd5e1', fontSize: 13, fontWeight: '600' },
 
     // Single floating voice-capture FAB
-    micFab: {
-        position: 'absolute',
-        right: 20,
-        bottom: 28,
-        width: 56, height: 56, borderRadius: 28,
-        backgroundColor: '#6366f1',
-        alignItems: 'center', justifyContent: 'center',
-        shadowColor: '#6366f1', shadowOpacity: 0.5, shadowRadius: 16, shadowOffset: { width: 0, height: 4 },
-        elevation: 6,
-    },
-    micFabRec: { backgroundColor: '#ef4444', shadowColor: '#ef4444' },
-
     recPill: {
         position: 'absolute',
         bottom: 96,
