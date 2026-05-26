@@ -221,14 +221,19 @@ const CaptureScreen = () => {
         return () => clearInterval(id);
     }, [isRecording]);
 
-    // Subtle mount animation for the cards group below the input. Single
-    // fade + slide-up; no stagger (kept simple intentionally).
+    // Mount animations split: stat cards get a distinct spring scale-in
+    // so they "land" with weight; the rest of the cards (reflejo, loops,
+    // memorias) gets a simple fade + slide-up so the eye doesn't bounce.
     const cardsOpacity = useRef(new Animated.Value(0)).current;
     const cardsTranslate = useRef(new Animated.Value(8)).current;
+    const statsOpacity = useRef(new Animated.Value(0)).current;
+    const statsScale = useRef(new Animated.Value(0.96)).current;
     useEffect(() => {
         Animated.parallel([
             Animated.timing(cardsOpacity, { toValue: 1, duration: 320, useNativeDriver: true }),
             Animated.timing(cardsTranslate, { toValue: 0, duration: 320, useNativeDriver: true }),
+            Animated.timing(statsOpacity, { toValue: 1, duration: 380, useNativeDriver: true }),
+            Animated.spring(statsScale, { toValue: 1, friction: 6, tension: 80, useNativeDriver: true }),
         ]).start();
     }, []);
 
@@ -579,33 +584,38 @@ const CaptureScreen = () => {
                             <Text style={styles.statusSub}>Sin loops abiertos. Suelta lo que llegue.</Text>
                         </>
                     ) : (
-                        <View style={styles.statsGrid}>
-                            {!!stats && stats.closed > 0 && (
+                        <Animated.View style={{
+                            opacity: statsOpacity,
+                            transform: [{ scale: statsScale }],
+                        }}>
+                            <View style={styles.statsGrid}>
+                                {!!stats && stats.closed > 0 && (
+                                    <View style={styles.statCard}>
+                                        <Text style={[styles.statValue, styles.statValuePos]}>
+                                            {stats.closed}
+                                        </Text>
+                                        <Text style={styles.statLabel}>COMPLETADAS</Text>
+                                        <Text style={styles.statSub}>esta semana</Text>
+                                    </View>
+                                )}
                                 <View style={styles.statCard}>
-                                    <Text style={[styles.statValue, styles.statValuePos]}>
-                                        {stats.closed}
+                                    <Text style={[styles.statValue, styles.statValueNeutral]}>
+                                        {stats?.open ?? 0}
                                     </Text>
-                                    <Text style={styles.statLabel}>COMPLETADAS</Text>
-                                    <Text style={styles.statSub}>esta semana</Text>
+                                    <Text style={styles.statLabel}>PENDIENTES</Text>
+                                    <Text style={styles.statSub}> </Text>
                                 </View>
-                            )}
-                            <View style={styles.statCard}>
-                                <Text style={[styles.statValue, styles.statValueNeutral]}>
-                                    {stats?.open ?? 0}
-                                </Text>
-                                <Text style={styles.statLabel}>PENDIENTES</Text>
-                                <Text style={styles.statSub}> </Text>
+                                {!!stats && stats.stalled > 0 && (
+                                    <View style={styles.statCard}>
+                                        <Text style={[styles.statValue, styles.statValueWarn]}>
+                                            {stats.stalled}
+                                        </Text>
+                                        <Text style={styles.statLabel}>SIN AVANCE</Text>
+                                        <Text style={styles.statSub}>{`>${STALE_DAYS} días`}</Text>
+                                    </View>
+                                )}
                             </View>
-                            {!!stats && stats.stalled > 0 && (
-                                <View style={styles.statCard}>
-                                    <Text style={[styles.statValue, styles.statValueWarn]}>
-                                        {stats.stalled}
-                                    </Text>
-                                    <Text style={styles.statLabel}>SIN AVANCE</Text>
-                                    <Text style={styles.statSub}>{`>${STALE_DAYS} días`}</Text>
-                                </View>
-                            )}
-                        </View>
+                        </Animated.View>
                     )}
                 </View>
 
@@ -880,16 +890,16 @@ const styles = StyleSheet.create({
     statCard: {
         flex: 1,
         backgroundColor: '#151B2C',
-        borderColor: '#1E293B',
+        borderColor: '#2D3548',
         borderWidth: 1.5,
-        borderRadius: 12,
-        paddingVertical: 14,
-        paddingHorizontal: 12,
+        borderRadius: 14,
+        paddingVertical: 16,
+        paddingHorizontal: 14,
         shadowColor: '#000000',
-        shadowOpacity: 0.35,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 3 },
-        elevation: 4,
+        shadowOpacity: 0.45,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 6,
     },
     statValue: {
         fontSize: 28,
@@ -922,11 +932,11 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         padding: 16,
         marginBottom: 28,
-        shadowColor: '#7C3AED',
+        shadowColor: '#000000',
         shadowOpacity: 0.25,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: 5,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 3,
     },
     reflejoHead: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 8 },
     reflejoLabel: { color: '#c084fc', fontSize: 11, fontWeight: '900', letterSpacing: 1.5 },
