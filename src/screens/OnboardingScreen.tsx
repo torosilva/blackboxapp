@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Brain, Mic, ArrowRight, Sparkles } from 'lucide-react-native';
+import { Brain, Mic, ArrowRight, Sparkles, Zap } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { SupabaseService } from '../services/SupabaseService';
 import { aiService } from '../services/ai';
