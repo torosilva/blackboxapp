@@ -4,6 +4,10 @@ import { getGlobalAccessToken } from '../context/AuthContext';
 export interface ChatMessage {
     role: 'user' | 'model';
     parts: { text: string }[];
+    // Local preview URI for an attached image, set only on the in-memory
+    // copy of the message so the user bubble can render the thumbnail.
+    // Not persisted to DB; absent on history loaded from Supabase.
+    imageUri?: string;
 }
 
 export interface EntryContext {
