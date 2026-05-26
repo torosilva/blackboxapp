@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { User, Heart, MessageSquare } from 'lucide-react-native';
+import { ChevronLeft, User, Heart, MessageSquare } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { SupabaseService } from '../services/SupabaseService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -166,7 +166,12 @@ const DashboardScreen = () => {
                     <RefreshControl refreshing={refreshing} onRefresh={fetchStats} tintColor="#6366f1" />
                 }
             >
-                <Text style={styles.vistaHeader}>Vista Estratégica</Text>
+                <View style={styles.headerRow}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                        <ChevronLeft size={28} color="#e2e8f0" />
+                    </TouchableOpacity>
+                    <Text style={[styles.vistaHeader, {flex: 1, textAlign: 'center', marginRight: 32, marginBottom: 0}]}>Dashboard Estratégico</Text>
+                </View>
 
                 {/* ESTADO ACTUAL — compact one-liner */}
                 <View style={styles.vistaCard}>
@@ -194,11 +199,16 @@ const DashboardScreen = () => {
                     {patterns.length === 0 ? (
                         <Text style={styles.vistaEmpty}>Sin patrones detectados aún.</Text>
                     ) : (
-                        patterns.map((p: any) => (
+                        patterns.slice(0, 5).map((p: any) => (
                             <Text key={p.id} style={styles.vistaPatternItem}>
                                 → {p.title} ({p.frequency} entradas)
                             </Text>
                         ))
+                    )}
+                    {patterns.length > 5 && (
+                        <TouchableOpacity onPress={() => Alert.alert('Patrones detectados', patterns.map((p:any) => '→ ' + p.title + ' (' + p.frequency + ' entradas)').join('\n\n'))} style={styles.verMasBtn}>
+                            <Text style={styles.verMasText}>Ver más ({patterns.length - 5})</Text>
+                        </TouchableOpacity>
                     )}
                 </View>
 
@@ -261,6 +271,10 @@ const DashboardScreen = () => {
 };
 
 const styles = StyleSheet.create({
+    headerRow: { flexDirection: 'row', alignItems: 'center', paddingTop: 4, marginBottom: 16 },
+    backBtn: { padding: 6 },
+    verMasBtn: { marginTop: 12, alignSelf: 'flex-start' },
+    verMasText: { color: '#6366f1', fontSize: 13, fontWeight: '700' },
     container: { flex: 1, backgroundColor: '#020617' },
     loadingContainer: { flex: 1, backgroundColor: '#020617', justifyContent: 'center', alignItems: 'center' },
     scroll: { flex: 1 },
