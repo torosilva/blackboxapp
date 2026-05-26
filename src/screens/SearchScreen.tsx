@@ -49,9 +49,30 @@ const SearchScreen = () => {
         setLoading(true);
         setError(null);
         try {
-            const data = await SupabaseService.semanticSearch(user.id, trimmed, { threshold: 0.5, limit: 20 });
+            const [semData, textData] = await Promise.all([
+                SupabaseService.semanticSearch(user.id, trimmed, { threshold: 0.5, limit: 20 }),
+                SupabaseService.textSearchEntries(user.id, trimmed, 20),
+            ]);
             if (lastQueryRef.current !== trimmed) return;
-            setResults(data || []);
+
+            const byId = new Map<string, SearchResult>();
+            for (const r of (semData || [])) byId.set(r.id, r);
+
+            const qLower = trimmed.toLowerCase();
+            for (const r of (textData || [])) {
+                const titleHit = (r.title || '').toLowerCase().includes(qLower);
+                const virtualSim = titleHit ? 0.99 : 0.85;
+                const existing = byId.get(r.id);
+                if (existing) {
+                    existing.similarity = Math.max(existing.similarity ?? 0, virtualSim);
+                } else {
+                    byId.set(r.id, { ...r, similarity: virtualSim });
+                }
+            }
+
+            const merged = Array.from(byId.values())
+                .sort((a, b) => (b.similarity ?? 0) - (a.similarity ?? 0));
+            setResults(merged);
             setLoading(false);
         } catch (e: any) {
             if (lastQueryRef.current !== trimmed) return;

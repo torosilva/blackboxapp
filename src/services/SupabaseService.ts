@@ -472,6 +472,36 @@ export const SupabaseService = {
     },
 
     /**
+     * Plain text (ILIKE) substring search on title and content.
+     * Used as fallback alongside semanticSearch so short queries like "Valida"
+     * still surface entries with matching titles regardless of embedding cosine.
+     * Returns entries shaped like SearchResult (similarity unset; caller assigns).
+     */
+    async textSearchEntries(userId: string, query: string, limit: number = 20): Promise<any[]> {
+        if (!query?.trim() || !userId) return [];
+        try {
+            // Escape ILIKE wildcards in user input
+            const escaped = query.trim().replace(/[%_\\]/g, '\\$&');
+            const pattern = `%${escaped}%`;
+            const { data, error } = await supabase
+                .from('entries')
+                .select('id, title, summary, content, mood_label, sentiment_score, category, created_at')
+                .eq('user_id', userId)
+                .or(`title.ilike.${pattern},content.ilike.${pattern}`)
+                .order('created_at', { ascending: false })
+                .limit(limit);
+            if (error) {
+                console.warn('SUPABASE_SERVICE: textSearchEntries error:', error.message);
+                return [];
+            }
+            return data || [];
+        } catch (e: any) {
+            console.warn('SUPABASE_SERVICE: textSearchEntries failed:', e?.message);
+            return [];
+        }
+    },
+
+    /**
      * Find entries semantically related to a given entry, using its existing
      * embedding (no new embedding generation needed). Excludes the entry itself
      * from results. Returns ranked by similarity desc.

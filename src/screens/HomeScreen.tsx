@@ -773,9 +773,11 @@ const HomeScreen = () => {
                   {entry.strategic_insight?.detected_bias && (
                     <AlertTriangle size={14} color="#f59e0b" style={{ marginRight: 6 }} />
                   )}
-                  <View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={styles.entryDate}>{new Date(entry.created_at).toLocaleDateString()}</Text>
-                    {!!entry.mood_label && <Text style={styles.moodBadge}>{entry.mood_label}</Text>}
+                    {!!entry.mood_label && (
+                      <Text style={styles.moodBadge} numberOfLines={1}>{entry.mood_label}</Text>
+                    )}
                   </View>
                   <TouchableOpacity
                     onPress={() => { setActiveFilter((entry.category || '').toUpperCase()); setShowFilters(true); }}
