@@ -221,19 +221,31 @@ const CaptureScreen = () => {
         return () => clearInterval(id);
     }, [isRecording]);
 
-    // Mount animations split: stat cards get a distinct spring scale-in
-    // so they "land" with weight; the rest of the cards (reflejo, loops,
-    // memorias) gets a simple fade + slide-up so the eye doesn't bounce.
+    // Mount animations: stat cards enter in cascade (0ms, 100ms, 200ms
+    // delay) with translateY+fade so each one is individually perceived.
+    // The rest of the cards (reflejo, loops, memorias) keeps the simple
+    // fade + slide-up so the eye doesn't bounce.
     const cardsOpacity = useRef(new Animated.Value(0)).current;
     const cardsTranslate = useRef(new Animated.Value(8)).current;
-    const statsOpacity = useRef(new Animated.Value(0)).current;
-    const statsScale = useRef(new Animated.Value(0.96)).current;
+    const card1Opacity = useRef(new Animated.Value(0)).current;
+    const card2Opacity = useRef(new Animated.Value(0)).current;
+    const card3Opacity = useRef(new Animated.Value(0)).current;
+    const card1Translate = useRef(new Animated.Value(20)).current;
+    const card2Translate = useRef(new Animated.Value(20)).current;
+    const card3Translate = useRef(new Animated.Value(20)).current;
     useEffect(() => {
+        const makeCardAnim = (op: Animated.Value, tr: Animated.Value, delay: number) =>
+            Animated.parallel([
+                Animated.timing(op, { toValue: 1, duration: 500, delay, useNativeDriver: true }),
+                Animated.spring(tr, { toValue: 0, friction: 7, tension: 50, delay, useNativeDriver: true }),
+            ]);
+
         Animated.parallel([
             Animated.timing(cardsOpacity, { toValue: 1, duration: 320, useNativeDriver: true }),
             Animated.timing(cardsTranslate, { toValue: 0, duration: 320, useNativeDriver: true }),
-            Animated.timing(statsOpacity, { toValue: 1, duration: 380, useNativeDriver: true }),
-            Animated.spring(statsScale, { toValue: 1, friction: 6, tension: 80, useNativeDriver: true }),
+            makeCardAnim(card1Opacity, card1Translate, 0),
+            makeCardAnim(card2Opacity, card2Translate, 100),
+            makeCardAnim(card3Opacity, card3Translate, 200),
         ]).start();
     }, []);
 
@@ -539,7 +551,7 @@ const CaptureScreen = () => {
                     <TextInput
                         style={styles.textCaptureInput}
                         placeholder="¿Qué tienes en mente?"
-                        placeholderTextColor="#64748b"
+                        placeholderTextColor="#94a3b8"
                         value={draftText}
                         onChangeText={(t) => {
                             setDraftText(t);
@@ -584,12 +596,13 @@ const CaptureScreen = () => {
                             <Text style={styles.statusSub}>Sin loops abiertos. Suelta lo que llegue.</Text>
                         </>
                     ) : (
-                        <Animated.View style={{
-                            opacity: statsOpacity,
-                            transform: [{ scale: statsScale }],
-                        }}>
-                            <View style={styles.statsGrid}>
-                                {!!stats && stats.closed > 0 && (
+                        <View style={styles.statsGrid}>
+                            {!!stats && stats.closed > 0 && (
+                                <Animated.View style={{
+                                    flex: 1,
+                                    opacity: card1Opacity,
+                                    transform: [{ translateY: card1Translate }],
+                                }}>
                                     <View style={styles.statCard}>
                                         <Text style={[styles.statValue, styles.statValuePos]}>
                                             {stats.closed}
@@ -597,7 +610,13 @@ const CaptureScreen = () => {
                                         <Text style={styles.statLabel}>COMPLETADAS</Text>
                                         <Text style={styles.statSub}>esta semana</Text>
                                     </View>
-                                )}
+                                </Animated.View>
+                            )}
+                            <Animated.View style={{
+                                flex: 1,
+                                opacity: card2Opacity,
+                                transform: [{ translateY: card2Translate }],
+                            }}>
                                 <View style={styles.statCard}>
                                     <Text style={[styles.statValue, styles.statValueNeutral]}>
                                         {stats?.open ?? 0}
@@ -605,7 +624,13 @@ const CaptureScreen = () => {
                                     <Text style={styles.statLabel}>PENDIENTES</Text>
                                     <Text style={styles.statSub}> </Text>
                                 </View>
-                                {!!stats && stats.stalled > 0 && (
+                            </Animated.View>
+                            {!!stats && stats.stalled > 0 && (
+                                <Animated.View style={{
+                                    flex: 1,
+                                    opacity: card3Opacity,
+                                    transform: [{ translateY: card3Translate }],
+                                }}>
                                     <View style={styles.statCard}>
                                         <Text style={[styles.statValue, styles.statValueWarn]}>
                                             {stats.stalled}
@@ -613,9 +638,9 @@ const CaptureScreen = () => {
                                         <Text style={styles.statLabel}>SIN AVANCE</Text>
                                         <Text style={styles.statSub}>{`>${STALE_DAYS} días`}</Text>
                                     </View>
-                                )}
-                            </View>
-                        </Animated.View>
+                                </Animated.View>
+                            )}
+                        </View>
                     )}
                 </View>
 
@@ -896,10 +921,10 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         paddingHorizontal: 14,
         shadowColor: '#000000',
-        shadowOpacity: 0.45,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: 6,
+        shadowOpacity: 0.6,
+        shadowRadius: 14,
+        shadowOffset: { width: 0, height: 6 },
+        elevation: 10,
     },
     statValue: {
         fontSize: 28,
@@ -975,21 +1000,27 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        backgroundColor: '#151B2C',
-        borderColor: '#1E293B',
-        borderWidth: 1,
+        backgroundColor: '#1A2236',
+        borderColor: 'rgba(192,132,252,0.25)',
+        borderWidth: 1.5,
         borderRadius: 14,
-        paddingVertical: 14,
+        paddingVertical: 18,
         paddingHorizontal: 16,
         marginTop: 8,
         marginBottom: 24,
-        minHeight: 56,
+        minHeight: 64,
         maxHeight: 200,
+        shadowColor: '#7C3AED',
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 3,
     },
     textCaptureInput: {
         flex: 1,
         color: '#f1f5f9',
-        fontSize: 15,
+        fontSize: 16,
+        fontWeight: '500',
         paddingVertical: 0,
         textAlignVertical: 'center',
     },
