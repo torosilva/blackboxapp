@@ -263,6 +263,33 @@ export const SupabaseService = {
     /**
      * 2. Save the Entry & AI Analysis to Database
      */
+    /**
+     * Count this user's entries in the last 24h (sliding window, not calendar
+     * day in user timezone — simpler and DST-safe). Used as a hard cap to
+     * protect Anthropic token cost from runaway loops or accidental rapid
+     * captures. On query failure returns 0 so callers default-allow rather
+     * than punish a user for a transient network blip.
+     */
+    async countEntriesLast24h(userId: string): Promise<number> {
+        if (!userId) return 0;
+        try {
+            const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+            const { count, error } = await supabase
+                .from('entries')
+                .select('id', { count: 'exact', head: true })
+                .eq('user_id', userId)
+                .gte('created_at', since);
+            if (error) {
+                console.warn('SUPABASE_SERVICE: countEntriesLast24h error:', error.message);
+                return 0;
+            }
+            return count ?? 0;
+        } catch (e: any) {
+            console.warn('SUPABASE_SERVICE: countEntriesLast24h failed:', e?.message);
+            return 0;
+        }
+    },
+
     async createEntry(entry: {
         user_id: string;
         title: string;

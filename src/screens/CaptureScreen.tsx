@@ -31,6 +31,38 @@ type Stats = {
 
 const NB = String.fromCharCode(160); // non-breaking space — keeps "354 abiertos" as one unit
 const STALE_DAYS = 14;
+const DAILY_ENTRY_CAP = 50; // hard cap of analyses per user per 24h to protect token cost
+
+// Cheap client-side heuristic to reject gibberish before paying for an
+// Anthropic analysis call. Returns true if the text looks like keyboard
+// mashing (no vowel words, very high consonant-to-vowel ratio, or a
+// short bigram that repeats unreasonably). False = looks human; let it
+// proceed to the AI. The existing minimum-length / word-count check
+// runs first and is still authoritative for very short inputs.
+const isLikelyIncoherent = (text: string): boolean => {
+    const t = (text || '').trim();
+    if (t.length < 10) return false; // covered by other check
+    const lower = t.toLowerCase();
+
+    const vowels = (lower.match(/[aeiouáéíóúü]/g) || []).length;
+    const consonants = (lower.match(/[bcdfghjklmnñpqrstvwxyz]/g) || []).length;
+    if (vowels === 0 && consonants > 4) return true;
+    if (vowels > 0 && consonants / vowels > 3) return true;
+
+    const compact = lower.replace(/\s+/g, '');
+    if (compact.length >= 6) {
+        const counts = new Map<string, number>();
+        for (let i = 0; i < compact.length - 1; i++) {
+            const bg = compact.slice(i, i + 2);
+            if (/^[a-záéíóúüñ]{2}$/.test(bg)) counts.set(bg, (counts.get(bg) || 0) + 1);
+        }
+        for (const c of counts.values()) {
+            if (compact.length < 50 && c >= 4) return true;
+            if (c >= 6) return true;
+        }
+    }
+    return false;
+};
 
 // SINGLE SOURCE OF TRUTH for loop counts. Every number on the home derives
 // from here. Note: `stalled` is a SUBSET of `open` (open loops untouched
@@ -244,6 +276,30 @@ const CaptureScreen = () => {
                 [{ text: 'Entendido' }]
             );
             return false;
+        }
+
+        if (isLikelyIncoherent(message)) {
+            Alert.alert(
+                'No te entendí',
+                'Tu texto parece tener letras al azar. Escribe una idea concreta — qué pasó, qué sentiste, qué decisión tienes en frente.',
+                [{ text: 'Entendido' }]
+            );
+            return false;
+        }
+
+        try {
+            const todayCount = await SupabaseService.countEntriesLast24h(user.id);
+            if (todayCount >= DAILY_ENTRY_CAP) {
+                Alert.alert(
+                    'Límite diario alcanzado',
+                    `Llegaste a ${DAILY_ENTRY_CAP} capturas en las últimas 24h. Esto protege la calidad de tus reportes y los costos de análisis. Vuelve más tarde.`,
+                    [{ text: 'Entendido' }]
+                );
+                return false;
+            }
+        } catch {
+            // Network fail on the count check shouldn't block legit capture.
+            // If we can't read the count, default-allow rather than punish.
         }
 
         setLoading(true);
