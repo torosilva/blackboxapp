@@ -11,21 +11,54 @@ import {
     Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Shield, ChevronLeft, Lock } from 'lucide-react-native';
+import { Shield, ChevronLeft, Lock, Award, Download } from 'lucide-react-native';
 import { useNavigation, NavigationRouteContext } from '@react-navigation/native';
 import { SupabaseService } from '../services/SupabaseService';
 import { useAuth } from '../context/AuthContext';
+import { generateAndSharePrivacyPact, generateCertId } from '../utils/generatePrivacyPact';
 
 const PrivacyScreen = ({ isMandatory: propIsMandatory }: { isMandatory?: boolean }) => {
     const navigation = useNavigation<any>();
     const route: any = React.useContext(NavigationRouteContext);
-    const { user, refreshProfile } = useAuth();
+    const { user, profile, refreshProfile } = useAuth();
 
     const SAV = SafeAreaView as any;
     const TO = TouchableOpacity as any;
     const Sh = Shield as any;
     const CL = ChevronLeft as any;
     const L = Lock as any;
+    const Aw = Award as any;
+    const Dl = Download as any;
+
+    const userName = profile?.full_name || user?.email?.split('@')[0] || 'Usuario';
+    const userEmail = user?.email || '';
+    const issueDate = new Date();
+    const certId = user?.id ? generateCertId(user.id, issueDate) : 'BBM-PENDING';
+    const formattedDate = issueDate.toLocaleDateString('es-MX', {
+        day: 'numeric', month: 'long', year: 'numeric',
+    });
+
+    const [downloadingPact, setDownloadingPact] = useState(false);
+
+    const handleDownloadPact = async () => {
+        if (!user?.id) {
+            Alert.alert('Inicia sesión', 'Necesitas estar autenticado para descargar tu certificado.');
+            return;
+        }
+        setDownloadingPact(true);
+        try {
+            await generateAndSharePrivacyPact({
+                userId: user.id,
+                userEmail,
+                userName,
+                issueDate,
+            });
+        } catch (e) {
+            Alert.alert('Error', 'No se pudo generar el certificado. Intenta de nuevo.');
+        } finally {
+            setDownloadingPact(false);
+        }
+    };
 
     const [loading, setLoading] = useState(false);
 
@@ -70,6 +103,60 @@ const PrivacyScreen = ({ isMandatory: propIsMandatory }: { isMandatory?: boolean
             </View>
 
             <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
+                <View style={styles.certCard}>
+                    <View style={styles.certHeader}>
+                        <View style={styles.certBrandRow}>
+                            <Aw size={14} color="#c084fc" />
+                            <Text style={styles.certBrandText}>BLACKBOXMIND.AI</Text>
+                        </View>
+                        <View style={styles.certStatusPill}>
+                            <View style={styles.certStatusDot} />
+                            <Text style={styles.certStatusText}>ACTIVO</Text>
+                        </View>
+                    </View>
+
+                    <Text style={styles.certTitle}>Certificado de Privacidad</Text>
+                    <Text style={styles.certSubtitle}>Personal e individual</Text>
+
+                    <View style={styles.certDivider} />
+
+                    <Text style={styles.certRecipientLabel}>EMITIDO A NOMBRE DE</Text>
+                    <Text style={styles.certRecipientName} numberOfLines={2}>{userName}</Text>
+                    {!!userEmail && (
+                        <Text style={styles.certRecipientEmail} numberOfLines={1}>{userEmail}</Text>
+                    )}
+
+                    <View style={styles.certMetaRow}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.certMetaLabel}>ID DEL CERTIFICADO</Text>
+                            <Text style={styles.certMetaValue} numberOfLines={1}>{certId}</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.certMetaLabel}>EMITIDO</Text>
+                            <Text style={styles.certMetaValue} numberOfLines={1}>{formattedDate}</Text>
+                        </View>
+                    </View>
+
+                    <TO
+                        style={[styles.certBtn, downloadingPact && styles.certBtnDisabled]}
+                        onPress={handleDownloadPact}
+                        disabled={downloadingPact}
+                    >
+                        {downloadingPact ? (
+                            <ActivityIndicator color="#FFFFFF" size="small" />
+                        ) : (
+                            <>
+                                <Dl size={16} color="#FFFFFF" />
+                                <Text style={styles.certBtnText}>Descargar PDF oficial</Text>
+                            </>
+                        )}
+                    </TO>
+
+                    <Text style={styles.certFooterNote}>
+                        El PDF incluye los 6 compromisos detallados, firmado por Mario Toro Silva, Fundador.
+                    </Text>
+                </View>
+
                 <View style={styles.humanSection}>
                     <View style={styles.humanHeader}>
                         <L size={18} color="#c084fc" />
@@ -273,6 +360,84 @@ const styles = StyleSheet.create({
     humanItemNum: { color: '#c084fc', fontSize: 18, fontWeight: '800', width: 28 },
     humanItemTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '700', marginBottom: 4 },
     humanItemBody: { color: '#cbd5e1', fontSize: 13, lineHeight: 19 },
+    certCard: {
+        backgroundColor: '#0f172a',
+        borderColor: 'rgba(192, 132, 252, 0.35)',
+        borderWidth: 1,
+        borderRadius: 16,
+        padding: 20,
+        marginBottom: 20,
+        shadowColor: '#c084fc',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 6,
+    },
+    certHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    certBrandRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    certBrandText: { color: '#c084fc', fontSize: 10, fontWeight: '800', letterSpacing: 2 },
+    certStatusPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: 'rgba(16, 185, 129, 0.12)',
+        borderColor: 'rgba(16, 185, 129, 0.3)',
+        borderWidth: 1,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    certStatusDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#10b981',
+    },
+    certStatusText: { color: '#10b981', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+    certTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', letterSpacing: -0.3 },
+    certSubtitle: { color: '#94a3b8', fontSize: 12, marginTop: 2 },
+    certDivider: {
+        height: 1,
+        backgroundColor: 'rgba(192, 132, 252, 0.18)',
+        marginVertical: 18,
+    },
+    certRecipientLabel: { color: '#c084fc', fontSize: 10, fontWeight: '700', letterSpacing: 1.8, marginBottom: 6 },
+    certRecipientName: { color: '#FFFFFF', fontSize: 20, fontWeight: '700', marginBottom: 2 },
+    certRecipientEmail: { color: '#94a3b8', fontSize: 13 },
+    certMetaRow: {
+        flexDirection: 'row',
+        gap: 16,
+        marginTop: 20,
+        marginBottom: 20,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255, 255, 255, 0.05)',
+    },
+    certMetaLabel: { color: '#64748b', fontSize: 9, fontWeight: '700', letterSpacing: 1.2, marginBottom: 4 },
+    certMetaValue: { color: '#cbd5e1', fontSize: 12, fontWeight: '600' },
+    certBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: '#c084fc',
+        paddingVertical: 14,
+        borderRadius: 12,
+    },
+    certBtnDisabled: { opacity: 0.6 },
+    certBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700', letterSpacing: 0.3 },
+    certFooterNote: {
+        color: '#64748b',
+        fontSize: 11,
+        textAlign: 'center',
+        marginTop: 12,
+        lineHeight: 16,
+    },
 });
 
 export default PrivacyScreen;

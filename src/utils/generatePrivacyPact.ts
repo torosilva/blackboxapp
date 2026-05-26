@@ -8,7 +8,7 @@ export interface PrivacyPactInput {
   issueDate?: Date;
 }
 
-function generateCertId(userId: string, issueDate: Date): string {
+export function generateCertId(userId: string, issueDate: Date): string {
   const datePart = issueDate.toISOString().slice(0, 10).replace(/-/g, '');
   const userPart = userId.slice(0, 8).toUpperCase();
   return `BBM-${userPart}-${datePart}`;
