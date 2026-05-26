@@ -7,53 +7,17 @@ import {
     ScrollView,
     StatusBar,
     ActivityIndicator,
-    Image,
-    Platform,
     RefreshControl,
-    Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { 
-    Target, 
-    Zap, 
-    Brain, 
-    ChevronRight, 
-    LayoutDashboard, 
-    Sparkles,
-    CheckCircle2,
-    Clock,
-    User,
-    Briefcase,
-    Heart,
-    MessageSquare,
-    MessageCircle,
-    Mic,
-    AlertTriangle,
-    ShieldAlert,
-    Stethoscope,
-    Box,
-    Calendar,
-    TrendingUp,
-    Activity,
-    RotateCcw
-} from 'lucide-react-native';
+import { User, Heart, MessageSquare } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { SupabaseService } from '../services/SupabaseService';
-import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import WhatsNewModal from '../components/WhatsNewModal';
-import Animated, { 
-    useSharedValue, 
-    useAnimatedStyle, 
-    withRepeat, 
-    withSequence, 
-    withTiming, 
-    withDelay 
-} from 'react-native-reanimated';
 
 const DashboardScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -71,22 +35,16 @@ const DashboardScreen = () => {
         latestEntry: null as any
     });
     const [recentThreads, setRecentThreads] = useState<any[]>([]);
-    // Executive view: everything analytical is collapsed by default.
-    const [showDetail, setShowDetail] = useState(false);
     const [stalledLoopsPct, setStalledLoopsPct] = useState(0);
     const [patterns, setPatterns] = useState<any[]>([]);
     const [onboardingChecked, setOnboardingChecked] = useState(false);
-    const [appointmentDate, setAppointmentDate] = useState(new Date());
-    const [showDatePicker, setShowDatePicker] = useState(false);
-    const [isAnalyzingPatterns, setIsAnalyzingPatterns] = useState(false);
-    const [analysisPhase, setAnalysisPhase] = useState("");
-    const [analysisProgress, setAnalysisProgress] = useState(0);
-    const [strategicProfile, setStrategicProfile] = useState<any>(null);
-    
-    // Animation shared values
-    const floatValue = useSharedValue(0);
-    const pulseValue = useSharedValue(1);
-
+    const [goalsList, setGoalsList] = useState<any[]>([]);
+    const [captureRhythm, setCaptureRhythm] = useState<{ thisWeek: number; weeklyAverage: number; streak: number }>({
+        thisWeek: 0, weeklyAverage: 0, streak: 0
+    });
+    const [monthlyUsage, setMonthlyUsage] = useState<{ chats: number; searches: number; reflexes: number }>({
+        chats: 0, searches: 0, reflexes: 0
+    });
     useEffect(() => {
         if (isFocused && user && !onboardingChecked) {
             fetchStats();
@@ -96,23 +54,6 @@ const DashboardScreen = () => {
             fetchStats();
         }
     }, [isFocused, user, onboardingChecked]);
-
-    useEffect(() => {
-        // Subtle floating / breathing animation
-        floatValue.value = withRepeat(
-            withSequence(
-                withTiming(1, { duration: 2500 }),
-                withTiming(0, { duration: 2500 })
-            ),
-            -1,
-            true
-        );
-        pulseValue.value = withRepeat(
-            withTiming(1.05, { duration: 1500 }),
-            -1,
-            true
-        );
-    }, []);
 
     const checkOnboarding = async () => {
         try {
@@ -139,6 +80,7 @@ const DashboardScreen = () => {
             const totalGoals = goals ? goals.length : 0;
             const completedGoals = goals ? goals.filter((g: any) => g.is_completed).length : 0;
             const goalPercent = totalGoals > 0 ? Math.round((completedGoals / totalGoals) * 100) : 0;
+            setGoalsList(goals || []);
 
             // ── 3. Fetch entries for Interventions list ────────────────────────
             const entries = await SupabaseService.getEntries(user.id);
@@ -173,9 +115,13 @@ const DashboardScreen = () => {
             const pats = await SupabaseService.getUserPatterns(user.id);
             setPatterns(pats || []);
 
-            // ── 7. Fetch Strategic Profile (Long-term Memory) ───────────────────
-            const profile = await SupabaseService.getStrategicProfile(user.id);
-            setStrategicProfile(profile);
+            // ── 7. Capture rhythm (this week / weekly avg / streak) ─────────────
+            const rhythm = await SupabaseService.getCaptureRhythm(user.id);
+            setCaptureRhythm(rhythm);
+
+            // ── 8. Monthly AI usage counters ────────────────────────────────────
+            const usage = await SupabaseService.getMonthlyUsage(user.id);
+            setMonthlyUsage(usage);
 
         } catch (error) {
             console.error('DASHBOARD_FETCH_ERROR:', error);
@@ -186,117 +132,7 @@ const DashboardScreen = () => {
         }
     };
 
-    const handleSeedSample = async () => {
-        if (!user) return;
-        setLoading(true);
-        try {
-            await SupabaseService.seedWelcomeEntry(user.id);
-            await fetchStats();
-        } catch (error) {
-            console.error('DASHBOARD: Error seeding sample:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const getGreeting = () => {
-        const hour = new Date().getHours();
-        if (hour < 12) return 'Buenos días';
-        if (hour < 18) return 'Buenas tardes';
-        return 'Buenas noches';
-    };
-
-    const handleManualPatternAnalysis = async () => {
-        if (!user || isAnalyzingPatterns) return;
-        
-        Alert.alert(
-            "Auditoría Estratégica",
-            `Analizaremos tus ${stats.totalMemories} memorias para consolidar tu perfil cognitivo de largo plazo.`,
-            [
-                { text: "Cancelar", style: "cancel" },
-                {
-                    text: "Iniciar Auditoría",
-                    onPress: () => runPatternAnalysis()
-                }
-            ]
-        );
-    };
-
-    const runPatternAnalysis = async () => {
-        if (!user || isAnalyzingPatterns) return;
-        setIsAnalyzingPatterns(true);
-        setAnalysisProgress(0);
-        setAnalysisPhase("Iniciando conexión con núcleo estratégico...");
-
-        try {
-            console.log('DASHBOARD: Strategic audit loop started...');
-            
-            // Real-feel progress animation (0-90% while EF works)
-            let currentProgress = 0;
-            const progressInterval = setInterval(() => {
-                currentProgress += Math.random() * 5;
-                if (currentProgress > 92) {
-                    clearInterval(progressInterval);
-                } else {
-                    setAnalysisProgress(currentProgress);
-                    if (currentProgress < 30) setAnalysisPhase("Fase 1/3: Recuperando histórico militar...");
-                    else if (currentProgress < 70) setAnalysisPhase("Fase 2/3: Detectando sesgos y loops abiertos...");
-                    else setAnalysisPhase("Fase 3/3: Sincronizando Perfil Longitudinal...");
-                }
-            }, 800);
-
-            const result = await SupabaseService.triggerPatternAnalysis(user.id);
-            clearInterval(progressInterval);
-
-            if (result.success && result.count > 0) {
-                setAnalysisProgress(100);
-                await fetchStats();
-                Alert.alert(
-                    "¡Perfil Sincronizado!",
-                    `Se detectaron ${result.count} patrón(es) cognitivo(s). Ya están disponibles abajo.`,
-                    [{ text: "Ver Resultados" }]
-                );
-            } else if (result.success && result.count === 0) {
-                setAnalysisProgress(0);
-                await fetchStats();
-                Alert.alert(
-                    "Análisis Incompleto",
-                    "La auditoría se ejecutó pero no detectó patrones nuevos. Esto puede deberse a que la función no está actualizada. Contacta soporte.",
-                    [{ text: "Entendido" }]
-                );
-            } else {
-                setAnalysisProgress(0);
-                Alert.alert("Error Técnico", "No pudimos completar la auditoría. Verifica tu conexión.");
-            }
-        } catch (err) {
-            console.error('DASHBOARD: Deep audit failed:', err);
-        } finally {
-            setIsAnalyzingPatterns(false);
-            setAnalysisPhase("");
-            setAnalysisProgress(0);
-        }
-    };
-    
-    const onDateChange = (event: any, selectedDate?: Date) => {
-        setShowDatePicker(false);
-        if (selectedDate) {
-            setAppointmentDate(selectedDate);
-        }
-    };
-
-    const TO = TouchableOpacity as any;
     const SAV = SafeAreaView as any;
-    const LG = LinearGradient as any;
-
-    const animatedLogoStyle = useAnimatedStyle(() => {
-        return {
-            transform: [
-                { translateY: floatValue.value * -8 },
-                { scale: pulseValue.value }
-            ],
-            opacity: 0.9
-        };
-    });
 
     if (loading && !refreshing) {
         return (
@@ -306,142 +142,104 @@ const DashboardScreen = () => {
         );
     }
 
+    // Goal categorisation: a goal is "en riesgo" when due within the next
+    // 7 days (overdue counts as at risk too). Everything else active
+    // (future-due or no due date) is "en curso".
+    const todayRef = new Date();
+    const sevenDaysAhead = new Date(todayRef.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const activeGoalsList = goalsList.filter((g: any) => !g.is_completed);
+    const goalsEnRiesgo = activeGoalsList.filter((g: any) => {
+        if (!g.due_date) return false;
+        return new Date(g.due_date) <= sevenDaysAhead;
+    }).length;
+    const goalsEnCurso = activeGoalsList.length - goalsEnRiesgo;
+
     return (
         <>
         <SAV style={styles.container}>
             <StatusBar barStyle="light-content" />
-            <ScrollView 
-                style={styles.scroll} 
+            <ScrollView
+                style={styles.scroll}
                 showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 40 }}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={fetchStats} tintColor="#6366f1" />
                 }
             >
-                {/* Stats Grid */}
-                {showDetail && (
-                <View style={styles.statsGrid}>
-                    <TO style={styles.statCard} onPress={() => navigation.navigate('Home')}>
-                        <LG colors={['#1e293b', '#0f172a']} style={styles.cardGradient}>
-                            <Brain size={20} color="#6366f1" />
-                            <Text style={styles.statValue}>{stats.totalMemories}</Text>
-                            <Text style={styles.statLabel}>Memorias</Text>
-                        </LG>
-                    </TO>
-                    <TO style={styles.statCard} onPress={() => navigation.navigate('Settings', { initialViewMode: 'pending' })}>
-                        <LG colors={['#1e293b', '#0f172a']} style={styles.cardGradient}>
-                            <Zap size={20} color="#facc15" />
-                            <Text style={styles.statValue}>{stats.activeLoops}</Text>
-                            <Text style={styles.statLabel}>Active Loops</Text>
-                        </LG>
-                    </TO>
-                    <TO style={styles.statCard} onPress={() => navigation.navigate('Settings', { initialViewMode: 'hub' })}>
-                        <LG colors={['#1e293b', '#0f172a']} style={styles.cardGradient}>
-                            <CheckCircle2 size={20} color="#10b981" />
-                            <Text style={stats.goalPercentage === 100 && stats.totalGoals > 0 ? [styles.statValue, { color: '#10b981' }] : styles.statValue}>
-                                {stats.completedGoals}/{stats.totalGoals}
-                            </Text>
-                            <Text style={styles.statLabel}>Metas ({stats.goalPercentage}%)</Text>
-                        </LG>
-                    </TO>
-                </View>
-                )}
+                <Text style={styles.vistaHeader}>Vista Estratégica</Text>
 
-                {/* QuickCapture Banner (v5.9.7 - NEW PROMINENT LOCATION) */}
-                <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
-                    <TO
-                        onPress={() => navigation.navigate('Main')}
-                        activeOpacity={0.8}
-                        style={styles.quickCaptureBanner}
-                    >
-                        <LG colors={['#6366f1', '#4f46e5']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={styles.quickCaptureGradient}>
-                            <View style={styles.quickCaptureIconContainer}>
-                                <Mic size={24} color="white" />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.quickCaptureTitle}>Capturar Pensamiento</Text>
-                                <Text style={styles.quickCaptureSubtitle}>Libera tu sobrecarga mental ahora</Text>
-                            </View>
-                            <ChevronRight size={20} color="white" />
-                        </LG>
-                    </TO>
-                </View>
-
-                {/* Executive status headline — the one line that matters */}
-                <View style={{ paddingHorizontal: 20, paddingTop: 10, marginBottom: 16 }}>
-                    <Text style={{ color: '#e2e8f0', fontSize: 15, fontWeight: '700', lineHeight: 22 }}>
-                        {stats.activeLoops > 5
-                            ? `${stats.activeLoops} loops abiertos. Hoy: purga, cero decisiones nuevas.`
-                            : 'Sin intervención urgente. Captura lo que tengas en mente.'}
+                {/* ESTADO ACTUAL — compact one-liner */}
+                <View style={styles.vistaCard}>
+                    <Text style={styles.vistaCardTitle}>ESTADO ACTUAL</Text>
+                    <Text style={styles.vistaLine}>
+                        {stats.activeLoops} loops abiertos · {stalledLoopsPct}% sin avance &gt;14 días
                     </Text>
-                    <TO
-                        onPress={() => setShowDetail(v => !v)}
-                        style={{ marginTop: 12, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center' }}
-                        activeOpacity={0.7}
-                    >
-                        <Text style={{ color: '#6366f1', fontSize: 13, fontWeight: '800', letterSpacing: 0.5 }}>
-                            {showDetail ? 'OCULTAR DETALLE ▴' : 'VER DETALLE ▾'}
-                        </Text>
-                    </TO>
                 </View>
 
-                {/* Strategic Analysis Report Box (v5.9.6 - MOVED UP) */}
-                {showDetail && (
-                <View style={[styles.insightSection, { marginTop: 0, marginBottom: 20, borderColor: 'rgba(168, 85, 247, 0.4)' }]}>
-                    <LG colors={['rgba(168, 85, 247, 0.15)', 'rgba(0, 0, 0, 0)']} style={styles.insightGradient}>
-                        <View style={styles.insightHeader}>
-                           <Stethoscope size={16} color="#a855f7" />
-                           <Text style={[styles.insightTitle, { color: '#a855f7' }]}>ESTADO ACTUAL</Text>
-                        </View>
-                        <View style={styles.reportGrid}>
-                            <View style={styles.reportItem}>
-                                <Text style={styles.reportValue}>{stats.totalMemories > 0 ? Math.round((stats.completedGoals / stats.totalMemories) * 100) : 0}%</Text>
-                                <Text style={styles.reportLabel}>Ratio de Ejecución</Text>
-                            </View>
-                            <View style={[styles.reportItem, { borderLeftWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }]}>
-                                <Text style={styles.reportValue}>{stats.activeLoops}</Text>
-                                <Text style={styles.reportLabel}>Loops Abiertos</Text>
-                            </View>
-                        </View>
-                        <Text style={styles.reportVerdict}>
-                            {stats.activeLoops > 0
-                                ? `Tienes ${stats.activeLoops} loops abiertos, ${stalledLoopsPct}% sin avance hace >14 días.`
-                                : 'Sin loops abiertos. Capacidad cognitiva disponible para retos nuevos.'}
-                        </Text>
-                    </LG>
+                {/* PROGRESO A METAS */}
+                <View style={styles.vistaCard}>
+                    <Text style={styles.vistaCardTitle}>PROGRESO A METAS</Text>
+                    <View style={styles.vistaGoalsRow}>
+                        <Text style={styles.vistaBigNumber}>{stats.completedGoals} / {stats.totalGoals}</Text>
+                        <Text style={styles.vistaSubPercent}>{stats.goalPercentage}%</Text>
+                    </View>
+                    <Text style={styles.vistaLine}>
+                        En curso: {goalsEnCurso} · En riesgo: {goalsEnRiesgo}
+                    </Text>
                 </View>
-                )}
 
-                {/* Recent Conversations */}
+                {/* PATRONES DETECTADOS */}
+                <View style={styles.vistaCard}>
+                    <Text style={styles.vistaCardTitle}>PATRONES DETECTADOS</Text>
+                    {patterns.length === 0 ? (
+                        <Text style={styles.vistaEmpty}>Sin patrones detectados aún.</Text>
+                    ) : (
+                        patterns.map((p: any) => (
+                            <Text key={p.id} style={styles.vistaPatternItem}>
+                                → {p.title} ({p.frequency} entradas)
+                            </Text>
+                        ))
+                    )}
+                </View>
+
+                {/* RITMO DE CAPTURA */}
+                <View style={styles.vistaCard}>
+                    <Text style={styles.vistaCardTitle}>RITMO DE CAPTURA</Text>
+                    <Text style={styles.vistaLine}>
+                        Esta semana: {captureRhythm.thisWeek} · Promedio: {captureRhythm.weeklyAverage}/sem · Streak: {captureRhythm.streak} días
+                    </Text>
+                </View>
+
+                {/* USO ESTE MES */}
+                <View style={styles.vistaCard}>
+                    <Text style={styles.vistaCardTitle}>USO ESTE MES</Text>
+                    <Text style={styles.vistaLine}>
+                        Chats: {monthlyUsage.chats} · Búsquedas: {monthlyUsage.searches} · Reflejos: {monthlyUsage.reflexes}
+                    </Text>
+                </View>
+
+                {/* HISTORIAL DE CHATS */}
                 {recentThreads.length > 0 && (
-                    <View style={styles.recentChatsSection}>
-                        <View style={styles.sectionHeader}>
-                            <TO onPress={() => navigation.navigate('ChatHub' as any)}>
-                                <Text style={styles.sectionTitle}>HISTORIAL DE CHATS</Text>
-                            </TO>
-                            <TO onPress={() => navigation.navigate('ChatHub' as any)}>
-                                <Text style={styles.viewMoreText}>Ver todos</Text>
-                            </TO>
+                    <View style={styles.vistaCard}>
+                        <View style={styles.vistaHistorialHeader}>
+                            <Text style={styles.vistaCardTitle}>HISTORIAL DE CHATS</Text>
+                            <TouchableOpacity onPress={() => navigation.navigate('ChatHub' as any)}>
+                                <Text style={styles.vistaSeeAll}>Ver todos</Text>
+                            </TouchableOpacity>
                         </View>
-                        <ScrollView 
-                            horizontal 
-                            showsHorizontalScrollIndicator={false} 
-                            contentContainerStyle={styles.recentChatsScroll}
-                        >
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingTop: 12 }}>
                             {recentThreads.map((thread) => {
                                 let iconColor = '#818cf8';
-                                let Icon = MessageSquare;
+                                let Icon: any = MessageSquare;
                                 if (thread.category === 'BUSINESS') iconColor = '#818cf8';
                                 else if (thread.category === 'PERSONAL') { iconColor = '#facc15'; Icon = User; }
                                 else if (thread.category === 'HEALTH') { iconColor = '#10b981'; Icon = Heart; }
-                                
                                 return (
-                                    <TO 
-                                        key={thread.id} 
+                                    <TouchableOpacity
+                                        key={thread.id}
                                         style={styles.chatCard}
                                         onPress={() => navigation.navigate('Chat' as any, {
-                                            threadId: thread.id,
-                                            category: thread.category,
-                                            title: thread.title
+                                            threadId: thread.id, category: thread.category, title: thread.title
                                         })}
                                     >
                                         <View style={[styles.chatIconContainer, { backgroundColor: `${iconColor}20` }]}>
@@ -449,291 +247,12 @@ const DashboardScreen = () => {
                                         </View>
                                         <Text style={styles.chatCardTitle} numberOfLines={1}>{thread.title}</Text>
                                         <Text style={styles.chatCardDate}>{new Date(thread.updated_at).toLocaleDateString()}</Text>
-                                    </TO>
+                                    </TouchableOpacity>
                                 );
                             })}
                         </ScrollView>
                     </View>
                 )}
-                {showDetail && (<>
-                {/* Strategic Analysis Section (v5.9.8 - REPLACED ACTION AREA) */}
-                <View style={[styles.insightSection, { marginTop: 10 }]}>
-                    <LG colors={['rgba(99, 102, 241, 0.1)', 'rgba(0, 0, 0, 0)']} style={styles.insightGradient}>
-                        <View style={styles.insightHeader}>
-                            <Stethoscope size={20} color="#a855f7" />
-                            <Text style={[styles.insightTitle, { color: '#a855f7' }]}>ANÁLISIS ESTRATÉGICO</Text>
-                        </View>
-                        <Text style={styles.latestInsight}>
-                            Genera un reporte detallado de los 7 días previos a tu sesión de rendimiento para maximizar tu ejecución.
-                        </Text>
-                        
-                        <TO style={styles.dateSelector} onPress={() => setShowDatePicker(true)}>
-                            <Calendar size={18} color="#94a3b8" />
-                            <Text style={styles.dateText}>Fin del reporte: {appointmentDate.toLocaleDateString()}</Text>
-                        </TO>
-
-                        {!!showDatePicker && (
-                            <DateTimePicker
-                                value={appointmentDate}
-                                mode="date"
-                                display="default"
-                                onChange={onDateChange}
-                                maximumDate={new Date()}
-                            />
-                        )}
-
-                        <TO
-                            style={[styles.mainBtn, { marginTop: 15 }]}
-                            onPress={() => navigation.navigate('WeeklyReport', { reportEndDate: appointmentDate.toISOString() })}
-                        >
-                            <LG colors={['#6366f1', '#4f46e5']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={styles.btnGradient}>
-                                <Sparkles size={20} color="white" style={{marginRight: 10}} />
-                                <Text style={styles.mainBtnText}>Generar Reporte Estratégico</Text>
-                                <ChevronRight size={20} color="white" style={{marginLeft: 'auto'}} />
-                            </LG>
-                        </TO>
-                    </LG>
-                </View>
-
-                    {/* ─── PERFIL ESTRATÉGICO (COGNITIVE IDENTITY) ────────────────── */}
-                    {strategicProfile && (
-                        <View style={{
-                            marginHorizontal: 16,
-                            marginBottom: 20,
-                            padding: 20,
-                            borderRadius: 24,
-                            backgroundColor: 'rgba(99, 102, 241, 0.08)',
-                            borderWidth: 1,
-                            borderColor: 'rgba(99, 102, 241, 0.2)',
-                            borderStyle: 'dashed'
-                        }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(99, 102, 241, 0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                                    <Text style={{ fontSize: 16 }}>🧠</Text>
-                                </View>
-                                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.5 }}>
-                                    PERFIL ESTRATÉGICO
-                                </Text>
-                            </View>
-                            <Text style={{ color: '#c7d2fe', fontSize: 13, lineHeight: 20, fontStyle: 'italic' }}>
-                                "{strategicProfile.cognitive_summary || 'Analizando tu trayectoria...'}"
-                            </Text>
-                            <View style={{ flexDirection: 'row', marginTop: 12, flexWrap: 'wrap' }}>
-                                {(strategicProfile.recurring_themes || []).slice(0, 3).map((theme: string, idx: number) => (
-                                    <View key={idx} style={{ backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginRight: 8, marginBottom: 6 }}>
-                                        <Text style={{ color: '#94a3b8', fontSize: 10, fontWeight: '600' }}>#{theme.toUpperCase()}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                        </View>
-                    )}
-
-                {/* ── Patrones Detectados ────────────────────────────────── */}
-                <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
-                    <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>PATRONES DETECTADOS</Text>
-                        <TouchableOpacity
-                            onPress={handleManualPatternAnalysis}
-                            disabled={isAnalyzingPatterns || stats.totalMemories < 5}
-                            activeOpacity={0.7}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                backgroundColor: 'rgba(99,102,241,0.12)',
-                                paddingHorizontal: 10,
-                                paddingVertical: 5,
-                                borderRadius: 12,
-                                opacity: stats.totalMemories < 5 ? 0.4 : 1,
-                            }}
-                        >
-                            {isAnalyzingPatterns ? (
-                                <ActivityIndicator size="small" color="#818cf8" />
-                            ) : (
-                                <RotateCcw size={12} color="#818cf8" />
-                            )}
-                            <Text style={{ color: '#c7d2fe', fontSize: 11, fontWeight: '700', marginLeft: 6, letterSpacing: 0.5 }}>
-                                {isAnalyzingPatterns ? 'ANALIZANDO…' : 'RE-ANALIZAR'}
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    {patterns.length === 0 ? (
-                        stats.totalMemories >= 5 ? (
-                            // Stuck state: enough memories but NO analysis run yet
-                            <TouchableOpacity 
-                                onPress={handleManualPatternAnalysis}
-                                disabled={isAnalyzingPatterns}
-                                activeOpacity={0.8}
-                                style={{
-                                    backgroundColor: 'rgba(99,102,241,0.05)',
-                                    borderRadius: 20,
-                                    padding: 24,
-                                    borderWidth: 1,
-                                    borderColor: isAnalyzingPatterns ? 'rgba(99,102,241,0.5)' : 'rgba(99,102,241,0.3)',
-                                    borderStyle: 'dashed',
-                                    alignItems: 'center'
-                                }}
-                            >
-                                {isAnalyzingPatterns ? (
-                                    <View style={{ width: '100%', alignItems: 'center' }}>
-                                        <ActivityIndicator size="small" color="#6366f1" style={{ marginBottom: 12 }} />
-                                        <Text style={{ color: '#c7d2fe', fontWeight: '700', fontSize: 13, marginBottom: 8 }}>
-                                            Auditoría en Progreso... {Math.round(analysisProgress)}%
-                                        </Text>
-                                        <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 10, height: 6, width: '100%', overflow: 'hidden', marginBottom: 12 }}>
-                                            <View style={{
-                                                backgroundColor: '#818cf8',
-                                                height: '100%',
-                                                width: `${analysisProgress}%`,
-                                                borderRadius: 10
-                                            }} />
-                                        </View>
-                                        <Text style={{ color: '#64748b', fontSize: 11, textAlign: 'center', opacity: 0.8 }}>
-                                            {analysisPhase}
-                                        </Text>
-                                    </View>
-                                ) : (
-                                    <>
-                                        <View style={{ 
-                                            backgroundColor: 'rgba(99,102,241,0.2)', 
-                                            width: 50, height: 50, borderRadius: 25, 
-                                            justifyContent: 'center', alignItems: 'center', marginBottom: 12 
-                                        }}>
-                                            <Brain size={28} color="#818cf8" />
-                                        </View>
-                                        <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>
-                                            Auditar Perfil Estratégico
-                                        </Text>
-                                        <Text style={{ color: '#94a3b8', fontSize: 13, marginTop: 6, textAlign: 'center', lineHeight: 18 }}>
-                                            Tienes 5+ memorias listas. Pulsa para detectar patrones cognitivos y conductuales.
-                                        </Text>
-                                    </>
-                                )}
-                            </TouchableOpacity>
-                        ) : (
-                            // Progress state — building profile (Initial phase)
-                            <View style={{
-                                backgroundColor: '#0f172a',
-                                borderRadius: 20,
-                                padding: 20,
-                                borderWidth: 1,
-                                borderColor: 'rgba(99,102,241,0.2)'
-                            }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                                    <Brain size={18} color="#6366f1" />
-                                    <Text style={{ color: '#c7d2fe', fontWeight: '700', fontSize: 13, letterSpacing: 0.5, marginLeft: 8 }}>
-                                        Analizando tu perfil cognitivo...
-                                    </Text>
-                                </View>
-                                <Text style={{ color: '#64748b', fontSize: 13, lineHeight: 20, marginBottom: 16 }}>
-                                    Necesitamos{' '}
-                                    <Text style={{ color: '#818cf8', fontWeight: '700' }}>
-                                        {Math.max(0, 5 - stats.totalMemories)} entrada(s) más
-                                    </Text>
-                                    {' '}para detectar patrones en tu comportamiento y cognición.
-                                </Text>
-                                <View style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 8, height: 6, overflow: 'hidden' }}>
-                                    <View style={{
-                                        backgroundColor: '#6366f1',
-                                        height: '100%',
-                                        width: `${Math.min(100, (stats.totalMemories / 5) * 100)}%`,
-                                        borderRadius: 8
-                                    }} />
-                                </View>
-                                <Text style={{ color: '#475569', fontSize: 11, marginTop: 6, textAlign: 'right' }}>
-                                    {Math.min(stats.totalMemories, 5)}/5 entradas
-                                </Text>
-                            </View>
-                        )
-                    ) : (
-                        // Pattern cards
-                        patterns.map((pat) => {
-                            const typeConfig: Record<string, { color: string; label: string; icon: any }> = {
-                                emotional:      { color: '#f59e0b', label: 'Emocional',     icon: Heart },
-                                procrastination:{ color: '#ef4444', label: 'Procrastinación', icon: Zap },
-                                cognitive_bias: { color: '#6366f1', label: 'Sesgo Cognitivo', icon: Brain },
-                                productivity:   { color: '#10b981', label: 'Productividad',  icon: TrendingUp },
-                            };
-                            const cfg = typeConfig[pat.pattern_type] ?? { color: '#94a3b8', label: pat.pattern_type, icon: Activity };
-                            const IconComp = cfg.icon as any;
-
-                            return (
-                                <View key={pat.id} style={{
-                                    backgroundColor: '#0f172a',
-                                    borderRadius: 16,
-                                    padding: 16,
-                                    marginBottom: 12,
-                                    borderWidth: 1,
-                                    borderLeftWidth: 3,
-                                    borderColor: 'rgba(255,255,255,0.05)',
-                                    borderLeftColor: cfg.color,
-                                }}>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                                        <View style={{
-                                            backgroundColor: `${cfg.color}20`,
-                                            borderRadius: 8,
-                                            padding: 6,
-                                            marginRight: 10
-                                        }}>
-                                            <IconComp size={14} color={cfg.color} />
-                                        </View>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={{ color: cfg.color, fontSize: 10, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' }}>
-                                                {cfg.label}
-                                            </Text>
-                                            <Text style={{ color: 'white', fontSize: 14, fontWeight: '700', marginTop: 1 }} numberOfLines={1}>
-                                                {pat.title}
-                                            </Text>
-                                        </View>
-                                        <View style={{
-                                            backgroundColor: `${cfg.color}15`,
-                                            borderRadius: 10,
-                                            paddingHorizontal: 8,
-                                            paddingVertical: 3
-                                        }}>
-                                            <Text style={{ color: cfg.color, fontSize: 11, fontWeight: '700' }}>×{pat.frequency}</Text>
-                                        </View>
-                                    </View>
-                                    <Text style={{ color: '#94a3b8', fontSize: 13, lineHeight: 20 }} numberOfLines={3}>
-                                        {pat.description}
-                                    </Text>
-                                    <Text style={{ color: '#475569', fontSize: 11, marginTop: 8 }}>
-                                        Última vez: {new Date(pat.last_seen_at).toLocaleDateString()}
-                                    </Text>
-                                </View>
-                            );
-                        })
-                    )}
-                </View>
-
-                {/* Strategic Guide moved to bottom */}
-                <View style={[styles.insightSection, { marginTop: 20 }]}>
-                    <LG colors={['rgba(250, 204, 21, 0.1)', 'rgba(0, 0, 0, 0)']} style={styles.insightGradient}>
-                        <View style={styles.insightHeader}>
-                            <Target size={16} color="#facc15" />
-                            <Text style={[styles.insightTitle, { color: '#facc15' }]}>GUÍA ESTRATÉGICA: BlackBoxMind.ai</Text>
-                        </View>
-                        <Text style={styles.latestInsight}>
-                            Domina el equilibrio entre Metas y Loops Activos para maximizar tu ejecución clínica.
-                        </Text>
-                        <View style={{ flexDirection: 'row', gap: 10, marginTop: 15 }}>
-                            <TO style={styles.guideActionBtn} onPress={() => navigation.navigate('Onboarding')}>
-                                <Text style={styles.guideActionBtnText}>Ver Guía de Inicio</Text>
-                            </TO>
-                            {!stats.latestEntry && (
-                                <TO style={[styles.guideActionBtn, { backgroundColor: '#1e293b' }]} onPress={handleSeedSample}>
-                                    <Text style={[styles.guideActionBtnText, { color: '#94a3b8' }]}>Cargar Ejemplo</Text>
-                                </TO>
-                            )}
-                        </View>
-                    </LG>
-                </View>
-                </>)}
-                <View style={styles.footer}>
-                    <Clock size={14} color="#475569" />
-                    <Text style={styles.lastUpdate}>Actualizado hace un momento</Text>
-                </View>
             </ScrollView>
         </SAV>
         <WhatsNewModal />
@@ -1027,7 +546,81 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         letterSpacing: 1,
         color: '#ffffff'
-    }
+    },
+
+    // ─── Vista Estratégica refactor (2026-05) ─────────────────────────────
+    vistaHeader: {
+        color: '#f1f5f9',
+        fontSize: 22,
+        fontWeight: '700',
+        letterSpacing: 0.3,
+        marginBottom: 16,
+    },
+    vistaCard: {
+        backgroundColor: '#151B2C',
+        borderColor: '#1E293B',
+        borderWidth: 1.5,
+        borderRadius: 14,
+        padding: 16,
+        marginBottom: 16,
+        shadowColor: '#000000',
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 3 },
+        elevation: 4,
+    },
+    vistaCardTitle: {
+        color: '#94a3b8',
+        fontSize: 11,
+        fontWeight: '700',
+        letterSpacing: 1.8,
+        marginBottom: 10,
+    },
+    vistaLine: {
+        color: '#e2e8f0',
+        fontSize: 14,
+        lineHeight: 20,
+        fontWeight: '500',
+    },
+    vistaGoalsRow: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        gap: 10,
+        marginBottom: 6,
+    },
+    vistaBigNumber: {
+        color: '#ffffff',
+        fontSize: 28,
+        fontWeight: '800',
+        letterSpacing: -0.5,
+    },
+    vistaSubPercent: {
+        color: '#10b981',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    vistaEmpty: {
+        color: '#64748b',
+        fontSize: 13,
+        fontStyle: 'italic',
+    },
+    vistaPatternItem: {
+        color: '#e2e8f0',
+        fontSize: 14,
+        lineHeight: 22,
+        fontWeight: '500',
+        marginBottom: 2,
+    },
+    vistaHistorialHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    vistaSeeAll: {
+        color: '#818cf8',
+        fontSize: 12,
+        fontWeight: '700',
+    },
 });
 
 export default DashboardScreen;

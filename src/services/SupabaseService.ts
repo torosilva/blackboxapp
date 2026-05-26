@@ -1724,6 +1724,115 @@ export const SupabaseService = {
     },
 
     /**
+     * Capture rhythm metrics for the dashboard. Computes:
+     * - thisWeek: # of entries since Monday of the current week
+     * - weeklyAverage: total entries / weeks since first entry (rounded)
+     * - streak: consecutive days ending today (or yesterday) with at least 1 entry
+     *
+     * All computed client-side from a single getEntries() call. If the user
+     * has no entries, returns zeros.
+     */
+    async getCaptureRhythm(userId: string): Promise<{ thisWeek: number; weeklyAverage: number; streak: number }> {
+        if (!userId) return { thisWeek: 0, weeklyAverage: 0, streak: 0 };
+        try {
+            const { data, error } = await supabase
+                .from('entries')
+                .select('created_at')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            const entries = data || [];
+            if (entries.length === 0) return { thisWeek: 0, weeklyAverage: 0, streak: 0 };
+
+            const now = new Date();
+            const dayMs = 24 * 60 * 60 * 1000;
+
+            // ── thisWeek: from Monday 00:00 local ────────────────────────────
+            const monday = new Date(now);
+            const dayOfWeek = (now.getDay() + 6) % 7; // Mon=0..Sun=6
+            monday.setDate(now.getDate() - dayOfWeek);
+            monday.setHours(0, 0, 0, 0);
+            const thisWeek = entries.filter(e => new Date(e.created_at) >= monday).length;
+
+            // ── weeklyAverage: total entries / weeks since first entry ───────
+            const firstDate = new Date(entries[entries.length - 1].created_at);
+            const weeksSinceFirst = Math.max(1, Math.ceil((now.getTime() - firstDate.getTime()) / (7 * dayMs)));
+            const weeklyAverage = Math.round(entries.length / weeksSinceFirst);
+
+            // ── streak: consecutive days ending today (or yesterday) ─────────
+            // Build a Set of YYYY-MM-DD strings for days that have entries.
+            const dayKeys = new Set<string>();
+            for (const e of entries) {
+                const d = new Date(e.created_at);
+                dayKeys.add(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
+            }
+            // Start from today; if no entry today, start from yesterday (so
+            // the streak doesn't break the moment the day rolls over).
+            const cursor = new Date(now);
+            cursor.setHours(0, 0, 0, 0);
+            const todayKey = `${cursor.getFullYear()}-${cursor.getMonth()}-${cursor.getDate()}`;
+            if (!dayKeys.has(todayKey)) cursor.setDate(cursor.getDate() - 1);
+            let streak = 0;
+            // eslint-disable-next-line no-constant-condition
+            while (true) {
+                const key = `${cursor.getFullYear()}-${cursor.getMonth()}-${cursor.getDate()}`;
+                if (dayKeys.has(key)) {
+                    streak++;
+                    cursor.setDate(cursor.getDate() - 1);
+                } else {
+                    break;
+                }
+            }
+
+            return { thisWeek, weeklyAverage, streak };
+        } catch (err: any) {
+            console.error('SUPABASE_SERVICE: getCaptureRhythm failed:', err.message);
+            return { thisWeek: 0, weeklyAverage: 0, streak: 0 };
+        }
+    },
+
+    /**
+     * Monthly AI usage counters from usage_events table.
+     * Buckets components into 3 user-facing categories:
+     * - chats: ai_chat + image_vision
+     * - searches: semantic_search
+     * - reflexes: entry_analysis + pattern_synthesis + weekly_report
+     *
+     * Filters by created_at >= start of current calendar month (server-local).
+     */
+    async getMonthlyUsage(userId: string): Promise<{ chats: number; searches: number; reflexes: number }> {
+        if (!userId) return { chats: 0, searches: 0, reflexes: 0 };
+        try {
+            const now = new Date();
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+            const { data, error } = await supabase
+                .from('usage_events')
+                .select('component')
+                .eq('user_id', userId)
+                .gte('created_at', monthStart);
+
+            if (error) throw error;
+            const rows = data || [];
+
+            const CHAT_COMPONENTS = new Set(['ai_chat', 'image_vision']);
+            const SEARCH_COMPONENTS = new Set(['semantic_search']);
+            const REFLEX_COMPONENTS = new Set(['entry_analysis', 'pattern_synthesis', 'weekly_report']);
+
+            let chats = 0, searches = 0, reflexes = 0;
+            for (const row of rows) {
+                if (CHAT_COMPONENTS.has(row.component)) chats++;
+                else if (SEARCH_COMPONENTS.has(row.component)) searches++;
+                else if (REFLEX_COMPONENTS.has(row.component)) reflexes++;
+            }
+            return { chats, searches, reflexes };
+        } catch (err: any) {
+            console.error('SUPABASE_SERVICE: getMonthlyUsage failed:', err.message);
+            return { chats: 0, searches: 0, reflexes: 0 };
+        }
+    },
+
+    /**
      * Fire-and-forget invocation of the analyze-patterns Edge Function.
      * Does not block — errors are logged but not thrown.
      */
