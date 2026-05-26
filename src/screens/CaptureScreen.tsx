@@ -558,7 +558,7 @@ const CaptureScreen = () => {
                     The mic icon adapts to Send when there's draft text. No
                     secondary floating FAB; this is the single capture entry. */}
                 <View style={styles.textCaptureCard}>
-                    <E3 size={18} color="#64748b" strokeWidth={2} />
+                    <E3 size={22} color="#64748b" strokeWidth={2} />
                     <TextInput
                         style={styles.textCaptureInput}
                         placeholder="¿Qué tienes en mente?"
@@ -580,7 +580,7 @@ const CaptureScreen = () => {
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                             disabled={loading || isTranscribing}
                         >
-                            <Mi size={20} color="#c084fc" strokeWidth={2.2} />
+                            <Mi size={24} color="#c084fc" strokeWidth={2.2} />
                         </TO>
                     ) : (
                         <TO
@@ -588,10 +588,23 @@ const CaptureScreen = () => {
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                             disabled={loading}
                         >
-                            <Sn size={20} color="#c084fc" strokeWidth={2.2} />
+                            <Sn size={24} color="#c084fc" strokeWidth={2.2} />
                         </TO>
                     )}
                 </View>
+
+                {/* Recording / transcribing feedback — inline, right under the
+                    input card so it sits where the user just tapped the mic. */}
+                {(isRecording || isTranscribing) && (
+                    <View style={styles.recPill}>
+                        <Animated.View
+                            style={[styles.recDot, isTranscribing && { backgroundColor: '#6366f1' }, { transform: [{ scale: dotAnim }] }]}
+                        />
+                        <Text style={styles.recPillText}>
+                            {isTranscribing ? 'Transcribiendo…' : `Escuchando ${fmtSecs(recordSecs)} · toca para terminar`}
+                        </Text>
+                    </View>
+                )}
 
                 {/* SYSTEM STATE — momentum first, backlog after. Units never break
                     mid-stat (nbsp) and the bullet is bound to its stat, so no
@@ -788,18 +801,6 @@ const CaptureScreen = () => {
                 </Animated.View>
 
             </ScrollView>
-
-            {/* ── CAPTURE: demoted to a corner action ──────────────────────────── */}
-            {(isRecording || isTranscribing) && (
-                <View style={styles.recPill} pointerEvents="none">
-                    <Animated.View
-                        style={[styles.recDot, isTranscribing && { backgroundColor: '#6366f1' }, { transform: [{ scale: dotAnim }] }]}
-                    />
-                    <Text style={styles.recPillText}>
-                        {isTranscribing ? 'Transcribiendo…' : `Escuchando ${fmtSecs(recordSecs)} · toca para terminar`}
-                    </Text>
-                </View>
-            )}
 
             {/* Text capture sheet */}
             <Modal visible={showTextModal} transparent animationType="slide" onRequestClose={() => setShowTextModal(false)}>
@@ -1010,26 +1011,26 @@ const styles = StyleSheet.create({
     textCaptureCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        gap: 14,
         backgroundColor: '#F1F5F9',
         borderWidth: 0,
-        borderRadius: 14,
-        paddingVertical: 18,
-        paddingHorizontal: 16,
+        borderRadius: 16,
+        paddingVertical: 26,
+        paddingHorizontal: 20,
         marginTop: 8,
         marginBottom: 24,
-        minHeight: 64,
-        maxHeight: 200,
+        minHeight: 92,
+        maxHeight: 220,
         shadowColor: '#000000',
-        shadowOpacity: 0.35,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: 6,
+        shadowOpacity: 0.4,
+        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 6 },
+        elevation: 8,
     },
     textCaptureInput: {
         flex: 1,
         color: '#0F172A',
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: '500',
         paddingVertical: 0,
         textAlignVertical: 'center',
@@ -1098,20 +1099,19 @@ const styles = StyleSheet.create({
     memAll: { paddingVertical: 6, alignSelf: 'flex-start', marginTop: 2 },
 
     recPill: {
-        position: 'absolute',
-        bottom: 96,
-        right: 20,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#1e293b',
-        borderRadius: 20,
+        backgroundColor: 'rgba(239, 68, 68, 0.08)',
+        borderColor: 'rgba(239, 68, 68, 0.3)',
+        borderRadius: 12,
         paddingHorizontal: 14,
-        paddingVertical: 10,
+        paddingVertical: 12,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.08)',
+        marginTop: -12,
+        marginBottom: 16,
     },
     recDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#ef4444', marginRight: 9 },
-    recPillText: { color: '#e2e8f0', fontSize: 13, fontWeight: '700' },
+    recPillText: { color: '#fca5a5', fontSize: 13, fontWeight: '700' },
 
     // Text sheet (modal)
     modalRoot: { flex: 1, justifyContent: 'flex-end' },
