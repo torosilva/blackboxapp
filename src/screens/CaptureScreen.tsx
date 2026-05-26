@@ -593,14 +593,15 @@ const CaptureScreen = () => {
                     )}
                 </View>
 
-                {/* SYSTEM STATE — momentum first, backlog after. Units never break
-                    mid-stat (nbsp) and the bullet is bound to its stat, so no
-                    orphan "·" at the start of a wrapped line. */}
+                {/* SYSTEM STATE — grouped in homeCard for visual coherence
+                    with Dashboard Estratégico. The 3 stat cards are now
+                    tappable links to LoopsScreen with initialFilter. */}
                 <Animated.View style={{
                     opacity: cardsOpacity,
                     transform: [{ translateY: cardsTranslate }],
                 }}>
-                <View style={styles.statusBlock}>
+                <View style={styles.homeCard}>
+                    <Text style={styles.homeCardTitle}>ESTADO ACTUAL</Text>
                     {cleanHead ? (
                         <>
                             <Text style={styles.statusMain}>Tu cabeza está limpia</Text>
@@ -614,13 +615,17 @@ const CaptureScreen = () => {
                                     opacity: card1Opacity,
                                     transform: [{ translateY: card1Translate }],
                                 }}>
-                                    <View style={styles.statCard}>
+                                    <TO
+                                        style={styles.statCard}
+                                        onPress={() => navigation.navigate('Loops', { initialFilter: 'closed' })}
+                                        activeOpacity={0.7}
+                                    >
                                         <Text style={[styles.statValue, styles.statValuePos]}>
                                             {stats.closed}
                                         </Text>
                                         <Text style={styles.statLabel}>COMPLETADAS</Text>
                                         <Text style={styles.statSub}>esta semana</Text>
-                                    </View>
+                                    </TO>
                                 </Animated.View>
                             )}
                             <Animated.View style={{
@@ -628,13 +633,17 @@ const CaptureScreen = () => {
                                 opacity: card2Opacity,
                                 transform: [{ translateY: card2Translate }],
                             }}>
-                                <View style={styles.statCard}>
+                                <TO
+                                    style={styles.statCard}
+                                    onPress={() => navigation.navigate('Loops', { initialFilter: 'open' })}
+                                    activeOpacity={0.7}
+                                >
                                     <Text style={[styles.statValue, styles.statValueNeutral]}>
                                         {stats?.open ?? 0}
                                     </Text>
                                     <Text style={styles.statLabel}>PENDIENTES</Text>
                                     <Text style={styles.statSub}> </Text>
-                                </View>
+                                </TO>
                             </Animated.View>
                             {!!stats && stats.stalled > 0 && (
                                 <Animated.View style={{
@@ -642,13 +651,17 @@ const CaptureScreen = () => {
                                     opacity: card3Opacity,
                                     transform: [{ translateY: card3Translate }],
                                 }}>
-                                    <View style={styles.statCard}>
+                                    <TO
+                                        style={styles.statCard}
+                                        onPress={() => navigation.navigate('Loops', { initialFilter: 'stalled' })}
+                                        activeOpacity={0.7}
+                                    >
                                         <Text style={[styles.statValue, styles.statValueWarn]}>
                                             {stats.stalled}
                                         </Text>
                                         <Text style={styles.statLabel}>SIN AVANCE</Text>
                                         <Text style={styles.statSub}>{`>${STALE_DAYS} días`}</Text>
-                                    </View>
+                                    </TO>
                                 </Animated.View>
                             )}
                         </View>
@@ -913,6 +926,29 @@ const styles = StyleSheet.create({
         marginRight: -6,
     },
 
+    // Home grouped card — matches styles.vistaCard in Dashboard Estratégico
+    homeCard: {
+        backgroundColor: '#151B2C',
+        borderColor: '#1E293B',
+        borderWidth: 1.5,
+        borderRadius: 14,
+        paddingVertical: 16,
+        paddingHorizontal: 14,
+        marginBottom: 16,
+        shadowColor: '#000000',
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 3 },
+        elevation: 4,
+    },
+    homeCardTitle: {
+        color: '#94a3b8',
+        fontSize: 11,
+        fontWeight: '700',
+        letterSpacing: 1.5,
+        marginBottom: 12,
+    },
+
     // System state
     statusBlock: { marginBottom: 22 },
     statusMain: { color: '#f8fafc', fontSize: 28, fontWeight: '800', letterSpacing: 0.2 },
@@ -992,7 +1028,20 @@ const styles = StyleSheet.create({
     retryBannerText: { color: '#fbbf24', fontSize: 13, fontWeight: '700' },
 
     // Loops — primary module
-    loopsModule: { marginBottom: 30 },
+    loopsModule: {
+        backgroundColor: '#151B2C',
+        borderColor: '#1E293B',
+        borderWidth: 1.5,
+        borderRadius: 14,
+        paddingVertical: 16,
+        paddingHorizontal: 14,
+        marginBottom: 16,
+        shadowColor: '#000000',
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 3 },
+        elevation: 4,
+    },
     loopsHeaderRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1073,7 +1122,20 @@ const styles = StyleSheet.create({
     emptyLoopsText: { color: '#94a3b8', fontSize: 15, lineHeight: 22 },
 
     // Memorias — secondary
-    memModule: { marginBottom: 24 },
+    memModule: {
+        backgroundColor: '#151B2C',
+        borderColor: '#1E293B',
+        borderWidth: 1.5,
+        borderRadius: 14,
+        paddingVertical: 16,
+        paddingHorizontal: 14,
+        marginBottom: 16,
+        shadowColor: '#000000',
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 3 },
+        elevation: 4,
+    },
     memHeaderRow: {
         flexDirection: 'row',
         alignItems: 'center',

@@ -5,19 +5,30 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Zap, RefreshCw, Sun, Clock, Check, ArrowRight } from 'lucide-react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import { SupabaseService } from '../services/SupabaseService';
 import { useAuth } from '../context/AuthContext';
 
 type Lane = 'regresa' | 'hoy' | 'rondando';
+type LoopFilter = 'open' | 'stalled' | 'closed';
+const STALE_DAYS = 14;
 
 const laneOf = (it: any): Lane => {
     const s = String(it?.status ?? 'hoy');
     return s === 'regresa' || s === 'rondando' ? (s as Lane) : 'hoy';
 };
 
+const isStale = (it: any): boolean => {
+    if (!it?.created_at) return false;
+    const days = (Date.now() - new Date(it.created_at).getTime()) / (24 * 60 * 60 * 1000);
+    return days >= STALE_DAYS;
+};
+
 export default function LoopsScreen() {
     const navigation = useNavigation<any>();
+    const route = useRoute<any>();
+    const initialFilter: LoopFilter = (route.params?.initialFilter as LoopFilter) ?? 'open';
+    const [currentFilter] = useState<LoopFilter>(initialFilter);
     const { user } = useAuth();
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -52,8 +63,54 @@ export default function LoopsScreen() {
     const regresan = items.filter(i => laneOf(i) === 'regresa');
     const hoy = items.filter(i => laneOf(i) === 'hoy');
     const rondando = items.filter(i => laneOf(i) === 'rondando');
+    const stale = items.filter(isStale);
 
     const CL = ChevronLeft as any;
+
+    const headerTitle =
+        currentFilter === 'stalled' ? 'SIN AVANCE' :
+        currentFilter === 'closed' ? 'COMPLETADAS' :
+        'ACTIVE LOOPS';
+    const headerSub =
+        currentFilter === 'stalled' ? `${stale.length} sin avance >14 días` :
+        currentFilter === 'closed' ? 'Historial de loops cerrados' :
+        loading ? 'Cargando…' : `${items.length} abiertos`;
+
+    // 'closed' is informational only — we don't fetch closed items here.
+    // The user is redirected to the Centro Estratégico view that already
+    // shows "Active Loops Realizados".
+    if (currentFilter === 'closed') {
+        return (
+            <SafeAreaView style={styles.container}>
+                <StatusBar barStyle="light-content" />
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                        <CL color="white" size={28} />
+                    </TouchableOpacity>
+                    <View style={styles.headerTitleContainer}>
+                        <Text style={styles.headerTitle}>{headerTitle}</Text>
+                        <Text style={styles.headerSub}>{headerSub}</Text>
+                    </View>
+                    <View style={{ width: 44 }} />
+                </View>
+                <View style={styles.center}>
+                    <Check size={48} color="#10b981" />
+                    <Text style={styles.emptyTitle}>Tus loops cerrados</Text>
+                    <Text style={styles.emptyText}>
+                        Los loops que ya cerraste se mantienen en el Centro Estratégico,
+                        bajo "Active Loops Realizados".
+                    </Text>
+                    <TouchableOpacity
+                        style={[styles.closeBtn, { marginTop: 24, paddingHorizontal: 18 }]}
+                        onPress={() => navigation.navigate('Settings', { initialViewMode: 'completed' })}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={styles.closeBtnText}>Ver loops cerrados</Text>
+                    </TouchableOpacity>
+                </View>
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={styles.container}>
@@ -64,10 +121,8 @@ export default function LoopsScreen() {
                     <CL color="white" size={28} />
                 </TouchableOpacity>
                 <View style={styles.headerTitleContainer}>
-                    <Text style={styles.headerTitle}>ACTIVE LOOPS</Text>
-                    <Text style={styles.headerSub}>
-                        {loading ? 'Cargando…' : `${items.length} abiertos`}
-                    </Text>
+                    <Text style={styles.headerTitle}>{headerTitle}</Text>
+                    <Text style={styles.headerSub}>{headerSub}</Text>
                 </View>
                 <View style={{ width: 44 }} />
             </View>
@@ -76,6 +131,44 @@ export default function LoopsScreen() {
                 <View style={styles.center}>
                     <ActivityIndicator size="large" color="#6366f1" />
                 </View>
+            ) : currentFilter === 'stalled' ? (
+                stale.length === 0 ? (
+                    <View style={styles.center}>
+                        <Sun size={48} color="#334155" />
+                        <Text style={styles.emptyTitle}>Sin loops estancados</Text>
+                        <Text style={styles.emptyText}>
+                            Ningún loop lleva más de {STALE_DAYS} días sin avance. Buen ritmo de ejecución.
+                        </Text>
+                    </View>
+                ) : (
+                    <ScrollView
+                        contentContainerStyle={styles.scrollContent}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={() => { setRefreshing(true); load(); }}
+                                tintColor="#6366f1"
+                            />
+                        }
+                    >
+                        <LaneHeader
+                            icon={<Clock size={15} color="#f59e0b" />}
+                            title="SIN AVANCE"
+                            count={stale.length}
+                            color="#f59e0b"
+                            hint={`Loops abiertos hace más de ${STALE_DAYS} días. Decide: cierra, repriorita o descarta.`}
+                        />
+                        {stale.map(it => (
+                            <SimpleCard
+                                key={it.id}
+                                item={it}
+                                onClose={() => closeItem(it.id)}
+                                moveLabel="Hoy"
+                                onMove={() => moveItem(it.id, 'hoy')}
+                            />
+                        ))}
+                    </ScrollView>
+                )
             ) : items.length === 0 ? (
                 <View style={styles.center}>
                     <Zap size={48} color="#334155" />
