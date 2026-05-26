@@ -765,7 +765,7 @@ const SettingsScreen = () => {
                                     <Text style={styles.legalIntro}>
                                         En BlackBoxMind, la privacidad y el control de tus datos son pilares fundamentales.
                                     </Text>
-                                    <TO style={styles.policyRow} onPress={() => WebBrowser.openBrowserAsync('https://blackboxmind.ai/privacy')}>
+                                    <TO style={styles.policyRow} onPress={() => navigation.navigate('Privacy')}>
                                         <View style={styles.iconCircle}>
                                             <SC size={18} color="#6366f1" />
                                         </View>
