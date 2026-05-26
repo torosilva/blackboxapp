@@ -131,6 +131,46 @@ export const aiService = {
         }
     },
 
+    /**
+     * Genera el primer reflejo del usuario a partir de sus 5 capturas
+     * del onboarding. El reflejo longitudinal "normal" requiere histórico
+     * acumulado — este es el punto de entrada para el día 1.
+     */
+    generateInitialReflejo: async (
+        entryIds: string[],
+        userId: string,
+    ): Promise<{ reflejo: string; patterns: Array<{ title: string; description: string }> }> => {
+        try {
+            const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/generate-initial-reflejo`;
+            const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+            const token = getGlobalAccessToken();
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': anonKey,
+                    'Authorization': `Bearer ${token || anonKey}`,
+                },
+                body: JSON.stringify({ userId, entryIds }),
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                console.warn(`AI_SERVICE: generateInitialReflejo HTTP ${response.status}: ${errText}`);
+                return { reflejo: '', patterns: [] };
+            }
+            const data = await response.json();
+            return {
+                reflejo: typeof data?.reflejo === 'string' ? data.reflejo : '',
+                patterns: Array.isArray(data?.patterns) ? data.patterns : [],
+            };
+        } catch (e: any) {
+            console.warn('AI_SERVICE: generateInitialReflejo error:', e?.message);
+            return { reflejo: '', patterns: [] };
+        }
+    },
+
     searchByKeywords: async (entries: any[], keyword: string) => {
         if (!keyword) return entries;
         const lowKey = keyword.toLowerCase();
