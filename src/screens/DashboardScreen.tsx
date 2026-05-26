@@ -72,7 +72,7 @@ const DashboardScreen = () => {
     const [recentThreads, setRecentThreads] = useState<any[]>([]);
     // Executive view: everything analytical is collapsed by default.
     const [showDetail, setShowDetail] = useState(false);
-    const [interventions, setInterventions] = useState<any[]>([]);
+    const [stalledLoopsPct, setStalledLoopsPct] = useState(0);
     const [patterns, setPatterns] = useState<any[]>([]);
     const [onboardingChecked, setOnboardingChecked] = useState(false);
     const [appointmentDate, setAppointmentDate] = useState(new Date());
@@ -151,23 +151,16 @@ const DashboardScreen = () => {
                 latestEntry: entries && entries.length > 0 ? entries[0] : null
             });
 
-            // ── 4. Calculate Interventions (HIGH priority > 72h) ───────────────
-            // We fetch from original normalized table for interventions
+            // ── 4. Calculate stalled loops percentage (open >14 days) ──────────
             const openItems = await SupabaseService.getOpenActionItems(user.id);
             const now = new Date().getTime();
-            const overdues = openItems
-                .filter(item => {
-                    if (item.priority !== 'HIGH') return false;
-                    const itemDate = new Date(item.created_at).getTime();
-                    const diffDays = (now - itemDate) / (1000 * 60 * 60 * 24);
-                    return diffDays >= 3;
-                })
-                .map(item => ({
-                    ...item,
-                    days: Math.floor((now - new Date(item.created_at).getTime()) / (1000 * 60 * 60 * 24))
-                }));
-            
-            setInterventions(overdues.slice(0, 2));
+            const totalOpen = openItems.length;
+            const stalledCount = openItems.filter(item => {
+                const itemDate = new Date(item.created_at).getTime();
+                const diffDays = (now - itemDate) / (1000 * 60 * 60 * 24);
+                return diffDays > 14;
+            }).length;
+            setStalledLoopsPct(totalOpen > 0 ? Math.round((stalledCount / totalOpen) * 100) : 0);
 
             // ── 5. Fetch recent threads ────────────────────────────────────────
             const threads = await SupabaseService.getChatThreads(user.id);
@@ -323,43 +316,6 @@ const DashboardScreen = () => {
                     <RefreshControl refreshing={refreshing} onRefresh={fetchStats} tintColor="#6366f1" />
                 }
             >
-                {/* Header Section (v5.9.6 Logo & Name Restoration) */}
-                <View style={[styles.header, { paddingHorizontal: 20, paddingTop: 10 }]}>
-                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-                        <View style={{ marginRight: 12 }}>
-                            <Text style={styles.greeting}>{getGreeting()},</Text>
-                            <Text style={[styles.userName, { fontSize: 26, letterSpacing: -0.5 }]}>
-                                {profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'Explorador'}
-                            </Text>
-                        </View>
-                        
-                        <TouchableOpacity 
-                            onPress={() => !profile?.is_pro && navigation.navigate('Paywall')}
-                            activeOpacity={0.7}
-                            style={[
-                                styles.membershipBadge, 
-                                profile?.is_pro ? styles.proBadge : styles.freeBadge
-                            ]}
-                        >
-                            <Text style={styles.membershipBadgeText}>{profile?.is_pro ? 'PRO' : 'FREE'}</Text>
-                        </TouchableOpacity>
-                    </View>
-                    
-                    <TO 
-                        onPress={() => navigation.navigate('Settings', { initialViewMode: 'hub' })}
-                        style={{ alignItems: 'flex-end', justifyContent: 'flex-start' }}
-                    >
-                        <Animated.View style={animatedLogoStyle}>
-                            <View style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                {/* Core Cube */}
-                                <Box size={24} color="#818cf8" strokeWidth={2} style={{ position: 'absolute' }} />
-                                {/* Brain Overlay */}
-                                <Brain size={44} color="#a855f7" strokeWidth={1.5} />
-                            </View>
-                        </Animated.View>
-                    </TO>
-                </View>
-
                 {/* Stats Grid */}
                 {showDetail && (
                 <View style={styles.statsGrid}>
@@ -389,34 +345,12 @@ const DashboardScreen = () => {
                 </View>
                 )}
 
-                {/* QuickCapture Banner (v5.9.7 - NEW PROMINENT LOCATION) */}
-                <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
-                    <TO 
-                        onPress={() => navigation.navigate('QuickCapture')}
-                        activeOpacity={0.8}
-                        style={styles.quickCaptureBanner}
-                    >
-                        <LG colors={['#6366f1', '#4f46e5']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={styles.quickCaptureGradient}>
-                            <View style={styles.quickCaptureIconContainer}>
-                                <Mic size={24} color="white" />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.quickCaptureTitle}>Capturar Pensamiento</Text>
-                                <Text style={styles.quickCaptureSubtitle}>Libera tu sobrecarga mental ahora</Text>
-                            </View>
-                            <ChevronRight size={20} color="white" />
-                        </LG>
-                    </TO>
-                </View>
-
                 {/* Executive status headline — the one line that matters */}
-                <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+                <View style={{ paddingHorizontal: 20, paddingTop: 10, marginBottom: 16 }}>
                     <Text style={{ color: '#e2e8f0', fontSize: 15, fontWeight: '700', lineHeight: 22 }}>
-                        {interventions.length > 0
-                            ? `${stats.activeLoops} loops · ejecución ${stats.totalMemories > 0 ? Math.round((stats.completedGoals / stats.totalMemories) * 100) : 0}%. Tu acción priorizada está abajo.`
-                            : stats.activeLoops > 5
-                                ? `${stats.activeLoops} loops abiertos. Hoy: purga, cero decisiones nuevas.`
-                                : 'Sin intervención urgente. Captura lo que tengas en mente.'}
+                        {stats.activeLoops > 5
+                            ? `${stats.activeLoops} loops abiertos. Hoy: purga, cero decisiones nuevas.`
+                            : 'Sin intervención urgente. Captura lo que tengas en mente.'}
                     </Text>
                     <TO
                         onPress={() => setShowDetail(v => !v)}
@@ -435,7 +369,7 @@ const DashboardScreen = () => {
                     <LG colors={['rgba(168, 85, 247, 0.15)', 'rgba(0, 0, 0, 0)']} style={styles.insightGradient}>
                         <View style={styles.insightHeader}>
                            <Stethoscope size={16} color="#a855f7" />
-                           <Text style={[styles.insightTitle, { color: '#a855f7' }]}>REPORTE MÉTRICO ESTRATÉGICO</Text>
+                           <Text style={[styles.insightTitle, { color: '#a855f7' }]}>ESTADO ACTUAL</Text>
                         </View>
                         <View style={styles.reportGrid}>
                             <View style={styles.reportItem}>
@@ -444,43 +378,17 @@ const DashboardScreen = () => {
                             </View>
                             <View style={[styles.reportItem, { borderLeftWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }]}>
                                 <Text style={styles.reportValue}>{stats.activeLoops}</Text>
-                                <Text style={styles.reportLabel}>Sobrecarga Mental</Text>
+                                <Text style={styles.reportLabel}>Loops Abiertos</Text>
                             </View>
                         </View>
                         <Text style={styles.reportVerdict}>
-                            {stats.activeLoops > 5 ? "⚠️ ALTA: Requiere purga de loops para recuperar claridad." : "✅ ÓPTIMA: Capacidad cognitiva disponible para retos nuevos."}
+                            {stats.activeLoops > 0
+                                ? `Tienes ${stats.activeLoops} loops abiertos, ${stalledLoopsPct}% sin avance hace >14 días.`
+                                : 'Sin loops abiertos. Capacidad cognitiva disponible para retos nuevos.'}
                         </Text>
                     </LG>
                 </View>
- 
                 )}
-
-                {/* Strategic Interventions (Follow-up Agresivo) */}
-                {interventions.length > 0 && (
-                    <View style={styles.interventionSection}>
-                        <LG colors={['#7f1d1d', '#0f172a']} start={{x:0, y:0}} end={{x:1, y:1}} style={styles.interventionGradient}>
-                            <View style={styles.insightHeader}>
-                                <ShieldAlert size={16} color="#ef4444" />
-                                <Text style={[styles.insightTitle, { color: '#ef4444' }]}>INTERVENCIÓN ESTRATÉGICA</Text>
-                            </View>
-                            <Text style={styles.interventionText}>
-                                Llevas <Text style={{fontWeight: 'bold', color: '#f87171'}}>{interventions[0].days} días</Text> procrastinando: 
-                                <Text style={{color: '#fff'}}> "{interventions[0].task}"</Text>.
-                            </Text>
-                            <Text style={styles.interventionPunchline}>
-                                Estás comprometiendo tu ventaja competitiva. ¿Qué te detiene?
-                            </Text>
-                            <TO 
-                                style={styles.interventionBtn}
-                                onPress={() => navigation.navigate('EntryDetail', { entryId: interventions[0].entry_id })}
-                            >
-                                <Text style={styles.interventionBtnText}>Resolver Ahora</Text>
-                                <ChevronRight size={14} color="#000" />
-                            </TO>
-                        </LG>
-                    </View>
-                )}
-
 
                 {/* Recent Conversations */}
                 {recentThreads.length > 0 && (
