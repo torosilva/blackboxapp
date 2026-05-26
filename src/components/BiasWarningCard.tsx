@@ -56,20 +56,21 @@ const styles = StyleSheet.create({
         letterSpacing: 1.5
     },
     biasRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 12,
-        gap: 8
+        flexDirection: 'column',
+        marginBottom: 12
     },
     biasLabel: {
         color: '#fbbf24',
         fontSize: 12,
-        fontWeight: 'bold'
+        fontWeight: 'bold',
+        marginBottom: 4
     },
     biasValue: {
         color: '#fef3c7',
         fontSize: 14,
-        fontWeight: '600'
+        fontWeight: '600',
+        lineHeight: 20,
+        flexShrink: 1
     },
     warningText: {
         color: '#fef3c7',

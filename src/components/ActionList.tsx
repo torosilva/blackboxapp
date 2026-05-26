@@ -41,7 +41,7 @@ export const ActionList: React.FC<Props> = ({ actions, entryId }) => {
 
     const handleShare = async (item: ActionItem) => {
         try {
-            const message = `BLACKBOX DIRECTIVE:\n\n${item.task}\n\nPriority: ${item.priority}\nCategory: ${item.category}\n\nAction requested.`;
+            const message = `BlackBoxMind DIRECTIVE:\n\n${item.task}\n\nPriority: ${item.priority}\nCategory: ${item.category}\n\nAction requested.`;
             await Share.share({
                 message,
                 title: 'Delegar Active Loop'

@@ -38,17 +38,17 @@ export const aiService = {
         }
 
         // ── Auto-trigger pattern analysis every 5 entries ─────────────────────
-        if (
-            userId &&
-            historicalContext &&
-            historicalContext.totalEntries + 1 >= 5 && // Ensure we have reached the first milestone
-            (historicalContext.totalEntries + 1) % 5 === 0
-        ) {
-            console.log(`[AI_SERVICE] Milestone Trigger: Entry #${historicalContext.totalEntries + 1} reached. Invoking background pattern audit for user: ${userId}`);
+        // entryNo = ordinal of the entry being created (it is NOT yet persisted
+        // at this point, so DB count + 1 is the new entry's number).
+        const entryNo = Number(historicalContext?.totalEntries ?? NaN) + 1;
+        if (userId && historicalContext && Number.isFinite(entryNo) && entryNo >= 5 && entryNo % 5 === 0) {
+            console.log(`[AI_SERVICE] Milestone Trigger: Entry #${entryNo} reached. Invoking background pattern audit for user: ${userId}`);
             // Fire-and-forget: does not block or throw
             SupabaseService.triggerPatternAnalysis(userId).catch(e =>
                 console.warn('[AI_SERVICE] Auto-trigger pattern analysis failed:', e.message)
             );
+        } else {
+            console.log(`[AI_SERVICE] Pattern audit skipped — userId=${userId ? 'set' : 'MISSING'}, entryNo=${Number.isFinite(entryNo) ? entryNo : 'unknown'} (fires at multiples of 5).`);
         }
 
         const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/analyze-entry`;
@@ -100,7 +100,49 @@ export const aiService = {
         };
     },
 
+    // Live "Reflejo de hoy": a single opinionated read of the user's CURRENT
+    // loop backlog (not a journal entry). Reuses the analyze-entry function and
+    // pulls the most confrontational line out of the returned strategic_insight.
+    // Returns null on failure so the caller can fall back gracefully.
+    generateLoopReflection: async (params: {
+        userId: string;
+        open: number;
+        closed: number;
+        stalled: number;
+        stalledDays: number;
+        topLoops: { id?: string; task?: string; avoidance_reason?: string; status?: string }[];
+    }): Promise<string | null> => {
+        const { userId, open, closed, stalled, stalledDays, topLoops } = params;
+        const loopLines = (topLoops || []).slice(0, 5).map((l, i) => {
+            const evita = l.avoidance_reason ? `[evita] ${l.avoidance_reason} — ` : '';
+            const reg = l.status === 'regresa' ? ' (regresa)' : '';
+            return `${i + 1}. ${evita}${l.task || ''}${reg}`;
+        }).join('\n');
 
+        const situation =
+`Esto NO es una entrada de diario. Es el estado actual de mi cabeza (mi tablero de loops abiertos AHORA).
+Tengo ${open} loops abiertos, ${stalled} estancados${stalledDays ? ` (el más viejo lleva ${stalledDays} días sin tocarse)` : ''} y cerré ${closed} esta semana.
+Mis loops principales:
+${loopLines || '(sin loops listados)'}
+
+Dame UNA sola lectura estratégica, directa y confrontativa de mi situación de HOY: el patrón que ves, qué estoy evitando, y cuál es el siguiente movimiento concreto. Máximo 3 frases. Habla en segunda persona, sin saludos ni floritura.`;
+
+        try {
+            const analysis = await aiService.generateDailySummary(
+                [{ title: 'Reflejo de hoy', content: situation }],
+                userId
+            );
+            const si: any = analysis.strategic_insight;
+            const fromObj = si && typeof si === 'object'
+                ? (si.warning_message || si.counter_thought || si.detected_bias)
+                : (typeof si === 'string' ? si : null);
+            const text = (fromObj && String(fromObj).trim()) || (analysis.summary && String(analysis.summary).trim()) || '';
+            return text || null;
+        } catch (e: any) {
+            console.warn('AI_SERVICE: generateLoopReflection failed:', e?.message);
+            return null;
+        }
+    },
 
     generateWeeklyReport: async (entries: any[], historicalContext?: any): Promise<string> => {
         if (entries.length === 0) return "Datos insuficientes.";

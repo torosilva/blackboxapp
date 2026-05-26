@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Platform, StatusBar, Share, Alert, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { ChevronLeft, Share2, Edit3, Trash2, Calendar, Clock, Sparkles, Zap, Check, X, Laugh, SmilePlus, Meh, Angry, UserRoundCheck, Frown, Smile, CloudRain } from 'lucide-react-native';
+import { ChevronLeft, Share2, Edit3, Trash2, Calendar, Clock, Sparkles, Zap, Check, X, Laugh, SmilePlus, Meh, Angry, UserRoundCheck, Frown, Smile, CloudRain, Play, Pause } from 'lucide-react-native';
 import { SupabaseService, supabase } from '../services/SupabaseService';
 import { aiService } from '../services/ai';
 import { ActionList } from '../components/ActionList';
@@ -11,6 +11,16 @@ import { WellnessActionCard } from '../components/WellnessActionCard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import AILoadingOverlay from '../components/AILoadingOverlay';
+import { Audio } from 'expo-av';
+
+const formatRelativeDate = (iso: string) => {
+  const d = new Date(iso);
+  const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (days <= 0) return 'Hoy';
+  if (days === 1) return 'Ayer';
+  if (days < 7) return `Hace ${days} días`;
+  return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+};
 
 const EntryDetailScreen = () => {
   const navigation = useNavigation<any>();
@@ -47,6 +57,72 @@ const EntryDetailScreen = () => {
   const [editedContent, setEditedContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [actionItems, setActionItems] = useState<any[]>([]);
+  const [related, setRelated] = useState<any[]>([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
+
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [isAudioLoading, setIsAudioLoading] = useState(false);
+  const [audioPositionMs, setAudioPositionMs] = useState(0);
+  const [audioDurationMs, setAudioDurationMs] = useState(0);
+
+  useEffect(() => {
+    return sound ? () => { sound.unloadAsync(); } : undefined;
+  }, [sound]);
+
+  const fmtMs = (ms: number) => {
+    const total = Math.floor(ms / 1000);
+    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+  };
+
+  const toggleAudioPlayback = async () => {
+    if (!entry?.audio_url) return;
+
+    if (sound) {
+      try {
+        if (isAudioPlaying) {
+          await sound.pauseAsync();
+          setIsAudioPlaying(false);
+        } else {
+          await sound.playAsync();
+          setIsAudioPlaying(true);
+        }
+      } catch {
+        Alert.alert('Error', 'No se pudo controlar la reproducción.');
+      }
+      return;
+    }
+
+    setIsAudioLoading(true);
+    try {
+      const signedUrl = await SupabaseService.getSignedAudioUrl(entry.audio_url, 3600);
+      if (!signedUrl) {
+        Alert.alert('Audio no disponible', 'No se pudo cargar la grabación. Puede que ya haya expirado o se haya eliminado.');
+        return;
+      }
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: signedUrl },
+        { shouldPlay: true },
+        (status) => {
+          if (!status.isLoaded) return;
+          setIsAudioPlaying(status.isPlaying);
+          setAudioPositionMs(status.positionMillis || 0);
+          if (status.durationMillis) setAudioDurationMs(status.durationMillis);
+          if (status.didJustFinish) {
+            setIsAudioPlaying(false);
+            setAudioPositionMs(0);
+            newSound.setPositionAsync(0).catch(() => {});
+          }
+        }
+      );
+      setSound(newSound);
+      setIsAudioPlaying(true);
+    } catch (e) {
+      Alert.alert('Error', 'No se pudo reproducir el audio.');
+    } finally {
+      setIsAudioLoading(false);
+    }
+  };
 
   useEffect(() => {
     const loadEntry = async () => {
@@ -77,6 +153,16 @@ const EntryDetailScreen = () => {
     loadEntry();
   }, [entryId]);
 
+  useEffect(() => {
+    if (!entryId || !user?.id) return;
+    let cancelled = false;
+    setRelatedLoading(true);
+    SupabaseService.relatedEntries(user.id, entryId, { limit: 5 })
+      .then(res => { if (!cancelled) setRelated(res); })
+      .finally(() => { if (!cancelled) setRelatedLoading(false); });
+    return () => { cancelled = true; };
+  }, [entryId, user?.id]);
+
   const handleShare = async () => {
     if (!entry) return;
     try {
@@ -88,14 +174,14 @@ const EntryDetailScreen = () => {
           : `\n\n🎯 Take Action: ${rec.title || 'Insight'}\n${rec.description || ''}`;
       }
 
-      const shareMessage = `BLACKBOX SESSION: ${entry.title || 'Untitled'}\n\n` +
+      const shareMessage = `BlackBoxMind SESSION: ${entry.title || 'Untitled'}\n\n` +
         `📝 Content:\n${entry.content}\n\n` +
         `🧠 AI Insight:\n${entry.summary || 'No analytics yet.'}` +
         recommendationText;
 
       await Share.share({
         message: shareMessage,
-        title: 'Share Blackbox Entry'
+        title: 'Share BlackBoxMind Entry'
       });
     } catch (error) {
       console.error('SHARE_ERROR:', error);
@@ -159,7 +245,7 @@ const EntryDetailScreen = () => {
 
       setEntry(data);
       setIsEditing(false);
-      Alert.alert("Éxito", "Tu memoria y el análisis de BLACKBOX han sido actualizados.");
+      Alert.alert("Éxito", "Tu memoria y el análisis de BlackBoxMind han sido actualizados.");
     } catch (error) {
       console.error('SAVE_ERROR:', error);
       Alert.alert("Error", "No se pudieron guardar los cambios.");
@@ -358,11 +444,34 @@ const EntryDetailScreen = () => {
           </LG>
         </TO>
 
-        {/* Audio URL indicator if exists */}
+        {/* Audio player (only if entry has audio) */}
         {entry.audio_url && (
-          <View style={styles.audioBadge}>
-            <Text style={styles.audioText}>🔊 Audio session recorded</Text>
-          </View>
+          <TouchableOpacity
+            style={styles.audioPlayer}
+            onPress={toggleAudioPlayback}
+            disabled={isAudioLoading}
+            activeOpacity={0.85}
+          >
+            <View style={styles.audioPlayBtn}>
+              {isAudioLoading ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : isAudioPlaying ? (
+                <Pause size={20} color="white" fill="white" />
+              ) : (
+                <Play size={20} color="white" fill="white" />
+              )}
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.audioPlayerLabel}>Grabación original</Text>
+              <Text style={styles.audioPlayerTime}>
+                {audioDurationMs > 0
+                  ? `${fmtMs(audioPositionMs)} / ${fmtMs(audioDurationMs)}`
+                  : isAudioLoading
+                    ? 'Cargando…'
+                    : 'Toca para escuchar'}
+              </Text>
+            </View>
+          </TouchableOpacity>
         )}
 
         {/* Delete Action */}
@@ -370,6 +479,42 @@ const EntryDetailScreen = () => {
           <T2 size={18} color="#ef4444" style={{ marginRight: 8 }} />
           <Text style={styles.deleteText}>Delete memory</Text>
         </TO>
+
+        {related.length > 0 && (
+          <View style={styles.relatedSection}>
+            <View style={styles.relatedHeader}>
+              <Sp size={14} color="#c084fc" strokeWidth={2.2} />
+              <Text style={styles.relatedTitle}>MEMORIAS RELACIONADAS</Text>
+            </View>
+            {related.map((r) => (
+              <TO
+                key={r.id}
+                style={styles.relatedCard}
+                onPress={() => navigation.replace('EntryDetail', { entryId: r.id })}
+                activeOpacity={0.85}
+              >
+                <View style={styles.relatedCardHead}>
+                  <Text style={styles.relatedCardTitle} numberOfLines={1}>
+                    {r.title || 'Sin título'}
+                  </Text>
+                  <View style={styles.relatedScorePill}>
+                    <Text style={styles.relatedScoreText}>
+                      {(r.similarity ?? 0).toFixed(2)}
+                    </Text>
+                  </View>
+                </View>
+                {!!r.summary && (
+                  <Text style={styles.relatedCardSnippet} numberOfLines={2}>
+                    {r.summary}
+                  </Text>
+                )}
+                <Text style={styles.relatedCardMeta}>
+                  {formatRelativeDate(r.created_at)} · {r.category || 'GENERAL'}
+                </Text>
+              </TO>
+            ))}
+          </View>
+        )}
       </ScrollView>
 
       <AILoadingOverlay visible={isSaving} message="Procesando tu BlackBoxMind.ai..." />
@@ -480,19 +625,38 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18
   },
-  audioBadge: {
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
+  audioPlayer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(99, 102, 241, 0.08)',
+    borderColor: 'rgba(99, 102, 241, 0.2)',
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
     marginBottom: 30,
-    marginTop: 10
+    marginTop: 10,
   },
-  audioText: {
-    color: '#6366f1',
-    fontSize: 12,
-    fontWeight: '700'
+  audioPlayBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#6366f1',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  audioPlayerLabel: {
+    color: '#cbd5e1',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  audioPlayerTime: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   deleteButton: {
     flexDirection: 'row',
@@ -530,7 +694,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     letterSpacing: 0.5
-  }
+  },
+  relatedSection: { marginTop: 32, marginBottom: 16 },
+  relatedHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  relatedTitle: { color: '#c084fc', fontSize: 11, fontWeight: '700', letterSpacing: 1.8 },
+  relatedCard: {
+    backgroundColor: '#151B2C',
+    borderColor: '#1E293B',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+  },
+  relatedCardHead: { flexDirection: 'row', justifyContent: 'space-between',
+                     alignItems: 'flex-start', marginBottom: 6, gap: 8 },
+  relatedCardTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '700', flex: 1 },
+  relatedScorePill: { backgroundColor: 'rgba(192,132,252,0.15)',
+                      paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
+  relatedScoreText: { color: '#c084fc', fontSize: 11, fontWeight: '700' },
+  relatedCardSnippet: { color: '#94a3b8', fontSize: 12, lineHeight: 18, marginBottom: 6 },
+  relatedCardMeta: { color: '#64748b', fontSize: 10, letterSpacing: 0.5 },
 });
 
 const LG = LinearGradient as any;

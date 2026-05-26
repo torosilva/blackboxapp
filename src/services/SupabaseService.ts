@@ -46,6 +46,76 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     },
 });
 
+// Parse the OAuth callback URL and establish the Supabase session.
+// Handles both PKCE (?code=...) and implicit (#access_token=...) flows
+// without relying on the URL/URLSearchParams polyfill (incomplete in RN).
+const _parseParams = (str: string): Record<string, string> => {
+    const out: Record<string, string> = {};
+    if (!str) return out;
+    for (const pair of str.split('&')) {
+        if (!pair) continue;
+        const idx = pair.indexOf('=');
+        const k = idx === -1 ? pair : pair.slice(0, idx);
+        const v = idx === -1 ? '' : pair.slice(idx + 1);
+        try {
+            out[decodeURIComponent(k)] = decodeURIComponent(v);
+        } catch {
+            out[k] = v;
+        }
+    }
+    return out;
+};
+
+const _completeSessionFromUrl = async (url: string) => {
+    const queryStr = url.includes('?') ? url.split('?')[1].split('#')[0] : '';
+    const fragStr = url.includes('#') ? url.split('#')[1] : '';
+    const q = _parseParams(queryStr);
+    const f = _parseParams(fragStr);
+
+    if (q.code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(q.code);
+        if (error) throw error;
+        return;
+    }
+
+    const access_token = f.access_token || q.access_token;
+    const refresh_token = f.refresh_token || q.refresh_token;
+    if (access_token && refresh_token) {
+        const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+        if (error) throw error;
+        return;
+    }
+
+    const errMsg = q.error_description || f.error_description || q.error || f.error;
+    throw new Error(errMsg || 'No se pudo completar el inicio de sesión con el proveedor.');
+};
+
+const _performOAuth = async (provider: 'google' | 'apple') => {
+    const redirectTo = AuthSession.makeRedirectUri({ path: 'auth/callback' });
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+            redirectTo,
+            skipBrowserRedirect: true,
+        },
+    });
+
+    if (error) throw error;
+    if (!data?.url) throw new Error('El proveedor no devolvió una URL de autenticación.');
+
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+
+    if (result.type === 'success' && result.url) {
+        await _completeSessionFromUrl(result.url);
+        return;
+    }
+    if (result.type === 'cancel' || result.type === 'dismiss') {
+        return; // User closed the browser; not an error.
+    }
+    throw new Error('El inicio de sesión no se completó.');
+};
+
 export const SupabaseService = {
     /**
      * Internal helper to unpack ai_analysis JSONB into flat object
@@ -69,21 +139,23 @@ export const SupabaseService = {
     },
 
     /**
-     * 1. Upload Audio to Supabase Storage
+     * 1. Upload Audio to Supabase Storage.
+     * Returns the INTERNAL STORAGE PATH (e.g. "<userId>/<timestamp>.m4a"),
+     * not a public URL. Playback must use getSignedAudioUrl() to generate
+     * a short-lived signed URL. Bucket "diaries" must be configured as
+     * private in Supabase dashboard for this to give real protection.
      */
     async uploadAudio(uri: string, userId: string): Promise<string | null> {
         try {
             console.log('SUPABASE_SERVICE: Attempting audio upload...');
             const fileExt = uri.split('.').pop() || 'm4a';
-            const fileName = `${userId}/${Date.now()}.${fileExt}`;
-            const filePath = `${fileName}`;
+            const filePath = `${userId}/${Date.now()}.${fileExt}`;
 
-            // Read file as Base64
             const base64 = await FileSystem.readAsStringAsync(uri, {
                 encoding: 'base64',
             });
 
-            const { data, error } = await supabase.storage
+            const { error } = await supabase.storage
                 .from('diaries')
                 .upload(filePath, decode(base64), {
                     contentType: 'audio/m4a',
@@ -95,9 +167,8 @@ export const SupabaseService = {
                 throw error;
             }
 
-            const { data: publicUrlData } = supabase.storage.from('diaries').getPublicUrl(filePath);
-            console.log('SUPABASE_SERVICE: Upload success:', publicUrlData.publicUrl);
-            return publicUrlData.publicUrl;
+            console.log('SUPABASE_SERVICE: Upload success, path:', filePath);
+            return filePath;
 
         } catch (error: any) {
             console.error('SUPABASE_SERVICE: Upload failed:', error.message || error);
@@ -198,6 +269,39 @@ export const SupabaseService = {
     },
 
     /**
+     * Resolve an audio_url value into a playable signed URL.
+     *
+     * Handles both new and legacy formats:
+     *  - New: storage path like "<userId>/<timestamp>.m4a"
+     *  - Legacy: full public URL with ".../object/public/diaries/<userId>/<timestamp>.m4a"
+     *
+     * Signed URL expires after `expirySecs` (default 1 hour). Caller should
+     * not store the result anywhere — re-issue it on each playback session.
+     */
+    async getSignedAudioUrl(audioUrlOrPath: string, expirySecs: number = 3600): Promise<string | null> {
+        try {
+            const marker = '/object/public/diaries/';
+            const idx = audioUrlOrPath.indexOf(marker);
+            const path = idx >= 0
+                ? audioUrlOrPath.slice(idx + marker.length)
+                : audioUrlOrPath;
+
+            const { data, error } = await supabase.storage
+                .from('diaries')
+                .createSignedUrl(path, expirySecs);
+
+            if (error) {
+                console.error('SUPABASE_SERVICE: Signed URL error', error);
+                return null;
+            }
+            return data?.signedUrl ?? null;
+        } catch (error: any) {
+            console.error('SUPABASE_SERVICE: Signed URL failed:', error.message || error);
+            return null;
+        }
+    },
+
+    /**
      * 1.5 Upload Image to Supabase Storage (for Feedback)
      */
     async uploadImage(uri: string, userId: string): Promise<string | null> {
@@ -251,6 +355,33 @@ export const SupabaseService = {
     /**
      * 2. Save the Entry & AI Analysis to Database
      */
+    /**
+     * Count this user's entries in the last 24h (sliding window, not calendar
+     * day in user timezone — simpler and DST-safe). Used as a hard cap to
+     * protect Anthropic token cost from runaway loops or accidental rapid
+     * captures. On query failure returns 0 so callers default-allow rather
+     * than punish a user for a transient network blip.
+     */
+    async countEntriesLast24h(userId: string): Promise<number> {
+        if (!userId) return 0;
+        try {
+            const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+            const { count, error } = await supabase
+                .from('entries')
+                .select('id', { count: 'exact', head: true })
+                .eq('user_id', userId)
+                .gte('created_at', since);
+            if (error) {
+                console.warn('SUPABASE_SERVICE: countEntriesLast24h error:', error.message);
+                return 0;
+            }
+            return count ?? 0;
+        } catch (e: any) {
+            console.warn('SUPABASE_SERVICE: countEntriesLast24h failed:', e?.message);
+            return 0;
+        }
+    },
+
     async createEntry(entry: {
         user_id: string;
         title: string;
@@ -455,6 +586,100 @@ export const SupabaseService = {
             return data?.results ?? [];
         } catch (e: any) {
             console.warn('SUPABASE_SERVICE: semanticSearch error:', e?.message);
+            return [];
+        }
+    },
+
+    /**
+     * Plain text (ILIKE) substring search on title and content.
+     * Used as fallback alongside semanticSearch so short queries like "Valida"
+     * still surface entries with matching titles regardless of embedding cosine.
+     *
+     * Implementation: two parallel .ilike() calls (one on title, one on content)
+     * merged by id. We use .ilike() directly instead of .or() because the
+     * Supabase JS client guarantees URL-encoding for .ilike() values, while
+     * .or() requires PostgREST URL grammar (uses * instead of % for wildcards)
+     * which is fragile across query string variations.
+     */
+    async textSearchEntries(userId: string, query: string, limit: number = 20): Promise<any[]> {
+        if (!query?.trim() || !userId) return [];
+        try {
+            const escaped = query.trim().replace(/[%_\\]/g, '\\$&');
+            const pattern = `%${escaped}%`;
+            const cols = 'id, title, summary, content, mood_label, sentiment_score, category, created_at';
+
+            const [titleRes, contentRes] = await Promise.all([
+                supabase
+                    .from('entries')
+                    .select(cols)
+                    .eq('user_id', userId)
+                    .ilike('title', pattern)
+                    .order('created_at', { ascending: false })
+                    .limit(limit),
+                supabase
+                    .from('entries')
+                    .select(cols)
+                    .eq('user_id', userId)
+                    .ilike('content', pattern)
+                    .order('created_at', { ascending: false })
+                    .limit(limit),
+            ]);
+
+            if (titleRes.error) console.warn('SUPABASE_SERVICE: textSearch title error:', titleRes.error.message);
+            if (contentRes.error) console.warn('SUPABASE_SERVICE: textSearch content error:', contentRes.error.message);
+
+            const byId = new Map<string, any>();
+            for (const r of (titleRes.data || [])) byId.set(r.id, { ...r, __titleHit: true });
+            for (const r of (contentRes.data || [])) {
+                if (!byId.has(r.id)) byId.set(r.id, { ...r, __titleHit: false });
+            }
+            return Array.from(byId.values());
+        } catch (e: any) {
+            console.warn('SUPABASE_SERVICE: textSearchEntries failed:', e?.message);
+            return [];
+        }
+    },
+
+    /**
+     * Find entries semantically related to a given entry, using its existing
+     * embedding (no new embedding generation needed). Excludes the entry itself
+     * from results. Returns ranked by similarity desc.
+     */
+    async relatedEntries(userId: string, entryId: string, opts?: {
+        threshold?: number; limit?: number;
+    }): Promise<any[]> {
+        if (!userId || !entryId) return [];
+        try {
+            const { data: src, error: srcErr } = await supabase
+                .from('entries')
+                .select('embedding')
+                .eq('id', entryId)
+                .eq('user_id', userId)
+                .maybeSingle();
+
+            if (srcErr || !src?.embedding) {
+                SupabaseService.triggerEntryEmbedding(entryId).catch(() => {});
+                return [];
+            }
+
+            const limit = opts?.limit ?? 5;
+            const { data, error } = await supabase.rpc('match_entries', {
+                p_user_id: userId,
+                p_query_embedding: src.embedding,
+                p_match_threshold: opts?.threshold ?? 0.5,
+                p_match_count: limit + 1,
+            });
+
+            if (error) {
+                console.warn('SUPABASE_SERVICE: relatedEntries RPC failed:', error.message);
+                return [];
+            }
+
+            return (data ?? [])
+                .filter((e: any) => e.id !== entryId)
+                .slice(0, limit);
+        } catch (e: any) {
+            console.warn('SUPABASE_SERVICE: relatedEntries error:', e?.message);
             return [];
         }
     },
@@ -943,46 +1168,11 @@ export const SupabaseService = {
 
     /**
      * 7. Social Authentication (Google)
+     * Opens an auth session, waits for the blackbox://auth/callback redirect,
+     * and establishes the Supabase session from the returned URL.
      */
     async signInWithGoogle() {
-        const redirectUrl = AuthSession.makeRedirectUri();
-        const { data, error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                redirectTo: redirectUrl,
-                skipBrowserRedirect: true,
-            },
-        });
-        
-        if (error) throw error;
-        if (data?.url) {
-            // Using openBrowserAsync instead of openAuthSessionAsync to prevent reboots in some Expo Go versions
-            await WebBrowser.openBrowserAsync(data.url);
-        }
-    },
-
-    /**
-     * 8. Social Authentication (Apple)
-     */
-    async signInWithApple() {
-        try {
-            const redirectUrl = AuthSession.makeRedirectUri();
-            const { data, error } = await supabase.auth.signInWithOAuth({
-                provider: 'apple',
-                options: {
-                    redirectTo: redirectUrl,
-                    skipBrowserRedirect: true,
-                },
-            });
-
-            if (error) throw error;
-            if (data?.url) {
-                await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
-            }
-        } catch (error: any) {
-            console.error('SUPABASE_SERVICE: Apple Sign-In Failed:', error.message);
-            throw error;
-        }
+        await _performOAuth('google');
     },
 
     /**
@@ -1261,11 +1451,11 @@ export const SupabaseService = {
      */
     async seedWelcomeEntry(userId: string) {
         try {
-            const welcomeTitle = "Bienvenida a BLACKBOX: Tu Primera Sesión";
-            const welcomeContent = "Esta es una entrada de ejemplo para que veas cómo BLACKBOX funciona. Aquí puedes registrar tus pensamientos, grabaciones de voz o planes estratégicos. Una vez que guardas, mi motor de IA analiza tu contenido para detectar sesgos, resumir puntos clave y sugerir pasos accionables.";
+            const welcomeTitle = "Bienvenida a BlackBoxMind: Tu Primera Sesión";
+            const welcomeContent = "Esta es una entrada de ejemplo para que veas cómo BlackBoxMind funciona. Aquí puedes registrar tus pensamientos, grabaciones de voz o planes estratégicos. Una vez que guardas, mi motor de IA analiza tu contenido para detectar sesgos, resumir puntos clave y sugerir pasos accionables.";
             
             const analysis = {
-                summary: "Bienvenido a tu nueva herramienta de claridad mental. Esta sesión demuestra cómo BLACKBOX transforma texto en estrategia. Se ha detectado un tono positivo y enfocado en el crecimiento.",
+                summary: "Bienvenido a tu nueva herramienta de claridad mental. Esta sesión demuestra cómo BlackBoxMind transforma texto en estrategia. Se ha detectado un tono positivo y enfocado en el crecimiento.",
                 sentiment_score: 0.9,
                 mood_label: "Inspirado",
                 strategic_insight: "Tu mayor activo es la capacidad de reflexionar sobre tus propios procesos cognitivos. No dejes que el sesgo de confirmación limite tus decisiones hoy.",
@@ -1430,6 +1620,26 @@ export const SupabaseService = {
     },
 
     /**
+     * Count loops closed (completed) within the last `days` days — momentum.
+     */
+    async getClosedLoopsCount(userId: string, days: number = 7): Promise<number> {
+        try {
+            const since = new Date(Date.now() - days * 86400000).toISOString();
+            const { count, error } = await supabase
+                .from('action_items')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', userId)
+                .eq('is_completed', true)
+                .gte('completed_at', since);
+            if (error) throw error;
+            return count || 0;
+        } catch (err: any) {
+            console.error('SUPABASE_SERVICE: getClosedLoopsCount failed:', err.message);
+            return 0;
+        }
+    },
+
+    /**
      * Fetch all action items (open and completed) for a specific entry.
      */
     async getActionItemsByEntry(entryId: string) {
@@ -1450,14 +1660,16 @@ export const SupabaseService = {
 
     /**
      * Update the completion status of a single action item.
+     * Closing a loop also drops it into the 'hecha' lane.
      */
     async updateActionItemStatus(itemId: string, isCompleted: boolean) {
         try {
             const { error } = await supabase
                 .from('action_items')
-                .update({ 
+                .update({
                     is_completed: isCompleted,
-                    completed_at: isCompleted ? new Date().toISOString() : null
+                    completed_at: isCompleted ? new Date().toISOString() : null,
+                    status: isCompleted ? 'hecha' : 'hoy',
                 })
                 .eq('id', itemId);
 
@@ -1465,6 +1677,25 @@ export const SupabaseService = {
             return true;
         } catch (err: any) {
             console.error('SUPABASE_SERVICE: updateActionItemStatus failed:', err.message);
+            return false;
+        }
+    },
+
+    /**
+     * Manually move an open loop between the HOY / RONDANDO lanes.
+     * REGRESAN is set by the avoidance engine, not by hand.
+     */
+    async setActionItemLane(itemId: string, status: 'hoy' | 'rondando') {
+        try {
+            const { error } = await supabase
+                .from('action_items')
+                .update({ status })
+                .eq('id', itemId);
+
+            if (error) throw error;
+            return true;
+        } catch (err: any) {
+            console.error('SUPABASE_SERVICE: setActionItemLane failed:', err.message);
             return false;
         }
     },
@@ -1523,7 +1754,7 @@ export const SupabaseService = {
             console.log(`SUPABASE_SERVICE: Pattern analysis done — ${count} patterns saved`);
             return { success: true, count };
         } catch (err: any) {
-            console.error('SUPABASE_SERVICE: FATAL - triggerPatternAnalysis crashed:', err.message);
+            console.warn('SUPABASE_SERVICE: FATAL - triggerPatternAnalysis crashed:', err.message);
             return { success: false, count: 0 };
         }
     },

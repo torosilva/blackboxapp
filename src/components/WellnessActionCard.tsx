@@ -15,7 +15,7 @@ export const WellnessActionCard: React.FC<Props> = ({ recommendation, summary })
         <View style={styles.container}>
             <View style={styles.header}>
                 <Sparkles size={20} color="#a855f7" />
-                <Text style={styles.title}>INSIGHT ESTRATÉGICO BLACKBOX</Text>
+                <Text style={styles.title}>INSIGHT ESTRATÉGICO BlackBoxMind.ai</Text>
             </View>
 
             {summary && (

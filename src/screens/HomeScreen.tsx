@@ -265,7 +265,7 @@ const HomeScreen = () => {
       }
 
       // 2. Generate with Gemini
-      const res = await aiService.generateDailySummary(contentArray, undefined, undefined, user.id);
+      const res = await aiService.generateDailySummary(contentArray, user.id);
       setSummary(res);
 
       // 3. Save to cache ONLY IF it's a real result (not the fallback)
@@ -300,7 +300,7 @@ const HomeScreen = () => {
               await SupabaseService.createEntry({
                 user_id: user.id,
                 title: `ACCION: ${rec.title}`,
-                content: `Iniciando acción sugerida por BLACKBOX: ${rec.description}`,
+                content: `Iniciando acción sugerida por BlackBoxMind: ${rec.description}`,
                 sentiment_score: 0.5,
                 mood_label: "Determinado",
                 summary: "Acción estratégica iniciada desde el Daily Insight.",
@@ -466,7 +466,7 @@ const HomeScreen = () => {
       {/* Premium AI Loading Overlay */}
       <Overlay
         visible={summaryLoading}
-        message="Procesando tu BlackBoxMind.ai..."
+        message="Procesando tu BlackBoxMind..."
       />
 
       <View style={styles.header}>
@@ -631,7 +631,7 @@ const HomeScreen = () => {
                 <View style={styles.sparkleIcon}>
                   <Sparkles size={16} color="white" />
                 </View>
-                <Text style={styles.summaryTitle}>Insight Diario - BLACKBOX</Text>
+                <Text style={styles.summaryTitle}>Insight Diario - BlackBoxMind.ai</Text>
               </View>
               <TouchableOpacity onPress={() => setIsMinimized(true)} style={styles.minimizeBtn}>
                 <X size={16} color="#94a3b8" />
@@ -773,9 +773,11 @@ const HomeScreen = () => {
                   {entry.strategic_insight?.detected_bias && (
                     <AlertTriangle size={14} color="#f59e0b" style={{ marginRight: 6 }} />
                   )}
-                  <View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={styles.entryDate}>{new Date(entry.created_at).toLocaleDateString()}</Text>
-                    {!!entry.mood_label && <Text style={styles.moodBadge}>{entry.mood_label}</Text>}
+                    {!!entry.mood_label && (
+                      <Text style={styles.moodBadge} numberOfLines={1}>{entry.mood_label}</Text>
+                    )}
                   </View>
                   <TouchableOpacity
                     onPress={() => { setActiveFilter((entry.category || '').toUpperCase()); setShowFilters(true); }}
@@ -799,7 +801,7 @@ const HomeScreen = () => {
                   <View style={styles.analysisDivider} />
                   <View style={styles.analysisHeader}>
                     <Sparkles size={14} color="#a855f7" />
-                    <Text style={styles.analysisLabel}>REPORTE BLACKBOX</Text>
+                    <Text style={styles.analysisLabel}>REPORTE BlackBoxMind.ai</Text>
                   </View>
                   {!!entry.summary && (
                     <Text style={styles.analysisSummary} numberOfLines={3}>
@@ -827,7 +829,7 @@ const HomeScreen = () => {
       {/* Floating Action Buttons */}
       <View style={styles.fabContainer}>
         <TO
-          onPress={() => navigation.navigate('NewEntry', {})}
+          onPress={() => navigation.navigate('Main')}
           style={styles.fabMain}
         >
           <P size={24} color="white" style={{ marginRight: 8 }} />

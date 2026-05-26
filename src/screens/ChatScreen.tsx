@@ -2,15 +2,17 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TextInput,
     TouchableOpacity, ScrollView, KeyboardAvoidingView,
-    Platform, ActivityIndicator, StatusBar, Alert
+    Platform, ActivityIndicator, StatusBar, Alert, Animated, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Send, ChevronLeft, Bot, Sparkles, Brain } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { Send, ChevronLeft, Bot, Sparkles, Brain, Mic, MicOff, ImagePlus, X } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ChatService, ChatMessage } from '../services/ChatService';
 import { useAuth } from '../context/AuthContext';
 import { SupabaseService } from '../services/SupabaseService';
 import { aiService } from '../services/ai';
+import { voiceService } from '../services/voice';
 import { useSubscription } from '../hooks/useSubscription';
 import { Crown } from 'lucide-react-native';
 
@@ -28,10 +30,77 @@ const ChatScreen = () => {
     const Sn = Send as any;
     const CL = ChevronLeft as any;
     const Bo = Bot as any;
+    const Mi = Mic as any;
+    const MO = MicOff as any;
+    const IP = ImagePlus as any;
+    const Xx = X as any;
+    const Img = Image as any;
 
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputText, setInputText] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isRecording, setIsRecording] = useState(false);
+    const [isTranscribing, setIsTranscribing] = useState(false);
+    const [recordSecs, setRecordSecs] = useState(0);
+    const [attachedImage, setAttachedImage] = useState<{
+        data: string;
+        mediaType: string;
+        previewUri: string;
+    } | null>(null);
+    const dotAnim = useRef(new Animated.Value(1)).current;
+
+    const handleAttachImage = async () => {
+        try {
+            const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!perm.granted) {
+                Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería para adjuntar imágenes.');
+                return;
+            }
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                quality: 0.7,
+                base64: true,
+                allowsEditing: false,
+                exif: false,
+            });
+            if (result.canceled || !result.assets?.[0]) return;
+            const asset = result.assets[0];
+            if (!asset.base64) {
+                Alert.alert('Error', 'No se pudo leer la imagen.');
+                return;
+            }
+            const mediaType = asset.mimeType ?? 'image/jpeg';
+            setAttachedImage({
+                data: asset.base64,
+                mediaType,
+                previewUri: asset.uri,
+            });
+        } catch (e: any) {
+            console.error('Image pick error:', e);
+            Alert.alert('Error', 'No se pudo abrir la galería.');
+        }
+    };
+
+    const fmtSecs = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+    useEffect(() => {
+        if (!isRecording) { setRecordSecs(0); return; }
+        setRecordSecs(0);
+        const id = setInterval(() => setRecordSecs(s => s + 1), 1000);
+        return () => clearInterval(id);
+    }, [isRecording]);
+
+    useEffect(() => {
+        if (!isRecording && !isTranscribing) return;
+        const loop = Animated.loop(
+            Animated.sequence([
+                Animated.timing(dotAnim, { toValue: 1.4, duration: 600, useNativeDriver: true }),
+                Animated.timing(dotAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+            ])
+        );
+        loop.start();
+        return () => { loop.stop(); dotAnim.setValue(1); };
+    }, [isRecording, isTranscribing]);
     const [fetchingHistory, setFetchingHistory] = useState(true);
     const scrollViewRef = useRef<ScrollView>(null);
     const initialSentRef = useRef(false);
@@ -158,12 +227,30 @@ const ChatScreen = () => {
         text: string = inputText,
         image?: { mediaType: string; data: string } | null,
     ) => {
-        if (!text.trim() || loading || !user || !threadId) return;
+        // Fall back to the state-attached image when caller didn't pass one
+        // explicitly (so the gallery-attached image gets sent on plain
+        // "Send" tap or "Send" via voice transcription).
+        const effectiveImage = image ?? (attachedImage
+            ? { mediaType: attachedImage.mediaType, data: attachedImage.data }
+            : null);
+        const effectivePreviewUri = image ? undefined : attachedImage?.previewUri;
 
-        const displayText = image ? `${text}\n🖼️ (imagen adjunta)` : text;
-        const userMsg: ChatMessage = { role: 'user', parts: [{ text: displayText }] };
+        const hasText = text.trim().length > 0;
+        if ((!hasText && !effectiveImage) || loading || !user || !threadId) return;
+
+        const displayText = effectiveImage
+            ? (hasText ? `${text}\n🖼️ (imagen adjunta)` : '🖼️ (imagen adjunta)')
+            : text;
+        const userMsg: ChatMessage = {
+            role: 'user',
+            parts: [{ text: displayText }],
+            ...(effectivePreviewUri ? { imageUri: effectivePreviewUri } : {}),
+        };
         setMessages(prev => [...prev, userMsg]);
         setInputText('');
+        // Clear the attachment as soon as we commit it to the sent flow,
+        // so a quick second send won't double-attach the same image.
+        if (effectiveImage && !image) setAttachedImage(null);
         setLoading(true);
 
         try {
@@ -179,28 +266,60 @@ const ChatScreen = () => {
                 category,
                 isTherapyMode,
                 entryContext,
-                image ?? null
+                effectiveImage
             );
-            
+
             const aiText = response.parts[0].text;
             const aiMsg: ChatMessage = {
                 role: 'model',
                 parts: [{ text: aiText }]
             };
-            
+
             // 3. Save AI Response to DB
             await SupabaseService.saveChatMessage(threadId, 'model', aiText);
-            
+
             setMessages(prev => [...prev, aiMsg]);
-        } catch (error) {
+        } catch (error: any) {
             console.error('SEND_MESSAGE_ERROR:', error);
+            const isTimeout = error?.message?.includes('demasiado en responder');
+            const text = isTimeout
+                ? error.message
+                : "Lo siento, tuve un problema al procesar tu solicitud. Intenta de nuevo.";
             const errorMsg: ChatMessage = {
                 role: 'model',
-                parts: [{ text: "Lo siento, tuve un problema al procesar tu solicitud. Intenta de nuevo." }]
+                parts: [{ text }]
             };
             setMessages(prev => [...prev, errorMsg]);
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Voice in chat: record → transcribe → send. Lets the user keep
+    // dictating instead of being forced to type to continue the thread.
+    const toggleRecording = async () => {
+        if (loading || isTranscribing) return;
+        if (isRecording) {
+            const uri = await voiceService.stopRecording();
+            setIsRecording(false);
+            if (!uri) return;
+            setIsTranscribing(true);
+            let trans = '';
+            try {
+                trans = await voiceService.transcribeAudio(uri);
+            } catch {
+                Alert.alert('Error de transcripción', 'No se pudo convertir el audio a texto.');
+            } finally {
+                setIsTranscribing(false);
+            }
+            if (trans && trans.trim()) {
+                const combined = inputText.trim() ? `${inputText.trim()} ${trans.trim()}` : trans.trim();
+                setInputText('');
+                handleSend(combined);
+            }
+        } else {
+            const started = await voiceService.startRecording(() => {});
+            if (started) setIsRecording(true);
         }
     };
 
@@ -259,7 +378,7 @@ const ChatScreen = () => {
         memoryDecidedRef.current = true;
         setMemoryState('classifying');
         const transcript = msgs
-            .map(m => `${m.role === 'user' ? 'Usuario' : 'BLACKBOX'}: ${m.parts[0]?.text ?? ''}`)
+            .map(m => `${m.role === 'user' ? 'Usuario' : 'BlackBoxMind'}: ${m.parts[0]?.text ?? ''}`)
             .join('\n\n');
         const kind = await SupabaseService.classifyThread(transcript);
         if (kind === 'journal') {
@@ -283,7 +402,7 @@ const ChatScreen = () => {
         setMemoryState('updating');
         const len = msgs.length;
         const transcript = msgs
-            .map((m) => `${m.role === 'user' ? 'Usuario' : 'BLACKBOX'}: ${m.parts[0]?.text ?? ''}`)
+            .map((m) => `${m.role === 'user' ? 'Usuario' : 'BlackBoxMind'}: ${m.parts[0]?.text ?? ''}`)
             .join('\n\n');
         aiService.generateDailySummary([transcript], user.id)
             .then((a) => SupabaseService.updateEntryAnalysis(id, {
@@ -344,6 +463,19 @@ const ChatScreen = () => {
         return unsub;
     }, [navigation]);
 
+    // Auto-sync the memoria a few seconds after new turns settle — replaces
+    // the manual "Actualizar" button users found unclear. syncMemory has its
+    // own guards against concurrent/no-op runs.
+    useEffect(() => {
+        const hasNew =
+            memoryState === 'saved' &&
+            messages.length > memorySyncedLen &&
+            messages.filter((m) => m.role === 'user').length >= 2;
+        if (!hasNew || loading) return;
+        const t = setTimeout(() => syncMemory(), 4000);
+        return () => clearTimeout(t);
+    }, [memoryState, messages, memorySyncedLen, loading]);
+
     if (isLimitReached) {
         return (
             <SAV style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 30 }]}>
@@ -353,7 +485,7 @@ const ChatScreen = () => {
                         Función PRO
                     </Text>
                     <Text style={{ color: '#94a3b8', fontSize: 16, textAlign: 'center', marginBottom: 30, lineHeight: 24 }}>
-                        El <Text style={{ color: '#6366f1', fontWeight: 'bold' }}>Chat Estratégico BLACKBOX</Text> es exclusivo de usuarios PRO.{"\n\n"}
+                        El <Text style={{ color: '#6366f1', fontWeight: 'bold' }}>Chat Estratégico BlackBoxMind.ai</Text> es exclusivo de usuarios PRO.{"\n\n"}
                         Accede a consultas ilimitadas con tu asesor de IA.
                     </Text>
                     <TouchableOpacity
@@ -415,14 +547,9 @@ const ChatScreen = () => {
                         {memoryState === 'assist' && 'Solo en historial de chats'}
                         {memoryState === 'ask' && '¿Guardar esto como memoria?'}
                         {memoryState === 'saved' && (memoryHasNew
-                            ? 'Guardado como memoria · hay mensajes nuevos'
+                            ? 'Guardado como memoria · sincronizando lo nuevo…'
                             : `Guardado como memoria ✓${memoryGoalsCount > 0 ? ` · ${memoryGoalsCount} meta${memoryGoalsCount > 1 ? 's' : ''} detectada${memoryGoalsCount > 1 ? 's' : ''}` : ''}`)}
                     </Text>
-                    {memoryState === 'saved' && memoryHasNew && (
-                        <TO onPress={syncMemory} style={styles.memoryBannerBtn}>
-                            <Text style={styles.memoryBannerBtnText}>Actualizar</Text>
-                        </TO>
-                    )}
                     {memoryState === 'assist' && (
                         <TO onPress={createMemoria} style={styles.memoryBannerBtn}>
                             <Text style={styles.memoryBannerBtnText}>Guardar como memoria</Text>
@@ -466,6 +593,13 @@ const ChatScreen = () => {
                                 styles.messageBubble,
                                 msg.role === 'user' ? styles.userBubble : styles.aiBubble
                             ]}>
+                                {msg.imageUri && (
+                                    <Img
+                                        source={{ uri: msg.imageUri }}
+                                        style={styles.messageImage}
+                                        resizeMode="cover"
+                                    />
+                                )}
                                 <Text style={[
                                     styles.messageText,
                                     msg.role === 'user' ? styles.userText : styles.aiText
@@ -505,20 +639,90 @@ const ChatScreen = () => {
                     </View>
                 )}
 
+                {/* Recording / Transcribing indicator */}
+                {(isRecording || isTranscribing) && (
+                    <View style={styles.recordingBar}>
+                        <Animated.View
+                            style={[
+                                styles.recordingDot,
+                                isTranscribing && { backgroundColor: '#6366f1' },
+                                { transform: [{ scale: dotAnim }] },
+                            ]}
+                        />
+                        <Text style={styles.recordingText}>
+                            {isTranscribing
+                                ? 'Transcribiendo tu audio…'
+                                : `Escuchando ${fmtSecs(recordSecs)} · toca el micrófono para enviar`}
+                        </Text>
+                    </View>
+                )}
+
+                {/* Attached image preview (above input row) */}
+                {attachedImage && (
+                    <View style={styles.attachmentPreview}>
+                        <Img
+                            source={{ uri: attachedImage.previewUri }}
+                            style={styles.attachmentThumb}
+                        />
+                        <View style={styles.attachmentInfo}>
+                            <Text style={styles.attachmentLabel}>Imagen adjunta</Text>
+                            <Text style={styles.attachmentHint}>Se enviará con tu próximo mensaje</Text>
+                        </View>
+                        <TO
+                            onPress={() => setAttachedImage(null)}
+                            style={styles.attachmentRemove}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                            <Xx size={18} color="#94a3b8" />
+                        </TO>
+                    </View>
+                )}
+
                 {/* Input */}
                 <View style={styles.inputArea}>
+                    <TO
+                        onPress={handleAttachImage}
+                        style={styles.attachBtn}
+                        disabled={loading || isRecording || isTranscribing}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                        <IP size={22} color="#94a3b8" strokeWidth={2} />
+                    </TO>
                     <TI
                         style={styles.input}
-                        placeholder={isTherapyMode ? "¿Cómo te hace sentir eso?" : "Escribe un mensaje..."}
+                        placeholder={
+                            isRecording
+                                ? 'Escuchando… toca el micrófono para enviar'
+                                : isTranscribing
+                                    ? 'Transcribiendo tu audio…'
+                                    : isTherapyMode ? '¿Cómo te hace sentir eso?' : 'Escribe o dicta un mensaje…'
+                        }
                         placeholderTextColor="#64748b"
                         value={inputText}
                         onChangeText={setInputText}
+                        editable={!isRecording && !isTranscribing}
                         multiline
                     />
                     <TO
-                        style={[styles.sendBtn, !inputText.trim() && { opacity: 0.5 }]}
+                        style={[styles.micBtn, isRecording && styles.micBtnActive]}
+                        onPress={toggleRecording}
+                        disabled={loading || isTranscribing}
+                    >
+                        {isTranscribing ? (
+                            <ActivityIndicator size="small" color="#818cf8" />
+                        ) : isRecording ? (
+                            <MO size={20} color="white" />
+                        ) : (
+                            <Mi size={20} color="#94a3b8" />
+                        )}
+                    </TO>
+                    <TO
+                        style={[
+                            styles.sendBtn,
+                            (!inputText.trim() && !attachedImage) && { opacity: 0.5 },
+                        ]}
                         onPress={() => handleSend()}
-                        disabled={!inputText.trim() || loading}
+                        disabled={(!inputText.trim() && !attachedImage) || loading || isRecording || isTranscribing}
                     >
                         <Sn size={20} color="white" />
                     </TO>
@@ -604,6 +808,31 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
         borderColor: '#1e293b'
     },
+    recordingBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        marginHorizontal: 15,
+        marginBottom: 4,
+        backgroundColor: 'rgba(239, 68, 68, 0.08)',
+        borderColor: 'rgba(239, 68, 68, 0.25)',
+        borderWidth: 1,
+        borderRadius: 12,
+    },
+    recordingDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: '#ef4444',
+    },
+    recordingText: {
+        color: '#fca5a5',
+        fontSize: 13,
+        fontWeight: '600',
+        flex: 1,
+    },
     input: {
         flex: 1,
         backgroundColor: '#0f172a',
@@ -616,6 +845,21 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#1e293b'
     },
+    micBtn: {
+        width: 44,
+        height: 44,
+        backgroundColor: '#0f172a',
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginLeft: 10,
+        borderWidth: 1,
+        borderColor: '#1e293b',
+    },
+    micBtnActive: {
+        backgroundColor: '#ef4444',
+        borderColor: '#ef4444',
+    },
     sendBtn: {
         width: 44,
         height: 44,
@@ -624,7 +868,39 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginLeft: 10
-    }
+    },
+    attachBtn: {
+        width: 44,
+        height: 44,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 6,
+    },
+    attachmentPreview: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        backgroundColor: '#151B2C',
+        borderTopColor: '#1E293B',
+        borderTopWidth: 1,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+    },
+    attachmentThumb: {
+        width: 44,
+        height: 44,
+        borderRadius: 8,
+    },
+    attachmentInfo: { flex: 1 },
+    attachmentLabel: { color: '#f1f5f9', fontSize: 13, fontWeight: '600' },
+    attachmentHint: { color: '#94a3b8', fontSize: 11, marginTop: 2 },
+    attachmentRemove: { padding: 6 },
+    messageImage: {
+        width: 200,
+        height: 200,
+        borderRadius: 10,
+        marginBottom: 8,
+    },
 });
 
 export default ChatScreen;

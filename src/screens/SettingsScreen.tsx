@@ -4,9 +4,10 @@ import {
     ChevronLeft, ShieldCheck, Clock, Database, AlertCircle, Brain,
     Zap, Stethoscope, Calendar, Target, AlertTriangle, ArrowRight,
     LogOut, Trash2, MessageSquareText, Send, X, ChevronDown, ChevronUp, User,
-    CheckCircle2, Sparkles, Plus, Paperclip, Camera, Trash2 as TrashIcon,
-    Download
+    CheckCircle2, Sparkles, Plus, Paperclip, Camera, Trash2 as TrashIcon, Award,
+    BookOpen, MessageCircle, BarChart2
 } from 'lucide-react-native';
+import { generateAndSharePrivacyPact } from '../utils/generatePrivacyPact';
 import * as WebBrowser from 'expo-web-browser';
 import * as ImagePicker from 'expo-image-picker';
 import {
@@ -59,6 +60,9 @@ const SettingsScreen = () => {
     const Cam = Camera as any;
     const TIc = TrashIcon as any;
     const Img = Image as any;
+    const BO = BookOpen as any;
+    const MCi = MessageCircle as any;
+    const BC2 = BarChart2 as any;
 
     const [entries, setEntries] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -219,7 +223,7 @@ const SettingsScreen = () => {
             const { error } = await FeedbackService.submitFeedback(user!.id, feedbackContent, feedbackType, attachmentUrl);
             if (error) throw error;
 
-            Alert.alert('¡Gracias!', 'Tu feedback ha sido recibido. ¡Gracias por ayudarnos a mejorar BLACKBOX!');
+            Alert.alert('¡Gracias!', 'Tu feedback ha sido recibido. ¡Gracias por ayudarnos a mejorar BlackBoxMind!');
             setFeedbackContent('');
             setFeedbackImage(null);
             setShowFeedbackModal(false);
@@ -231,10 +235,26 @@ const SettingsScreen = () => {
         }
     };
 
+    const handleDownloadPrivacyPact = async () => {
+        if (!user?.id) {
+            Alert.alert('Inicia sesión', 'Necesitas estar autenticado para descargar tu certificado.');
+            return;
+        }
+        try {
+            await generateAndSharePrivacyPact({
+                userId: user.id,
+                userEmail: user.email || '',
+                userName: profile?.full_name || user.email?.split('@')[0] || 'Usuario',
+            });
+        } catch (e: any) {
+            Alert.alert('Error', 'No se pudo generar el certificado. Intenta de nuevo.');
+        }
+    };
+
     const handleDeleteAccount = () => {
         Alert.alert(
             "⚠️ Eliminar Cuenta",
-            "Esta acción eliminará permanentemente todos tus registros y datos de BLACKBOX. No se puede deshacer.\n\n¿Estás absolutamente seguro?",
+            "Esta acción eliminará permanentemente todos tus registros y datos de BlackBoxMind. No se puede deshacer.\n\n¿Estás absolutamente seguro?",
             [
                 { text: "Cancelar", style: "cancel" },
                 {
@@ -364,6 +384,47 @@ const SettingsScreen = () => {
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
                 {viewMode === 'hub' ? (
                     <>
+                        {/* ═══ CONTENIDO ═══ direct nav to daily-use screens */}
+                        <Text style={styles.groupLabel}>CONTENIDO</Text>
+                        <View style={styles.section}>
+                            <TO
+                                style={styles.sectionHeader}
+                                onPress={() => navigation.navigate('Home')}
+                                activeOpacity={0.7}
+                            >
+                                <BO size={20} color="#6366f1" />
+                                <Text style={styles.sectionTitle}>Mis Memorias</Text>
+                                <AR size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                            </TO>
+                        </View>
+
+                        <View style={styles.section}>
+                            <TO
+                                style={styles.sectionHeader}
+                                onPress={() => navigation.navigate('ChatHub')}
+                                activeOpacity={0.7}
+                            >
+                                <MCi size={20} color="#6366f1" />
+                                <Text style={styles.sectionTitle}>Conversaciones</Text>
+                                <AR size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                            </TO>
+                        </View>
+
+                        <View style={styles.section}>
+                            <TO
+                                style={styles.sectionHeader}
+                                onPress={() => navigation.navigate('Dashboard')}
+                                activeOpacity={0.7}
+                            >
+                                <BC2 size={20} color="#6366f1" />
+                                <Text style={styles.sectionTitle}>Análisis & Reportes</Text>
+                                <AR size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                            </TO>
+                        </View>
+
+                        {/* ═══ PERFIL ESTRATÉGICO ═══ */}
+                        <Text style={styles.groupLabel}>PERFIL ESTRATÉGICO</Text>
+
                         {/* 0. PROFILE & IDENTITY SECTION */}
                         <View style={styles.section}>
                             <TO
@@ -393,7 +454,7 @@ const SettingsScreen = () => {
                                     </View>
 
                                     <View style={styles.editSection}>
-                                        <Text style={styles.clinicalDesc}>¿Cómo quieres que BLACKBOX te llame?</Text>
+                                        <Text style={styles.clinicalDesc}>¿Cómo quieres que BlackBoxMind te llame?</Text>
                                         <View style={styles.inputContainer}>
                                             <TI
                                                 style={styles.profileInput}
@@ -593,6 +654,115 @@ const SettingsScreen = () => {
                             )}
                         </View>
 
+                        {/* ═══ HERRAMIENTAS ═══ */}
+                        <Text style={styles.groupLabel}>HERRAMIENTAS</Text>
+
+                        {/* 5. QUICK GUIDE */}
+                        <View style={styles.section}>
+                            <TO
+                                style={styles.sectionHeader}
+                                onPress={() => toggleSection('guide')}
+                                activeOpacity={0.7}
+                            >
+                                <Z size={20} color="#facc15" />
+                                <Text style={styles.sectionTitle}>Manual de Estratega & Protocolos</Text>
+                                {expandedSections.guide ? (
+                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                ) : (
+                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                )}
+                            </TO>
+
+                            {expandedSections.guide && (
+                                <>
+                                    <TO
+                                        style={styles.tutorialButton}
+                                        onPress={() => navigation.navigate('Onboarding')}
+                                    >
+                                        <View style={styles.iconCircleYellow}>
+                                            <B size={18} color="#facc15" />
+                                        </View>
+                                        <View style={styles.policyTextContainer}>
+                                            <Text style={styles.policyLabel}>Guía Estratégica: BlackBoxMind.ai</Text>
+                                            <Text style={styles.policyValue}>Ver explicación de Metas vs Loops y protocolos de ejecución.</Text>
+                                        </View>
+                                        <CL size={20} color="#475569" style={{ transform: [{ rotate: '180deg' }] }} />
+                                    </TO>
+
+                                    <TO
+                                        style={[styles.tutorialButton, { marginTop: 12 }]}
+                                        onPress={async () => {
+                                            try {
+                                                await SupabaseService.seedWelcomeEntry(user!.id);
+                                                navigation.navigate('Dashboard');
+                                                Alert.alert('Éxito', 'Se ha generado una sesión de ejemplo en tu Dashboard.');
+                                            } catch (error) {
+                                                Alert.alert('Error', 'No se pudo generar el ejemplo.');
+                                            }
+                                        }}
+                                    >
+                                        <View style={[styles.iconCircle, { backgroundColor: 'rgba(99, 102, 241, 0.1)' }]}>
+                                            <Sparkles size={18} color="#6366f1" />
+                                        </View>
+                                        <View style={styles.policyTextContainer}>
+                                            <Text style={[styles.policyLabel, { color: '#818cf8' }]}>Simular Sesión IA</Text>
+                                            <Text style={styles.policyValue}>Generar ejemplo estratégico en Dashboard</Text>
+                                        </View>
+                                        <CL size={20} color="#475569" style={{ transform: [{ rotate: '180deg' }] }} />
+                                    </TO>
+                                </>
+                            )}
+                        </View>
+
+                        {/* 4. FEEDBACK (FRIENDS & FAMILY) */}
+                        <View style={styles.section}>
+                            <TO
+                                style={styles.sectionHeader}
+                                onPress={() => toggleSection('feedback')}
+                                activeOpacity={0.7}
+                            >
+                                <MST size={20} color="#38bdf8" />
+                                <Text style={styles.sectionTitle}>Feedback Friends & Family</Text>
+                                {expandedSections.feedback ? (
+                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                ) : (
+                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                )}
+                            </TO>
+
+                            {expandedSections.feedback && (
+                                <>
+                                    <TO
+                                        style={[styles.tutorialButton, { borderColor: 'rgba(56, 189, 248, 0.2)' }]}
+                                        onPress={() => setShowFeedbackModal(true)}
+                                    >
+                                        <View style={[styles.iconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.1)', width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }]}>
+                                            <MST size={18} color="#38bdf8" />
+                                        </View>
+                                        <View style={styles.policyTextContainer}>
+                                            <Text style={[styles.policyLabel, { color: '#38bdf8' }]}>Ayúdanos a mejorar</Text>
+                                            <Text style={styles.policyValue}>Reportar fallas o sugerir mejoras</Text>
+                                        </View>
+                                        <AR size={20} color="#38bdf8" />
+                                    </TO>
+
+                                    <TO
+                                        style={[styles.tutorialButton, { borderColor: 'rgba(129, 140, 248, 0.2)', marginTop: 12 }]}
+                                        onPress={() => navigation.navigate('FeedbackHistory')}
+                                    >
+                                        <View style={[styles.iconCircle, { backgroundColor: 'rgba(129, 140, 248, 0.1)', width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }]}>
+                                            <Db size={18} color="#818cf8" />
+                                        </View>
+                                        <View style={styles.policyTextContainer}>
+                                            <Text style={[styles.policyLabel, { color: '#818cf8' }]}>Admin: Ver Feedback</Text>
+                                            <Text style={styles.policyValue}>Ver comentarios de testers</Text>
+                                        </View>
+                                        <AR size={20} color="#818cf8" />
+                                    </TO>
+                                </>
+                            )}
+                        </View>
+
                         {/* 3. STRATEGIC ANALYSIS */}
                         <View style={styles.section}>
                             <TO
@@ -651,111 +821,8 @@ const SettingsScreen = () => {
                             )}
                         </View>
 
-                        {/* 4. FEEDBACK (FRIENDS & FAMILY) */}
-                        <View style={styles.section}>
-                            <TO
-                                style={styles.sectionHeader}
-                                onPress={() => toggleSection('feedback')}
-                                activeOpacity={0.7}
-                            >
-                                <MST size={20} color="#38bdf8" />
-                                <Text style={styles.sectionTitle}>Feedback Friends & Family</Text>
-                                {expandedSections.feedback ? (
-                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
-                                ) : (
-                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
-                                )}
-                            </TO>
-
-                            {expandedSections.feedback && (
-                                <>
-                                    <TO
-                                        style={[styles.tutorialButton, { borderColor: 'rgba(56, 189, 248, 0.2)' }]}
-                                        onPress={() => setShowFeedbackModal(true)}
-                                    >
-                                        <View style={[styles.iconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.1)', width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }]}>
-                                            <MST size={18} color="#38bdf8" />
-                                        </View>
-                                        <View style={styles.policyTextContainer}>
-                                            <Text style={[styles.policyLabel, { color: '#38bdf8' }]}>Ayúdanos a mejorar</Text>
-                                            <Text style={styles.policyValue}>Reportar fallas o sugerir mejoras</Text>
-                                        </View>
-                                        <AR size={20} color="#38bdf8" />
-                                    </TO>
-                                    
-                                    <TO
-                                        style={[styles.tutorialButton, { borderColor: 'rgba(129, 140, 248, 0.2)', marginTop: 12 }]}
-                                        onPress={() => navigation.navigate('FeedbackHistory')}
-                                    >
-                                        <View style={[styles.iconCircle, { backgroundColor: 'rgba(129, 140, 248, 0.1)', width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }]}>
-                                            <Db size={18} color="#818cf8" />
-                                        </View>
-                                        <View style={styles.policyTextContainer}>
-                                            <Text style={[styles.policyLabel, { color: '#818cf8' }]}>Admin: Ver Feedback</Text>
-                                            <Text style={styles.policyValue}>Ver comentarios de testers</Text>
-                                        </View>
-                                        <AR size={20} color="#818cf8" />
-                                    </TO>
-                                </>
-                            )}
-                        </View>
-
-                        {/* 5. QUICK GUIDE */}
-                        <View style={styles.section}>
-                            <TO
-                                style={styles.sectionHeader}
-                                onPress={() => toggleSection('guide')}
-                                activeOpacity={0.7}
-                            >
-                                <Z size={20} color="#facc15" />
-                                <Text style={styles.sectionTitle}>Manual de Estratega & Protocolos</Text>
-                                {expandedSections.guide ? (
-                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
-                                ) : (
-                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
-                                )}
-                            </TO>
-
-                            {expandedSections.guide && (
-                                <>
-                                    <TO
-                                        style={styles.tutorialButton}
-                                        onPress={() => navigation.navigate('Onboarding')}
-                                    >
-                                        <View style={styles.iconCircleYellow}>
-                                            <B size={18} color="#facc15" />
-                                        </View>
-                                        <View style={styles.policyTextContainer}>
-                                            <Text style={styles.policyLabel}>Guía Estratégica: BLACKBOX</Text>
-                                            <Text style={styles.policyValue}>Ver explicación de Metas vs Loops y protocolos de ejecución.</Text>
-                                        </View>
-                                        <CL size={20} color="#475569" style={{ transform: [{ rotate: '180deg' }] }} />
-                                    </TO>
-
-                                    <TO
-                                        style={[styles.tutorialButton, { marginTop: 12 }]}
-                                        onPress={async () => {
-                                            try {
-                                                await SupabaseService.seedWelcomeEntry(user!.id);
-                                                navigation.navigate('Dashboard');
-                                                Alert.alert('Éxito', 'Se ha generado una sesión de ejemplo en tu Dashboard.');
-                                            } catch (error) {
-                                                Alert.alert('Error', 'No se pudo generar el ejemplo.');
-                                            }
-                                        }}
-                                    >
-                                        <View style={[styles.iconCircle, { backgroundColor: 'rgba(99, 102, 241, 0.1)' }]}>
-                                            <Sparkles size={18} color="#6366f1" />
-                                        </View>
-                                        <View style={styles.policyTextContainer}>
-                                            <Text style={[styles.policyLabel, { color: '#818cf8' }]}>Simular Sesión IA</Text>
-                                            <Text style={styles.policyValue}>Generar ejemplo estratégico en Dashboard</Text>
-                                        </View>
-                                        <CL size={20} color="#475569" style={{ transform: [{ rotate: '180deg' }] }} />
-                                    </TO>
-                                </>
-                            )}
-                        </View>
+                        {/* ═══ AJUSTES ═══ */}
+                        <Text style={styles.groupLabel}>AJUSTES</Text>
 
                         {/* 6. TERMS & CONDITIONS (SUMMARY) */}
                         <View style={styles.section}>
@@ -776,15 +843,25 @@ const SettingsScreen = () => {
                             {expandedSections.privacy && (
                                 <View style={styles.legalCard}>
                                     <Text style={styles.legalIntro}>
-                                        En BLACKBOX, la privacidad y el control de tus datos son pilares fundamentales.
+                                        En BlackBoxMind, la privacidad y el control de tus datos son pilares fundamentales.
                                     </Text>
-                                    <TO style={styles.policyRow} onPress={() => WebBrowser.openBrowserAsync('https://blackboxmind.ai/privacy')}>
+                                    <TO style={styles.policyRow} onPress={() => navigation.navigate('Privacy')}>
                                         <View style={styles.iconCircle}>
                                             <SC size={18} color="#6366f1" />
                                         </View>
                                         <View style={styles.policyTextContainer}>
                                             <Text style={styles.policyLabel}>Aviso de Privacidad</Text>
                                             <Text style={styles.policyValue}>Lee cómo protegemos tu información.</Text>
+                                        </View>
+                                        <AR size={20} color="#475569" />
+                                    </TO>
+                                    <TO style={styles.policyRow} onPress={handleDownloadPrivacyPact}>
+                                        <View style={[styles.iconCircle, { backgroundColor: 'rgba(192, 132, 252, 0.1)' }]}>
+                                            <Award size={18} color="#c084fc" />
+                                        </View>
+                                        <View style={styles.policyTextContainer}>
+                                            <Text style={[styles.policyLabel, { color: '#c084fc' }]}>Certificado de Privacidad</Text>
+                                            <Text style={styles.policyValue}>Descargar PDF con tus compromisos</Text>
                                         </View>
                                         <AR size={20} color="#475569" />
                                     </TO>
@@ -805,10 +882,44 @@ const SettingsScreen = () => {
                                             <Sparkles size={18} color="#38bdf8" />
                                         </View>
                                         <View style={styles.policyTextContainer}>
-                                            <Text style={[styles.policyLabel, { color: '#38bdf8' }]}>Portal Web Blackbox</Text>
+                                            <Text style={[styles.policyLabel, { color: '#38bdf8' }]}>Portal Web BlackBoxMind</Text>
                                             <Text style={styles.policyValue}>Accede a tu dashboard avanzado en blackboxmind.ai</Text>
                                         </View>
                                         <AR size={20} color="#38bdf8" />
+                                    </TO>
+                                </View>
+                            )}
+                        </View>
+
+                        {/* 7. ACCOUNT (moved into hub under AJUSTES group) */}
+                        <View style={[styles.section, { marginBottom: 60 }]}>
+                            <TO
+                                style={styles.sectionHeader}
+                                onPress={() => toggleSection('account')}
+                                activeOpacity={0.7}
+                            >
+                                <SC size={20} color="#ef4444" />
+                                <Text style={styles.sectionTitle}>Cuenta</Text>
+                                {expandedSections.account ? (
+                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                ) : (
+                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                )}
+                            </TO>
+
+                            {expandedSections.account && (
+                                <View style={{ gap: 12 }}>
+                                    <TO style={styles.logoutBtn} onPress={signOut}>
+                                        <LO size={20} color="#ef4444" />
+                                        <Text style={styles.logoutBtnText}>Cerrar Sesión</Text>
+                                    </TO>
+
+                                    <TO
+                                        style={[styles.logoutBtn, { backgroundColor: 'rgba(239, 68, 68, 0.05)', borderColor: 'rgba(239, 68, 68, 0.1)' }]}
+                                        onPress={handleDeleteAccount}
+                                    >
+                                        <AT size={20} color="#ef4444" />
+                                        <Text style={[styles.logoutBtnText, { fontSize: 14, opacity: 0.8 }]}>Eliminar Cuenta y Datos</Text>
                                     </TO>
                                 </View>
                             )}
@@ -822,7 +933,7 @@ const SettingsScreen = () => {
                                 <View style={styles.biasEmpty}>
                                     <Text style={styles.biasEmptyText}>
                                         Aún no se detectan sesgos recurrentes. Aparecerán aquí
-                                        conforme BLACKBOX analice tus memorias.
+                                        conforme BlackBoxMind analice tus memorias.
                                     </Text>
                                 </View>
                             ) : (
@@ -937,76 +1048,10 @@ const SettingsScreen = () => {
                     </View>
                 )}
 
-                {/* ADVANCED SECTION */}
-                <View style={styles.section}>
-                    <TO
-                        style={styles.sectionHeader}
-                        onPress={() => toggleSection('advanced')}
-                        activeOpacity={0.7}
-                    >
-                        <Z size={20} color="#c084fc" />
-                        <Text style={styles.sectionTitle}>Avanzado</Text>
-                        {expandedSections.advanced ? (
-                            <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
-                        ) : (
-                            <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
-                        )}
-                    </TO>
-
-                    {expandedSections.advanced && (
-                        <TO
-                            style={[styles.tutorialButton, { borderColor: 'rgba(192, 132, 252, 0.2)' }]}
-                            onPress={handlePreviewOnboarding}
-                        >
-                            <View style={[styles.iconCircle, { backgroundColor: 'rgba(192, 132, 252, 0.1)', width: 40, height: 40, borderRadius: 12 }]}>
-                                <B size={18} color="#c084fc" />
-                            </View>
-                            <View style={styles.policyTextContainer}>
-                                <Text style={[styles.policyLabel, { color: '#c084fc' }]}>Ver onboarding inicial</Text>
-                                <Text style={styles.policyValue}>No se borrará tu data actual</Text>
-                            </View>
-                            <AR size={20} color="#c084fc" />
-                        </TO>
-                    )}
-                </View>
-
-                {/* ACCOUNT SECTION */}
-                <View style={[styles.section, { marginBottom: 60 }]}>
-                    <TO
-                        style={styles.sectionHeader}
-                        onPress={() => toggleSection('account')}
-                        activeOpacity={0.7}
-                    >
-                        <SC size={20} color="#ef4444" />
-                        <Text style={styles.sectionTitle}>Cuenta</Text>
-                        {expandedSections.account ? (
-                            <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
-                        ) : (
-                            <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
-                        )}
-                    </TO>
-
-                    {expandedSections.account && (
-                        <View style={{ gap: 12 }}>
-                            <TO style={styles.logoutBtn} onPress={signOut}>
-                                <LO size={20} color="#ef4444" />
-                                <Text style={styles.logoutBtnText}>Cerrar Sesión</Text>
-                            </TO>
-
-                            <TO
-                                style={[styles.logoutBtn, { backgroundColor: 'rgba(239, 68, 68, 0.05)', borderColor: 'rgba(239, 68, 68, 0.1)' }]}
-                                onPress={handleDeleteAccount}
-                            >
-                                <AT size={20} color="#ef4444" />
-                                <Text style={[styles.logoutBtnText, { fontSize: 14, opacity: 0.8 }]}>Eliminar Cuenta y Datos</Text>
-                            </TO>
-                        </View>
-                    )}
-                </View>
 
                 <View style={styles.footer}>
-                    <Text style={styles.versionText}>BLACKBOX MIND v1.3.0</Text>
-                    <Text style={styles.footerLegal}>© 2026 Blackbox Mind. Todos los derechos reservados.</Text>
+                    <Text style={styles.versionText}>BlackBoxMind.ai v1.3.0</Text>
+                    <Text style={styles.footerLegal}>© 2026 BlackBoxMind.ai. Todos los derechos reservados.</Text>
                 </View>
             </ScrollView>
 
@@ -1197,6 +1242,15 @@ const styles = StyleSheet.create({
     section: {
         marginTop: 10,
         marginBottom: 30,
+    },
+    groupLabel: {
+        color: '#475569',
+        fontSize: 11,
+        fontWeight: '700',
+        letterSpacing: 2,
+        marginTop: 24,
+        marginBottom: 12,
+        paddingHorizontal: 4,
     },
     sectionHeader: {
         flexDirection: 'row',

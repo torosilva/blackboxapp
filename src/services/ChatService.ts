@@ -4,6 +4,10 @@ import { getGlobalAccessToken } from '../context/AuthContext';
 export interface ChatMessage {
     role: 'user' | 'model';
     parts: { text: string }[];
+    // Local preview URI for an attached image, set only on the in-memory
+    // copy of the message so the user bubble can render the thumbnail.
+    // Not persisted to DB; absent on history loaded from Supabase.
+    imageUri?: string;
 }
 
 export interface EntryContext {
@@ -15,6 +19,8 @@ export interface EntryContext {
     wellnessRecommendation: string;
     actionItems: any[];
 }
+
+const CHAT_TIMEOUT_MS = 60_000;
 
 export const ChatService = {
     async sendMessage(
@@ -31,37 +37,51 @@ export const ChatService = {
         const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
         const token = getGlobalAccessToken();
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'apikey': anonKey,
-                'Authorization': `Bearer ${token || anonKey}`
-            },
-            body: JSON.stringify({
-                userMessage,
-                chatHistory,
-                userId,
-                userName: userName ?? 'Explorador',
-                category: category ?? 'General',
-                therapyMode: therapyMode ?? false,
-                entryContext: entryContext ?? null,
-                image: image ?? null,
-            }),
-        });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
 
-        if (!response.ok) {
-            const errText = await response.text();
-            console.error('CHAT_SERVICE HTTP Error:', response.status, errText);
-            throw new Error(`Chat Edge Function falló: HTTP ${response.status}`);
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': anonKey,
+                    'Authorization': `Bearer ${token || anonKey}`
+                },
+                body: JSON.stringify({
+                    userMessage,
+                    chatHistory,
+                    userId,
+                    userName: userName ?? 'Explorador',
+                    category: category ?? 'General',
+                    therapyMode: therapyMode ?? false,
+                    entryContext: entryContext ?? null,
+                    image: image ?? null,
+                }),
+                signal: controller.signal,
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                console.error('CHAT_SERVICE HTTP Error:', response.status, errText);
+                throw new Error(`Chat Edge Function falló: HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (!data?.content) {
+                throw new Error('No response from AI');
+            }
+
+            return data.content;
+        } catch (err: any) {
+            if (err?.name === 'AbortError') {
+                console.error('CHAT_SERVICE timeout after', CHAT_TIMEOUT_MS, 'ms');
+                throw new Error('La IA tardó demasiado en responder. Verifica tu conexión e intenta de nuevo.');
+            }
+            throw err;
+        } finally {
+            clearTimeout(timeoutId);
         }
-
-        const data = await response.json();
-
-        if (!data?.content) {
-            throw new Error('No response from AI');
-        }
-
-        return data.content;
     }
 };

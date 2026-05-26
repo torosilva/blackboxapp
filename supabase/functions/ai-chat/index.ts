@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry, fetchWithStatus } from "../_shared/retry.ts";
+import { logUsage } from "../_shared/usage.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -133,6 +134,95 @@ SESGOS IDENTIFICADOS: ${(data.identified_biases ?? []).join(', ') || 'Ninguno a�
   }
 }
 
+// ─── Tool definitions + executor (search_memories) ───────────────────────────
+
+const SEARCH_MEMORIES_TOOL = {
+  name: 'search_memories',
+  description: `Busca en las memorias pasadas del usuario por similitud semántica (cosine over embeddings). Úsala cuando:
+- El usuario menciona o pregunta sobre algo que ya capturó antes ("¿qué pensé sobre X?", "¿he hablado de Y?").
+- Necesitas EVIDENCIA específica para confrontar un patrón con sus propias palabras pasadas.
+- La pregunta es vaga y necesitas grounding histórico antes de opinar.
+- Quieres demostrar continuidad temporal de un patrón ("llevas 3 meses con esto, mira").
+
+NO la uses cuando:
+- La info ya está en el PERFIL ESTRATÉGICO, los LOOPS ABIERTOS o el HISTORIAL RECIENTE (10 entradas) que ya tienes en el contexto.
+- Solo se necesita opinión, no evidencia.
+- El usuario está pidiendo acción inmediata, no análisis.
+
+Cada resultado incluye: id, title, summary, content, mood_label, category, created_at, similarity (0-1). Cita evidencia integrándola naturalmente en tu respuesta — NO listes resultados crudos.
+
+TAMBIÉN úsala cuando el usuario pida listar, sumar, inventariar o ver panorámica completa de sus loops/pendientes/memorias — los 25 pre-cargados NO son su lista completa. Haz búsquedas amplias con queries simples como 'pendientes activos', 'loops abiertos sin avance', 'memorias sobre [tema]'. Combina 2-3 búsquedas si una sola no rinde suficiente cobertura.`,
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      query: {
+        type: 'string',
+        description: 'Búsqueda en lenguaje natural sobre lo que quieres encontrar en la historia del usuario. Específico, no genérico.',
+      },
+      limit: {
+        type: 'integer',
+        description: 'Cantidad máxima de memorias a devolver (1-10). Default 5.',
+      },
+    },
+    required: ['query'],
+  },
+};
+
+async function executeToolCall(
+  toolName: string,
+  toolInput: any,
+  userId: string,
+): Promise<{ content: string; isError: boolean }> {
+  if (toolName !== 'search_memories') {
+    return { content: `Unknown tool: ${toolName}`, isError: true };
+  }
+
+  if (!userId) {
+    return { content: 'No userId available for search.', isError: true };
+  }
+
+  try {
+    const query = String(toolInput?.query ?? '').trim();
+    if (!query) {
+      return { content: 'Empty query.', isError: true };
+    }
+    const limit = Math.min(Math.max(Number(toolInput?.limit ?? 5), 1), 10);
+
+    const url = `${SUPABASE_URL}/functions/v1/search-entries`;
+    const res = await fetchWithStatus(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // Service role allows EF-to-EF internal call without user JWT
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({ userId, query, threshold: 0.5, limit }),
+    });
+
+    const data: any = await res.json();
+    const results = data?.results ?? [];
+
+    // Compact format: keep only fields the model actually needs.
+    const compact = results.map((r: any) => ({
+      id: r.id,
+      title: r.title,
+      summary: r.summary?.slice(0, 300),
+      mood: r.mood_label,
+      category: r.category,
+      date: r.created_at?.slice(0, 10),
+      similarity: r.similarity ? Number(r.similarity.toFixed(3)) : null,
+    }));
+
+    return {
+      content: JSON.stringify({ query, results: compact, count: compact.length }),
+      isError: false,
+    };
+  } catch (e: any) {
+    console.error('[ai-chat] executeToolCall error:', e.message);
+    return { content: `Search failed: ${e.message}`, isError: true };
+  }
+}
+
 // ─── Cached SYSTEM blocks (static — no user-specific data here) ──────────────
 
 const STATIC_RULES_STANDARD = `
@@ -149,6 +239,8 @@ REGLAS NO NEGOCIABLES:
 6. BREVEDAD. 3-6 oraciones máximo por respuesta. Sin relleno corporativo.
 7. EVITA "es importante", "podrías considerar", "tal vez". Habla con autoridad.
 8. CONTEXTO YA DISPONIBLE. Tienes el perfil estratégico, el historial reciente y los LOOPS/TAREAS ABIERTAS del usuario en este prompt. NUNCA pidas "tu lista de tareas", "los proyectos activos" ni contexto que ya tienes. Úsalo directamente: nombra sus loops reales por su nombre y proponle accionables concretos sobre ELLOS. Si los loops están vacíos, infiere del historial — no preguntes.
+9. HERRAMIENTA search_memories. Tienes acceso a búsqueda semántica sobre TODA la historia del usuario (no solo las últimas 10). Úsala cuando: (a) el usuario menciona algo del pasado que no está en el contexto, (b) necesitas evidencia específica para confrontar un patrón con sus propias palabras, (c) quieres demostrar continuidad temporal ("llevas 3 meses con esto"). NO la uses para info que ya tienes en el perfil/loops/historial reciente. Cuando cites una memoria, intégrala naturalmente en tu respuesta — no listes resultados crudos.
+10. INVENTARIO Y LISTADOS. Cuando el usuario pida LISTAR, SUMAR, ENUMERAR, INVENTARIAR o ver una PANORÁMICA COMPLETA de sus loops, pendientes o memorias: SIEMPRE invoca search_memories ANTES de responder. Los LOOPS / TAREAS ABIERTAS pre-cargadas en este prompt son SOLO las 25 más recientes — el usuario tiene típicamente muchos más. NUNCA le pidas al usuario que reescriba info que ya está en su historia. Si no encuentras suficiente con un solo search, haz 2-3 búsquedas con queries distintas (ej: "pendientes activos", "loops sin avance", "decisiones aplazadas"). Tienes hasta 4 iteraciones de tool — úsalas cuando aporte.
 `.trim();
 
 const STATIC_RULES_THERAPY = `
@@ -168,6 +260,8 @@ REGLAS NO NEGOCIABLES:
 7. BREVEDAD TÁCTICA. 3-5 oraciones. Cero monólogos. Cero clichés terapéuticos.
 8. LENGUAJE. Cálido pero directo. Aliado, no juez. Honesto, no condescendiente.
 9. CONTEXTO YA DISPONIBLE. Tienes el perfil, el historial y los LOOPS/TAREAS ABIERTAS del usuario en este prompt. NUNCA pidas su lista de tareas ni contexto que ya tienes. Refiérete a sus loops reales por nombre. Si están vacíos, infiere del historial — no preguntes.
+10. HERRAMIENTA search_memories. Igual que en modo estándar — búscalo cuando necesites evidencia histórica para validar/confrontar. En modo terapia, la cita debe sentirse como un descubrimiento conjunto, no como una sentencia: "hace dos meses escribías esto mismo de otra manera — ¿qué cambió, o qué no cambió?".
+11. INVENTARIO Y LISTADOS. Igual que en modo estándar — si el usuario pide ver una panorámica de sus loops/pendientes, invoca search_memories antes de pedirle que reescriba nada. En modo terapia, la presentación de la lista debe ser conversacional: "Mira lo que vi en tu historia — hay 8 cosas similares a la que mencionas, déjame contártelas en orden de cuál te frena más", no como bullet list seca.
 `.trim();
 
 // ─── Dynamic context blocks (user-specific — NOT cached) ─────────────────────
@@ -182,6 +276,7 @@ ${profile}
 
 ━━━ LOOPS / TAREAS ABIERTAS DEL USUARIO ━━━
 ${loops}
+(Nota: estos son SOLO los 25 más recientes. Si el usuario pide 'todos', 'la lista completa', 'sumar', o cualquier panorámica amplia — invoca search_memories ANTES de responder.)
 
 ━━━ HISTORIAL RECIENTE (10 entradas) ━━━
 ${history}
@@ -219,6 +314,7 @@ ${profile}
 
 ━━━ LOOPS / TAREAS ABIERTAS DEL USUARIO ━━━
 ${loops}
+(Nota: estos son SOLO los 25 más recientes. Si el usuario pide 'todos', 'la lista completa', 'sumar', o cualquier panorámica amplia — invoca search_memories ANTES de responder.)
 
 ━━━ HISTORIAL RECIENTE (10 entradas) ━━━
 ${history}
@@ -310,55 +406,113 @@ serve(async (req) => {
     // Two cache breakpoints: the static rules (reused across all users)
     // and the static+dynamic prefix (strategic_profile + historical
     // context + loops — stable within a chat session, reused turn-to-turn).
-    const payload = {
-      model: MODEL_NAME,
-      max_tokens: therapyMode ? 600 : 1500,
-      temperature: therapyMode ? 0.85 : 0.7,
-      system: [
-        {
-          type: 'text',
-          text: staticBlock,
-          cache_control: { type: 'ephemeral' },
-        },
-        {
-          type: 'text',
-          text: dynamicBlock,
-          cache_control: { type: 'ephemeral' },
-        },
-      ],
-      messages,
+    // Tool-use loop: Claude may call search_memories one or more times
+    // before producing a final text answer. We cap at MAX_TOOL_ITERATIONS
+    // to bound latency and cost.
+    const MAX_TOOL_ITERATIONS = 4;
+    let iterationMessages: any[] = [...messages];
+    let finalText = '';
+    let aggregatedUsage = {
+      input_tokens: 0,
+      output_tokens: 0,
+      cache_read_input_tokens: 0,
+      cache_creation_input_tokens: 0,
     };
+    let toolCallsExecuted = 0;
 
-    const res = await withRetry(
-      () => fetchWithStatus(ANTHROPIC_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify(payload),
-      }),
-      { maxAttempts: 3, baseDelayMs: 600 }
-    );
+    for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
+      const payload = {
+        model: MODEL_NAME,
+        max_tokens: therapyMode ? 600 : 1500,
+        temperature: therapyMode ? 0.85 : 0.7,
+        system: [
+          { type: 'text', text: staticBlock, cache_control: { type: 'ephemeral' } },
+          { type: 'text', text: dynamicBlock, cache_control: { type: 'ephemeral' } },
+        ],
+        tools: [SEARCH_MEMORIES_TOOL],
+        messages: iterationMessages,
+      };
 
-    const data: any = await res.json();
-    const textBlock = data?.content?.[0]?.text;
-    if (!textBlock) {
-      console.error('[ai-chat] Claude returned no text:', JSON.stringify(data).slice(0, 500));
-      throw new Error('No response from Claude');
+      const res = await withRetry(
+        () => fetchWithStatus(ANTHROPIC_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': ANTHROPIC_API_KEY,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify(payload),
+        }),
+        { maxAttempts: 3, baseDelayMs: 600 }
+      );
+
+      const data: any = await res.json();
+
+      // Aggregate usage across iterations
+      const u = data?.usage ?? {};
+      aggregatedUsage.input_tokens += u.input_tokens ?? 0;
+      aggregatedUsage.output_tokens += u.output_tokens ?? 0;
+      aggregatedUsage.cache_read_input_tokens += u.cache_read_input_tokens ?? 0;
+      aggregatedUsage.cache_creation_input_tokens += u.cache_creation_input_tokens ?? 0;
+
+      const stopReason = data?.stop_reason;
+      const contentBlocks = data?.content ?? [];
+
+      if (stopReason === 'tool_use') {
+        // Append assistant turn (with tool_use blocks) to messages
+        iterationMessages.push({ role: 'assistant', content: contentBlocks });
+
+        // Execute every tool_use block; collect results
+        const toolResultBlocks: any[] = [];
+        for (const block of contentBlocks) {
+          if (block.type !== 'tool_use') continue;
+          toolCallsExecuted++;
+          const result = await executeToolCall(block.name, block.input, userId);
+          toolResultBlocks.push({
+            type: 'tool_result',
+            tool_use_id: block.id,
+            content: result.content,
+            is_error: result.isError,
+          });
+        }
+
+        // Append tool results as next user turn
+        iterationMessages.push({ role: 'user', content: toolResultBlocks });
+
+        // Continue loop for Claude to incorporate results
+        continue;
+      }
+
+      // Terminal: extract text from final assistant turn
+      const textBlock = contentBlocks.find((b: any) => b.type === 'text');
+      finalText = textBlock?.text ?? '';
+      break;
     }
 
-    // Log cache performance for tuning (visible in Supabase function logs)
-    const usage = data?.usage;
-    if (usage) {
-      console.log(`[ai-chat] tokens — input: ${usage.input_tokens}, output: ${usage.output_tokens}, cache_read: ${usage.cache_read_input_tokens ?? 0}, cache_write: ${usage.cache_creation_input_tokens ?? 0}`);
+    if (!finalText) {
+      console.error('[ai-chat] No final text after', MAX_TOOL_ITERATIONS, 'iterations');
+      throw new Error('No response from Claude after tool use loop');
     }
+
+    console.log(`[ai-chat] tokens — input: ${aggregatedUsage.input_tokens}, output: ${aggregatedUsage.output_tokens}, cache_read: ${aggregatedUsage.cache_read_input_tokens}, cache_write: ${aggregatedUsage.cache_creation_input_tokens}, tool_calls: ${toolCallsExecuted}`);
+
+    await logUsage({
+      req,
+      userId,
+      component: image?.data ? 'image_vision' : 'ai_chat',
+      provider: 'anthropic',
+      model: MODEL_NAME,
+      inputTokens: aggregatedUsage.input_tokens,
+      outputTokens: aggregatedUsage.output_tokens,
+      cacheReadTokens: aggregatedUsage.cache_read_input_tokens,
+      cacheWriteTokens: aggregatedUsage.cache_creation_input_tokens,
+      meta: { therapyMode: !!therapyMode, hasImage: !!image?.data, toolCalls: toolCallsExecuted },
+    });
 
     // Return shape compatible with existing client code (parts[0].text).
     const responseContent = {
       role: 'model',
-      parts: [{ text: textBlock }],
+      parts: [{ text: finalText }],
     };
 
     return new Response(JSON.stringify({ content: responseContent }), {

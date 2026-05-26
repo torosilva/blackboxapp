@@ -69,7 +69,7 @@ const PaywallScreen = () => {
         {
             icon: MessageSquare,
             color: '#22c55e',
-            title: 'Chat Estratégico BLACKBOX',
+            title: 'Chat Estratégico BlackBoxMind.ai',
             description: 'Consultas ilimitadas con tu asesor de IA.',
         },
         {

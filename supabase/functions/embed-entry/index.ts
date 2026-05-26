@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry, fetchWithStatus } from "../_shared/retry.ts";
+import { logUsage } from "../_shared/usage.ts";
 
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -107,6 +108,22 @@ serve(async (req) => {
       .eq("id", entryId);
 
     if (updateErr) throw new Error(`Update failed: ${updateErr.message}`);
+
+    const { data: owner } = await supabase
+      .from("entries")
+      .select("user_id")
+      .eq("id", entryId)
+      .maybeSingle();
+
+    await logUsage({
+      userId: owner?.user_id ?? null,
+      component: "embedding",
+      provider: "gemini",
+      model: EMBED_MODEL,
+      units: textToEmbed.length,
+      unitType: "chars",
+      meta: { entryId },
+    });
 
     console.log(`[embed-entry] Embedded entry ${entryId} (${embedding.length} dims)`);
 

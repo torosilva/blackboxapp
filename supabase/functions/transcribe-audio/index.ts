@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { withRetry, fetchWithStatus } from "../_shared/retry.ts";
+import { logUsage } from "../_shared/usage.ts";
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
 const MODEL_NAME = 'gemini-2.5-flash';
@@ -64,6 +65,17 @@ serve(async (req) => {
     }
 
     const transcription = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '[No speech detected]';
+
+    const um = data?.usageMetadata;
+    await logUsage({
+      req,
+      component: 'transcription',
+      provider: 'gemini',
+      model: MODEL_NAME,
+      inputTokens: um?.promptTokenCount ?? 0,
+      outputTokens: um?.candidatesTokenCount ?? 0,
+      unitType: 'tokens',
+    });
 
     return new Response(JSON.stringify({ transcription: transcription.trim() }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

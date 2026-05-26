@@ -177,7 +177,7 @@ const WeeklyReportScreen = ({ route }: any) => {
         try {
             await Share.share({
                 message: report,
-                title: 'Reporte Estratégico BLACKBOX'
+                title: 'Reporte Estratégico BlackBoxMind.ai'
             });
         } catch (error) {
             console.log('Share error', error);
@@ -208,10 +208,10 @@ const WeeklyReportScreen = ({ route }: any) => {
           .meta{color:#64748b;font-size:11px;margin-bottom:18px}
           .foot{margin-top:32px;color:#94a3b8;font-size:10px;border-top:1px solid #e2e8f0;padding-top:10px}
         </style></head><body>
-        <div class="brand">BLACKBOX MIND</div>
+        <div class="brand">BlackBoxMind.ai</div>
         <div class="meta">Reporte Estratégico · Fin del periodo: ${dateStr}</div>
         ${blocks}
-        <div class="foot">Documento generado por BLACKBOX MIND para acompañamiento profesional (coach / psicólogo).</div>
+        <div class="foot">Documento generado por BlackBoxMind.ai para acompañamiento profesional (coach / psicólogo).</div>
         </body></html>`;
     };
 
@@ -226,7 +226,7 @@ const WeeklyReportScreen = ({ route }: any) => {
                     UTI: 'com.adobe.pdf',
                 });
             } else {
-                await Share.share({ url: uri, title: 'Reporte Estratégico BLACKBOX' });
+                await Share.share({ url: uri, title: 'Reporte Estratégico BlackBoxMind.ai' });
             }
         } catch (error: any) {
             console.log('PDF export error', error?.message);
@@ -247,7 +247,7 @@ const WeeklyReportScreen = ({ route }: any) => {
     const showStabilityInfo = () => {
         Alert.alert(
             "🧠 ¿Qué es la Estabilidad?",
-            "Es el balance emocional de tu semana calculado por BLACKBOX.\n\nRango: -1.0 a +1.0\n\n• Valores Positivos (+): Indican una tendencia hacia la calma, el enfoque y el 'flow'.\n• Valores Negativos (-): Sugieren periodos de estrés, ansiedad o agotamiento.\n\nTu puntaje actual es un promedio de todas tus entradas analizadas en este periodo.",
+            "Es el balance emocional de tu semana calculado por BlackBoxMind.\n\nRango: -1.0 a +1.0\n\n• Valores Positivos (+): Indican una tendencia hacia la calma, el enfoque y el 'flow'.\n• Valores Negativos (-): Sugieren periodos de estrés, ansiedad o agotamiento.\n\nTu puntaje actual es un promedio de todas tus entradas analizadas en este periodo.",
             [{ text: "Entendido", style: "default" }]
         );
     };

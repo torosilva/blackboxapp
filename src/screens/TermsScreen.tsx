@@ -71,7 +71,7 @@ const TermsScreen = ({ isMandatory: propIsMandatory }: { isMandatory?: boolean }
 
                 <Text style={styles.sectionTitle}>1. ACEPTACIÓN DE LOS TÉRMINOS</Text>
                 <Text style={styles.bodyText}>
-                    Al descargar, instalar, acceder o utilizar la aplicación móvil y plataforma web Blackbox Mind (en adelante, el "Servicio", la "App" o la "Plataforma"), propiedad de Macarena Group PS Mexico (quien opera bajo la marca comercial Blackboxmind.ai, en adelante, "La Compañía", "Nosotros" o "Nuestro"), usted (el "Usuario") reconoce haber leído, entendido y aceptado estar legalmente vinculado por estos Términos y Condiciones (el "Acuerdo").
+                    Al descargar, instalar, acceder o utilizar la aplicación móvil y plataforma web BlackBoxMind.ai (en adelante, el "Servicio", la "App" o la "Plataforma"), propiedad de Macarena Group PS Mexico (quien opera bajo la marca comercial BlackBoxMind.ai, en adelante, "La Compañía", "Nosotros" o "Nuestro"), usted (el "Usuario") reconoce haber leído, entendido y aceptado estar legalmente vinculado por estos Términos y Condiciones (el "Acuerdo").
                 </Text>
                 <Text style={[styles.bodyText, styles.bold]}>
                     SI USTED NO ACEPTA ESTOS TÉRMINOS EN SU TOTALIDAD, NO DEBE ACCEDER NI UTILIZAR EL SERVICIO.
@@ -101,7 +101,7 @@ const TermsScreen = ({ isMandatory: propIsMandatory }: { isMandatory?: boolean }
 
                 <Text style={styles.sectionTitle}>4. PROPIEDAD INTELECTUAL Y CONTENIDO DEL USUARIO</Text>
                 <Text style={styles.bodyText}>
-                    4.1. Propiedad de la Compañía: Todo el software, código fuente, algoritmos, interfaces visuales, marcas ("Blackbox Mind", "Blackboxmind.ai") son propiedad exclusiva de Macarena Group PS Mexico.
+                    4.1. Propiedad de la Compañía: Todo el software, código fuente, algoritmos, interfaces visuales, marca ("BlackBoxMind.ai") son propiedad exclusiva de Macarena Group PS Mexico.
                     4.2. Contenido del Usuario: El Usuario conserva la propiedad de los audios y textos que sube, pero otorga a La Compañía una licencia mundial para procesar dicho contenido con el fin de prestar el Servicio.
                 </Text>
 

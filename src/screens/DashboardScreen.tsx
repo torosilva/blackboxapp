@@ -38,7 +38,8 @@ import {
     Box,
     Calendar,
     TrendingUp,
-    Activity
+    Activity,
+    RotateCcw
 } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { SupabaseService } from '../services/SupabaseService';
@@ -345,6 +346,26 @@ const DashboardScreen = () => {
                 </View>
                 )}
 
+                {/* QuickCapture Banner (v5.9.7 - NEW PROMINENT LOCATION) */}
+                <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
+                    <TO
+                        onPress={() => navigation.navigate('Main')}
+                        activeOpacity={0.8}
+                        style={styles.quickCaptureBanner}
+                    >
+                        <LG colors={['#6366f1', '#4f46e5']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={styles.quickCaptureGradient}>
+                            <View style={styles.quickCaptureIconContainer}>
+                                <Mic size={24} color="white" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.quickCaptureTitle}>Capturar Pensamiento</Text>
+                                <Text style={styles.quickCaptureSubtitle}>Libera tu sobrecarga mental ahora</Text>
+                            </View>
+                            <ChevronRight size={20} color="white" />
+                        </LG>
+                    </TO>
+                </View>
+
                 {/* Executive status headline — the one line that matters */}
                 <View style={{ paddingHorizontal: 20, paddingTop: 10, marginBottom: 16 }}>
                     <Text style={{ color: '#e2e8f0', fontSize: 15, fontWeight: '700', lineHeight: 22 }}>
@@ -511,7 +532,30 @@ const DashboardScreen = () => {
                 <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>PATRONES DETECTADOS</Text>
-                        <Activity size={14} color="#6366f1" />
+                        <TouchableOpacity
+                            onPress={handleManualPatternAnalysis}
+                            disabled={isAnalyzingPatterns || stats.totalMemories < 5}
+                            activeOpacity={0.7}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                backgroundColor: 'rgba(99,102,241,0.12)',
+                                paddingHorizontal: 10,
+                                paddingVertical: 5,
+                                borderRadius: 12,
+                                opacity: stats.totalMemories < 5 ? 0.4 : 1,
+                            }}
+                        >
+                            {isAnalyzingPatterns ? (
+                                <ActivityIndicator size="small" color="#818cf8" />
+                            ) : (
+                                <RotateCcw size={12} color="#818cf8" />
+                            )}
+                            <Text style={{ color: '#c7d2fe', fontSize: 11, fontWeight: '700', marginLeft: 6, letterSpacing: 0.5 }}>
+                                {isAnalyzingPatterns ? 'ANALIZANDO…' : 'RE-ANALIZAR'}
+                            </Text>
+                        </TouchableOpacity>
                     </View>
 
                     {patterns.length === 0 ? (
@@ -668,7 +712,7 @@ const DashboardScreen = () => {
                     <LG colors={['rgba(250, 204, 21, 0.1)', 'rgba(0, 0, 0, 0)']} style={styles.insightGradient}>
                         <View style={styles.insightHeader}>
                             <Target size={16} color="#facc15" />
-                            <Text style={[styles.insightTitle, { color: '#facc15' }]}>GUÍA ESTRATÉGICA: BLACKBOX</Text>
+                            <Text style={[styles.insightTitle, { color: '#facc15' }]}>GUÍA ESTRATÉGICA: BlackBoxMind.ai</Text>
                         </View>
                         <Text style={styles.latestInsight}>
                             Domina el equilibrio entre Metas y Loops Activos para maximizar tu ejecución clínica.

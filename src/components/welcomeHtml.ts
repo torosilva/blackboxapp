@@ -5,7 +5,7 @@ export const WELCOME_HTML = `<!DOCTYPE html>
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Bienvenido a BLACKBOX MIND</title>
+<title>Bienvenido a BlackBoxMind.ai</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -56,14 +56,14 @@ export const WELCOME_HTML = `<!DOCTYPE html>
 <body>
   <div class="wrap">
     <div class="badge">BIENVENIDO</div>
-    <h1>BLACKBOX MIND</h1>
+    <h1>BlackBoxMind.ai</h1>
     <p class="lede">No es un diario ni un chatbot. Es tu caja negra estratégica:
       suelta el caos, recibe claridad. Mientras más la usas, mejor te conoce.</p>
 
     <div class="steps">
       <h2>EMPIEZA EN 3 PASOS</h2>
       <div class="step"><div class="num">1</div><p>Toca el micrófono o escribe lo que traes en la cabeza. Crudo, sin ordenarlo.</p></div>
-      <div class="step"><div class="num">2</div><p>Conversa. BLACKBOX te responde directo y con criterio — ya te conoce.</p></div>
+      <div class="step"><div class="num">2</div><p>Conversa. BlackBoxMind te responde directo y con criterio — ya te conoce.</p></div>
       <div class="step"><div class="num">3</div><p>Sal cuando quieras. Lo importante se guarda solo.</p></div>
     </div>
 
@@ -80,7 +80,7 @@ export const WELCOME_HTML = `<!DOCTYPE html>
     <div class="rule">La única regla: no ordenes tus ideas antes de escribir. Ven con el caos.
       Si solo tienes 30 segundos y una frase, con eso basta.</div>
 
-    <div class="foot">BLACKBOX MIND — tu caja negra estratégica</div>
+    <div class="foot">BlackBoxMind.ai — tu caja negra estratégica</div>
   </div>
 </body>
 </html>`;
