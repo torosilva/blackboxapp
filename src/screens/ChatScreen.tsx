@@ -220,11 +220,15 @@ const ChatScreen = () => {
             await SupabaseService.saveChatMessage(threadId, 'model', aiText);
             
             setMessages(prev => [...prev, aiMsg]);
-        } catch (error) {
+        } catch (error: any) {
             console.error('SEND_MESSAGE_ERROR:', error);
+            const isTimeout = error?.message?.includes('demasiado en responder');
+            const text = isTimeout
+                ? error.message
+                : "Lo siento, tuve un problema al procesar tu solicitud. Intenta de nuevo.";
             const errorMsg: ChatMessage = {
                 role: 'model',
-                parts: [{ text: "Lo siento, tuve un problema al procesar tu solicitud. Intenta de nuevo." }]
+                parts: [{ text }]
             };
             setMessages(prev => [...prev, errorMsg]);
         } finally {
