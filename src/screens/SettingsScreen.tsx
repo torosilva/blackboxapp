@@ -417,7 +417,19 @@ const SettingsScreen = () => {
                                 activeOpacity={0.7}
                             >
                                 <BC2 size={20} color="#6366f1" />
-                                <Text style={styles.sectionTitle}>Análisis & Reportes</Text>
+                                <Text style={styles.sectionTitle}>Dashboard Estratégico</Text>
+                                <AR size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                            </TO>
+                        </View>
+
+                        <View style={styles.section}>
+                            <TO
+                                style={styles.sectionHeader}
+                                onPress={() => navigation.navigate('WeeklyReport', {})}
+                                activeOpacity={0.7}
+                            >
+                                <BC2 size={20} color="#6366f1" />
+                                <Text style={styles.sectionTitle}>Compartir mi Reporte</Text>
                                 <AR size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
                             </TO>
                         </View>
