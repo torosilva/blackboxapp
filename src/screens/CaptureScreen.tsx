@@ -718,6 +718,7 @@ const CaptureScreen = () => {
                 {/* ── LOOPS — PRIMARY MODULE ───────────────────────────────────── */}
                 {topLoops.length > 0 ? (
                     <View style={styles.loopsModule}>
+                        <Text style={styles.homeCardTitle}>PRIORIDAD</Text>
                         <View style={styles.loopsHeaderRow}>
                             <Text style={[
                                 styles.loopsTitle,
@@ -764,6 +765,7 @@ const CaptureScreen = () => {
                 {/* ── MEMORIAS — SECONDARY, collapsible ────────────────────────── */}
                 {recentEntries.length > 0 && (
                     <View style={styles.memModule}>
+                        <Text style={styles.homeCardTitle}>MEMORIAS</Text>
                         <TO
                             style={styles.memHeaderRow}
                             onPress={() => setMemoriesOpen(o => !o)}
