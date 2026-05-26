@@ -558,11 +558,11 @@ const CaptureScreen = () => {
                     The mic icon adapts to Send when there's draft text. No
                     secondary floating FAB; this is the single capture entry. */}
                 <View style={styles.textCaptureCard}>
-                    <E3 size={18} color="#94a3b8" strokeWidth={2} />
+                    <E3 size={18} color="#64748b" strokeWidth={2} />
                     <TextInput
                         style={styles.textCaptureInput}
                         placeholder="¿Qué tienes en mente?"
-                        placeholderTextColor="#94a3b8"
+                        placeholderTextColor="#64748b"
                         value={draftText}
                         onChangeText={(t) => {
                             setDraftText(t);
@@ -1011,9 +1011,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        backgroundColor: '#1A2236',
-        borderColor: 'rgba(192,132,252,0.25)',
-        borderWidth: 1.5,
+        backgroundColor: '#F1F5F9',
+        borderWidth: 0,
         borderRadius: 14,
         paddingVertical: 18,
         paddingHorizontal: 16,
@@ -1021,15 +1020,15 @@ const styles = StyleSheet.create({
         marginBottom: 24,
         minHeight: 64,
         maxHeight: 200,
-        shadowColor: '#7C3AED',
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 2 },
-        elevation: 3,
+        shadowColor: '#000000',
+        shadowOpacity: 0.35,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 6,
     },
     textCaptureInput: {
         flex: 1,
-        color: '#f1f5f9',
+        color: '#0F172A',
         fontSize: 16,
         fontWeight: '500',
         paddingVertical: 0,
