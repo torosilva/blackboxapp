@@ -2,10 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TextInput,
     TouchableOpacity, ScrollView, KeyboardAvoidingView,
-    Platform, ActivityIndicator, StatusBar, Alert, Animated
+    Platform, ActivityIndicator, StatusBar, Alert, Animated, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Send, ChevronLeft, Bot, Sparkles, Brain, Mic, MicOff } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { Send, ChevronLeft, Bot, Sparkles, Brain, Mic, MicOff, ImagePlus, X } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ChatService, ChatMessage } from '../services/ChatService';
 import { useAuth } from '../context/AuthContext';
@@ -31,6 +32,9 @@ const ChatScreen = () => {
     const Bo = Bot as any;
     const Mi = Mic as any;
     const MO = MicOff as any;
+    const IP = ImagePlus as any;
+    const Xx = X as any;
+    const Img = Image as any;
 
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputText, setInputText] = useState('');
@@ -38,7 +42,44 @@ const ChatScreen = () => {
     const [isRecording, setIsRecording] = useState(false);
     const [isTranscribing, setIsTranscribing] = useState(false);
     const [recordSecs, setRecordSecs] = useState(0);
+    const [attachedImage, setAttachedImage] = useState<{
+        data: string;
+        mediaType: string;
+        previewUri: string;
+    } | null>(null);
     const dotAnim = useRef(new Animated.Value(1)).current;
+
+    const handleAttachImage = async () => {
+        try {
+            const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!perm.granted) {
+                Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería para adjuntar imágenes.');
+                return;
+            }
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                quality: 0.7,
+                base64: true,
+                allowsEditing: false,
+                exif: false,
+            });
+            if (result.canceled || !result.assets?.[0]) return;
+            const asset = result.assets[0];
+            if (!asset.base64) {
+                Alert.alert('Error', 'No se pudo leer la imagen.');
+                return;
+            }
+            const mediaType = asset.mimeType ?? 'image/jpeg';
+            setAttachedImage({
+                data: asset.base64,
+                mediaType,
+                previewUri: asset.uri,
+            });
+        } catch (e: any) {
+            console.error('Image pick error:', e);
+            Alert.alert('Error', 'No se pudo abrir la galería.');
+        }
+    };
 
     const fmtSecs = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
@@ -186,12 +227,30 @@ const ChatScreen = () => {
         text: string = inputText,
         image?: { mediaType: string; data: string } | null,
     ) => {
-        if (!text.trim() || loading || !user || !threadId) return;
+        // Fall back to the state-attached image when caller didn't pass one
+        // explicitly (so the gallery-attached image gets sent on plain
+        // "Send" tap or "Send" via voice transcription).
+        const effectiveImage = image ?? (attachedImage
+            ? { mediaType: attachedImage.mediaType, data: attachedImage.data }
+            : null);
+        const effectivePreviewUri = image ? undefined : attachedImage?.previewUri;
 
-        const displayText = image ? `${text}\n🖼️ (imagen adjunta)` : text;
-        const userMsg: ChatMessage = { role: 'user', parts: [{ text: displayText }] };
+        const hasText = text.trim().length > 0;
+        if ((!hasText && !effectiveImage) || loading || !user || !threadId) return;
+
+        const displayText = effectiveImage
+            ? (hasText ? `${text}\n🖼️ (imagen adjunta)` : '🖼️ (imagen adjunta)')
+            : text;
+        const userMsg: ChatMessage = {
+            role: 'user',
+            parts: [{ text: displayText }],
+            ...(effectivePreviewUri ? { imageUri: effectivePreviewUri } : {}),
+        };
         setMessages(prev => [...prev, userMsg]);
         setInputText('');
+        // Clear the attachment as soon as we commit it to the sent flow,
+        // so a quick second send won't double-attach the same image.
+        if (effectiveImage && !image) setAttachedImage(null);
         setLoading(true);
 
         try {
@@ -207,18 +266,18 @@ const ChatScreen = () => {
                 category,
                 isTherapyMode,
                 entryContext,
-                image ?? null
+                effectiveImage
             );
-            
+
             const aiText = response.parts[0].text;
             const aiMsg: ChatMessage = {
                 role: 'model',
                 parts: [{ text: aiText }]
             };
-            
+
             // 3. Save AI Response to DB
             await SupabaseService.saveChatMessage(threadId, 'model', aiText);
-            
+
             setMessages(prev => [...prev, aiMsg]);
         } catch (error) {
             console.error('SEND_MESSAGE_ERROR:', error);
@@ -530,6 +589,13 @@ const ChatScreen = () => {
                                 styles.messageBubble,
                                 msg.role === 'user' ? styles.userBubble : styles.aiBubble
                             ]}>
+                                {msg.imageUri && (
+                                    <Img
+                                        source={{ uri: msg.imageUri }}
+                                        style={styles.messageImage}
+                                        resizeMode="cover"
+                                    />
+                                )}
                                 <Text style={[
                                     styles.messageText,
                                     msg.role === 'user' ? styles.userText : styles.aiText
@@ -587,8 +653,37 @@ const ChatScreen = () => {
                     </View>
                 )}
 
+                {/* Attached image preview (above input row) */}
+                {attachedImage && (
+                    <View style={styles.attachmentPreview}>
+                        <Img
+                            source={{ uri: attachedImage.previewUri }}
+                            style={styles.attachmentThumb}
+                        />
+                        <View style={styles.attachmentInfo}>
+                            <Text style={styles.attachmentLabel}>Imagen adjunta</Text>
+                            <Text style={styles.attachmentHint}>Se enviará con tu próximo mensaje</Text>
+                        </View>
+                        <TO
+                            onPress={() => setAttachedImage(null)}
+                            style={styles.attachmentRemove}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                            <Xx size={18} color="#94a3b8" />
+                        </TO>
+                    </View>
+                )}
+
                 {/* Input */}
                 <View style={styles.inputArea}>
+                    <TO
+                        onPress={handleAttachImage}
+                        style={styles.attachBtn}
+                        disabled={loading || isRecording || isTranscribing}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                        <IP size={22} color="#94a3b8" strokeWidth={2} />
+                    </TO>
                     <TI
                         style={styles.input}
                         placeholder={
@@ -618,9 +713,12 @@ const ChatScreen = () => {
                         )}
                     </TO>
                     <TO
-                        style={[styles.sendBtn, !inputText.trim() && { opacity: 0.5 }]}
+                        style={[
+                            styles.sendBtn,
+                            (!inputText.trim() && !attachedImage) && { opacity: 0.5 },
+                        ]}
                         onPress={() => handleSend()}
-                        disabled={!inputText.trim() || loading || isRecording || isTranscribing}
+                        disabled={(!inputText.trim() && !attachedImage) || loading || isRecording || isTranscribing}
                     >
                         <Sn size={20} color="white" />
                     </TO>
@@ -766,7 +864,39 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginLeft: 10
-    }
+    },
+    attachBtn: {
+        width: 44,
+        height: 44,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 6,
+    },
+    attachmentPreview: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        backgroundColor: '#151B2C',
+        borderTopColor: '#1E293B',
+        borderTopWidth: 1,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+    },
+    attachmentThumb: {
+        width: 44,
+        height: 44,
+        borderRadius: 8,
+    },
+    attachmentInfo: { flex: 1 },
+    attachmentLabel: { color: '#f1f5f9', fontSize: 13, fontWeight: '600' },
+    attachmentHint: { color: '#94a3b8', fontSize: 11, marginTop: 2 },
+    attachmentRemove: { padding: 6 },
+    messageImage: {
+        width: 200,
+        height: 200,
+        borderRadius: 10,
+        marginBottom: 8,
+    },
 });
 
 export default ChatScreen;
