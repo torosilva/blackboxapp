@@ -191,21 +191,6 @@ const CaptureScreen = () => {
                 keyboardVerticalOffset={20}
             >
                 <View style={styles.body}>
-                    {/* Hero — big animated logo */}
-                    <View style={styles.hero}>
-                        <View style={styles.logoBox}>
-                            <Animated.View style={{ transform: [{ translateY: brainAnim }], position: 'absolute' }}>
-                                <Bx size={44} color="#818cf8" strokeWidth={1.8} />
-                            </Animated.View>
-                            <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                                <Br size={88} color="#a855f7" strokeWidth={1.3} />
-                            </Animated.View>
-                        </View>
-                        <Text style={styles.greeting}>
-                            {greeting}{displayName ? `, ${displayName}` : ''}
-                        </Text>
-                    </View>
-
                     {/* Input card — Claude style */}
                     <View style={styles.inputCard}>
                         <TextInput
