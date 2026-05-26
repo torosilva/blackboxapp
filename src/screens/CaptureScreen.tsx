@@ -8,7 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import {
     Mic, MicOff, ArrowUp, Plus, X, RefreshCw, ChevronRight, ChevronDown,
     LayoutDashboard, BarChart2, MessageCircle, ShieldAlert, Brain, Sparkles, MoreHorizontal,
-    Search as SearchIcon,
+    Search as SearchIcon, Edit3, Settings as SettingsIcon,
 } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
@@ -397,6 +397,8 @@ const CaptureScreen = () => {
     const Br = Brain as any;
     const MH = MoreHorizontal as any;
     const SI = SearchIcon as any;
+    const E3 = Edit3 as any;
+    const SG = SettingsIcon as any;
     const LD = LayoutDashboard as any;
     const BC = BarChart2 as any;
     const MC = MessageCircle as any;
@@ -450,10 +452,27 @@ const CaptureScreen = () => {
                             <SI size={20} color="rgba(255,255,255,0.8)" strokeWidth={2} />
                         </TO>
                         <TO onPress={() => navigation.navigate('Settings')} style={styles.headerBtn} activeOpacity={0.7}>
-                            <MH size={20} color="#64748b" />
+                            <SG size={20} color="rgba(255,255,255,0.8)" strokeWidth={2} />
                         </TO>
                     </View>
                 </View>
+
+                {/* Dual input — text first, mic second. The floating mic FAB
+                    remains; this card is the day-1 wayfinder for new users
+                    who don't yet know they can long-press to type. */}
+                <TO
+                    onPress={() => navigation.navigate('NewEntry')}
+                    style={styles.textCaptureCard}
+                    activeOpacity={0.85}
+                >
+                    <View style={styles.textCaptureContent}>
+                        <E3 size={20} color="#94a3b8" strokeWidth={2} />
+                        <Text style={styles.textCapturePlaceholder}>
+                            ¿Qué tienes en mente? Escribe o habla.
+                        </Text>
+                    </View>
+                    <Mi size={18} color="#c084fc" strokeWidth={2.2} />
+                </TO>
 
                 {/* SYSTEM STATE — momentum first, backlog after. Units never break
                     mid-stat (nbsp) and the bullet is bound to its stat, so no
@@ -471,7 +490,7 @@ const CaptureScreen = () => {
                                     <Text style={[styles.statValue, styles.statValuePos]}>
                                         {stats.closed}
                                     </Text>
-                                    <Text style={styles.statLabel}>CERRADOS</Text>
+                                    <Text style={styles.statLabel}>COMPLETADAS</Text>
                                     <Text style={styles.statSub}>esta semana</Text>
                                 </View>
                             )}
@@ -479,7 +498,7 @@ const CaptureScreen = () => {
                                 <Text style={[styles.statValue, styles.statValueNeutral]}>
                                     {stats?.open ?? 0}
                                 </Text>
-                                <Text style={styles.statLabel}>ABIERTOS</Text>
+                                <Text style={styles.statLabel}>PENDIENTES</Text>
                                 <Text style={styles.statSub}> </Text>
                             </View>
                             {!!stats && stats.stalled > 0 && (
@@ -487,7 +506,7 @@ const CaptureScreen = () => {
                                     <Text style={[styles.statValue, styles.statValueWarn]}>
                                         {stats.stalled}
                                     </Text>
-                                    <Text style={styles.statLabel}>ESTANCADOS</Text>
+                                    <Text style={styles.statLabel}>SIN AVANCE</Text>
                                     <Text style={styles.statSub}>{`>${STALE_DAYS} días`}</Text>
                                 </View>
                             )}
@@ -546,8 +565,11 @@ const CaptureScreen = () => {
                 {topLoops.length > 0 ? (
                     <View style={styles.loopsModule}>
                         <View style={styles.loopsHeaderRow}>
-                            <Text style={[styles.loopsTitle, hasRegresa && { color: '#f87171' }]}>
-                                {hasRegresa ? 'LO QUE REGRESA' : 'PRIORIDAD HOY'}
+                            <Text style={[
+                                styles.loopsTitle,
+                                hasRegresa && styles.loopsTitleRegresa,
+                            ]}>
+                                {hasRegresa ? 'Lo que sigues postergando' : 'PRIORIDAD HOY'}
                             </Text>
                             <TO onPress={() => navigation.navigate('Loops')} activeOpacity={0.7}>
                                 <Text style={styles.sectionLink}>Ver todos</Text>
@@ -852,6 +874,37 @@ const styles = StyleSheet.create({
         marginBottom: 14,
     },
     loopsTitle: { color: '#e2e8f0', fontSize: 16, fontWeight: '900', letterSpacing: 1.5 },
+    loopsTitleRegresa: {
+        color: '#f87171',
+        fontSize: 18,
+        fontWeight: '700',
+        letterSpacing: 0,
+        textTransform: 'none',
+    },
+    textCaptureCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#151B2C',
+        borderColor: '#1E293B',
+        borderWidth: 1,
+        borderRadius: 14,
+        paddingVertical: 16,
+        paddingHorizontal: 16,
+        marginTop: 8,
+        marginBottom: 16,
+    },
+    textCaptureContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        flex: 1,
+    },
+    textCapturePlaceholder: {
+        color: '#94a3b8',
+        fontSize: 15,
+        flex: 1,
+    },
     loopsCounter: { color: '#34d399', fontSize: 12, fontWeight: '400', marginTop: -6, marginBottom: 12 },
     sectionLink: { color: '#6366f1', fontSize: 13, fontWeight: '800' },
 
