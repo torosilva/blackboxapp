@@ -86,6 +86,7 @@ const SettingsScreen = () => {
         account: false,
         profile: false,
         goals: false,
+        advanced: false,
     });
     const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
         'BUSINESS': false,
@@ -292,6 +293,20 @@ const SettingsScreen = () => {
         if (success) {
             setGoals(prev => prev.map(g => g.id === goalId ? { ...g, is_completed: !currentStatus } : g));
         }
+    };
+
+    const handlePreviewOnboarding = () => {
+        Alert.alert(
+            'Modo demo',
+            'Verás el onboarding inicial como un usuario nuevo. Las capturas que hagas se marcan como demo y puedes descartarlas o guardarlas al final.\n\nTu data actual queda intacta.',
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Empezar',
+                    onPress: () => navigation.navigate('Onboarding', { isPreviewMode: true }),
+                },
+            ],
+        );
     };
 
     const handleDeleteGoal = (goalId: string) => {
@@ -906,6 +921,39 @@ const SettingsScreen = () => {
                         </TO>
                     </View>
                 )}
+
+                {/* ADVANCED SECTION */}
+                <View style={styles.section}>
+                    <TO
+                        style={styles.sectionHeader}
+                        onPress={() => toggleSection('advanced')}
+                        activeOpacity={0.7}
+                    >
+                        <Z size={20} color="#c084fc" />
+                        <Text style={styles.sectionTitle}>Avanzado</Text>
+                        {expandedSections.advanced ? (
+                            <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                        ) : (
+                            <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                        )}
+                    </TO>
+
+                    {expandedSections.advanced && (
+                        <TO
+                            style={[styles.tutorialButton, { borderColor: 'rgba(192, 132, 252, 0.2)' }]}
+                            onPress={handlePreviewOnboarding}
+                        >
+                            <View style={[styles.iconCircle, { backgroundColor: 'rgba(192, 132, 252, 0.1)', width: 40, height: 40, borderRadius: 12 }]}>
+                                <B size={18} color="#c084fc" />
+                            </View>
+                            <View style={styles.policyTextContainer}>
+                                <Text style={[styles.policyLabel, { color: '#c084fc' }]}>Ver onboarding inicial</Text>
+                                <Text style={styles.policyValue}>No se borrará tu data actual</Text>
+                            </View>
+                            <AR size={20} color="#c084fc" />
+                        </TO>
+                    )}
+                </View>
 
                 {/* ACCOUNT SECTION */}
                 <View style={[styles.section, { marginBottom: 60 }]}>

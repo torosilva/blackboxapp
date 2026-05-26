@@ -105,6 +105,98 @@ export const SupabaseService = {
         }
     },
 
+    // ─── Onboarding Preview Mode ─────────────────────────────────────────────
+
+    /**
+     * Inserta una entrada cruda (sin AI analysis) durante el onboarding
+     * conversacional. Devuelve el ID para que la UI pueda disparar embed
+     * y, al final, generar el reflejo inicial.
+     */
+    async createOnboardingEntry(args: {
+        userId: string;
+        content: string;
+        isPreviewOnboarding: boolean;
+    }): Promise<string | null> {
+        try {
+            const { data, error } = await supabase
+                .from('entries')
+                .insert([{
+                    user_id: args.userId,
+                    title: 'Captura inicial',
+                    content: args.content,
+                    original_text: args.content,
+                    category: 'PERSONAL',
+                    is_preview_onboarding: args.isPreviewOnboarding,
+                }])
+                .select('id')
+                .single();
+
+            if (error) {
+                console.warn('SUPABASE_SERVICE: createOnboardingEntry failed:', error.message);
+                return null;
+            }
+
+            if (data?.id) {
+                // Embedding en background — no bloquea el flujo conversacional
+                SupabaseService.triggerEntryEmbedding(data.id, args.content)
+                    .catch(e => console.warn('SUPABASE_SERVICE: embed-entry onboarding warn:', e?.message));
+            }
+            return data?.id ?? null;
+        } catch (e: any) {
+            console.warn('SUPABASE_SERVICE: createOnboardingEntry error:', e?.message);
+            return null;
+        }
+    },
+
+    async confirmPreviewOnboardingEntries(userId: string): Promise<number> {
+        try {
+            const { data, error } = await supabase.rpc('confirm_preview_onboarding_entries', {
+                p_user_id: userId,
+            });
+            if (error) {
+                console.warn('SUPABASE_SERVICE: confirmPreview failed:', error.message);
+                return 0;
+            }
+            return data ?? 0;
+        } catch (e: any) {
+            console.warn('SUPABASE_SERVICE: confirmPreview error:', e?.message);
+            return 0;
+        }
+    },
+
+    async discardPreviewOnboardingEntries(userId: string): Promise<number> {
+        try {
+            const { data, error } = await supabase.rpc('discard_preview_onboarding_entries', {
+                p_user_id: userId,
+            });
+            if (error) {
+                console.warn('SUPABASE_SERVICE: discardPreview failed:', error.message);
+                return 0;
+            }
+            return data ?? 0;
+        } catch (e: any) {
+            console.warn('SUPABASE_SERVICE: discardPreview error:', e?.message);
+            return 0;
+        }
+    },
+
+    async markOnboardingComplete(userId: string): Promise<boolean> {
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({ onboarding_completed_at: new Date().toISOString() })
+                .eq('id', userId);
+            if (error) {
+                console.warn('SUPABASE_SERVICE: markOnboardingComplete failed:', error.message);
+                return false;
+            }
+            return true;
+        } catch (e: any) {
+            console.warn('SUPABASE_SERVICE: markOnboardingComplete error:', e?.message);
+            return false;
+        }
+    },
+
     /**
      * 1.5 Upload Image to Supabase Storage (for Feedback)
      */
