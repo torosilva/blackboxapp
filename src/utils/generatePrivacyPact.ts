@@ -136,8 +136,8 @@ function buildHtml(input: PrivacyPactInput): string {
     </div>
 
     <div class="commitment">
-      <div class="commitment-title">3. Procesamiento de IA bajo Zero Data Retention</div>
-      <div class="commitment-body">Las solicitudes de análisis se procesan a través de Anthropic (Claude). Bajo el acuerdo Zero Data Retention, Anthropic procesa la solicitud, devuelve el resultado, y no almacena tu contenido. Tu información no se utiliza para entrenar ni mejorar modelos de IA de terceros.</div>
+      <div class="commitment-title">3. Procesamiento de IA sin entrenamiento de modelos</div>
+      <div class="commitment-body">Las solicitudes de análisis se procesan a través de Anthropic (Claude). Anthropic mantiene logs temporales (máximo 30 días) exclusivamente para detección de abuso, conforme a su política estándar de API. Tu contenido NO se utiliza para entrenar ni mejorar modelos de IA: mantenemos deshabilitada la opción de compartir prompts con Anthropic para mejora de modelos, y no participamos en su Development Partner Program.</div>
     </div>
 
     <div class="commitment">

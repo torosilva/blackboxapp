@@ -179,9 +179,9 @@ const PrivacyScreen = ({ isMandatory: propIsMandatory }: { isMandatory?: boolean
                     <View style={styles.humanItem}>
                         <Text style={styles.humanItemNum}>02</Text>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.humanItemTitle}>Anthropic procesa, no almacena.</Text>
+                            <Text style={styles.humanItemTitle}>Anthropic procesa, sin entrenar modelos con tu data.</Text>
                             <Text style={styles.humanItemBody}>
-                                Usamos Claude (Anthropic) para analizar tus capturas. Bajo el acuerdo Zero Data Retention: Anthropic procesa la solicitud, devuelve la respuesta, y NO guarda tu contenido. No lo usan para entrenar modelos.
+                                Usamos Claude (Anthropic) para analizar tus capturas. Anthropic mantiene logs temporales (30 días) solo para detección de abuso. Tu contenido NO se usa para entrenar modelos — tenemos deshabilitado el opt-in de compartir prompts y no participamos en su programa de partners.
                             </Text>
                         </View>
                     </View>
