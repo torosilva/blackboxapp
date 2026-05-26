@@ -168,3 +168,4 @@ CAPTURAR → PROCESAR → CERRAR LOOPS → REFLEJAR
 | 2026-04-16 | Phase 1 → bottom tab navigation + CaptureScreen | Foco en captura como acción principal |
 | 2026-04-17 | Tab bar removido → CaptureScreen como pantalla única estilo Claude | Reducir fricción cognitiva al abrir la app |
 | 2026-05-11 | Auditoría honesta del producto + creación de este doc | Pre-decisión de migración a Claude / pulido de prompts |
+| 2026-05-26 | Hook `Stop` instalado en `.claude/settings.json` + `.claude/hooks/remind-bbm.sh` | Persistir disciplina entre sesiones: si Claude toca archivos fuera de `claudeBBM.md` y no actualiza el log, el hook bloquea el stop con un recordatorio. Sobrevive al ciclo de contenedores efímeros vía git. |
