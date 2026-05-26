@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TextInput,
     TouchableOpacity, ScrollView, KeyboardAvoidingView,
-    Platform, ActivityIndicator, StatusBar, Alert
+    Platform, ActivityIndicator, StatusBar, Alert, Animated
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Send, ChevronLeft, Bot, Sparkles, Brain, Mic, MicOff } from 'lucide-react-native';
@@ -37,6 +37,29 @@ const ChatScreen = () => {
     const [loading, setLoading] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
     const [isTranscribing, setIsTranscribing] = useState(false);
+    const [recordSecs, setRecordSecs] = useState(0);
+    const dotAnim = useRef(new Animated.Value(1)).current;
+
+    const fmtSecs = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+    useEffect(() => {
+        if (!isRecording) { setRecordSecs(0); return; }
+        setRecordSecs(0);
+        const id = setInterval(() => setRecordSecs(s => s + 1), 1000);
+        return () => clearInterval(id);
+    }, [isRecording]);
+
+    useEffect(() => {
+        if (!isRecording && !isTranscribing) return;
+        const loop = Animated.loop(
+            Animated.sequence([
+                Animated.timing(dotAnim, { toValue: 1.4, duration: 600, useNativeDriver: true }),
+                Animated.timing(dotAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+            ])
+        );
+        loop.start();
+        return () => { loop.stop(); dotAnim.setValue(1); };
+    }, [isRecording, isTranscribing]);
     const [fetchingHistory, setFetchingHistory] = useState(true);
     const scrollViewRef = useRef<ScrollView>(null);
     const initialSentRef = useRef(false);
@@ -546,6 +569,24 @@ const ChatScreen = () => {
                     </View>
                 )}
 
+                {/* Recording / Transcribing indicator */}
+                {(isRecording || isTranscribing) && (
+                    <View style={styles.recordingBar}>
+                        <Animated.View
+                            style={[
+                                styles.recordingDot,
+                                isTranscribing && { backgroundColor: '#6366f1' },
+                                { transform: [{ scale: dotAnim }] },
+                            ]}
+                        />
+                        <Text style={styles.recordingText}>
+                            {isTranscribing
+                                ? 'Transcribiendo tu audio…'
+                                : `Escuchando ${fmtSecs(recordSecs)} · toca el micrófono para enviar`}
+                        </Text>
+                    </View>
+                )}
+
                 {/* Input */}
                 <View style={styles.inputArea}>
                     <TI
@@ -664,6 +705,31 @@ const styles = StyleSheet.create({
         backgroundColor: '#020617',
         borderTopWidth: 1,
         borderColor: '#1e293b'
+    },
+    recordingBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        marginHorizontal: 15,
+        marginBottom: 4,
+        backgroundColor: 'rgba(239, 68, 68, 0.08)',
+        borderColor: 'rgba(239, 68, 68, 0.25)',
+        borderWidth: 1,
+        borderRadius: 12,
+    },
+    recordingDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: '#ef4444',
+    },
+    recordingText: {
+        color: '#fca5a5',
+        fontSize: 13,
+        fontWeight: '600',
+        flex: 1,
     },
     input: {
         flex: 1,
