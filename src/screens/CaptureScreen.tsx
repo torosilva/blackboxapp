@@ -987,6 +987,7 @@ const styles = StyleSheet.create({
         lineHeight: 24,
         fontWeight: '300',
         minHeight: 70,
+        maxHeight: 240,
         paddingTop: 4,
         paddingBottom: 12,
     },
