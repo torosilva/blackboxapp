@@ -4,8 +4,9 @@ import {
     ChevronLeft, ShieldCheck, Clock, Database, AlertCircle, Brain,
     Zap, Stethoscope, Calendar, Target, AlertTriangle, ArrowRight,
     LogOut, Trash2, MessageSquareText, Send, X, ChevronDown, ChevronUp, User,
-    CheckCircle2, Sparkles, Plus, Paperclip, Camera, Trash2 as TrashIcon
+    CheckCircle2, Sparkles, Plus, Paperclip, Camera, Trash2 as TrashIcon, Award
 } from 'lucide-react-native';
+import { generateAndSharePrivacyPact } from '../utils/generatePrivacyPact';
 import * as WebBrowser from 'expo-web-browser';
 import * as ImagePicker from 'expo-image-picker';
 import {
@@ -226,6 +227,22 @@ const SettingsScreen = () => {
             Alert.alert('Error', 'No pudimos enviar tu feedback. Intenta de nuevo más tarde.');
         } finally {
             setIsSubmittingFeedback(false);
+        }
+    };
+
+    const handleDownloadPrivacyPact = async () => {
+        if (!user?.id) {
+            Alert.alert('Inicia sesión', 'Necesitas estar autenticado para descargar tu certificado.');
+            return;
+        }
+        try {
+            await generateAndSharePrivacyPact({
+                userId: user.id,
+                userEmail: user.email || '',
+                userName: profile?.full_name || user.email?.split('@')[0] || 'Usuario',
+            });
+        } catch (e: any) {
+            Alert.alert('Error', 'No se pudo generar el certificado. Intenta de nuevo.');
         }
     };
 
@@ -755,6 +772,16 @@ const SettingsScreen = () => {
                                         <View style={styles.policyTextContainer}>
                                             <Text style={styles.policyLabel}>Aviso de Privacidad</Text>
                                             <Text style={styles.policyValue}>Lee cómo protegemos tu información.</Text>
+                                        </View>
+                                        <AR size={20} color="#475569" />
+                                    </TO>
+                                    <TO style={styles.policyRow} onPress={handleDownloadPrivacyPact}>
+                                        <View style={[styles.iconCircle, { backgroundColor: 'rgba(192, 132, 252, 0.1)' }]}>
+                                            <Award size={18} color="#c084fc" />
+                                        </View>
+                                        <View style={styles.policyTextContainer}>
+                                            <Text style={[styles.policyLabel, { color: '#c084fc' }]}>Certificado de Privacidad</Text>
+                                            <Text style={styles.policyValue}>Descargar PDF con tus compromisos</Text>
                                         </View>
                                         <AR size={20} color="#475569" />
                                     </TO>

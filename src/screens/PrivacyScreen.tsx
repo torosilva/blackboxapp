@@ -70,6 +70,68 @@ const PrivacyScreen = ({ isMandatory: propIsMandatory }: { isMandatory?: boolean
             </View>
 
             <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
+                <View style={styles.humanSection}>
+                    <View style={styles.humanHeader}>
+                        <L size={18} color="#c084fc" />
+                        <Text style={styles.humanTitle}>TU PRIVACIDAD EN 60 SEGUNDOS</Text>
+                    </View>
+                    <Text style={styles.humanSub}>
+                        El detalle legal está abajo. Esto es lo que importa.
+                    </Text>
+
+                    <View style={styles.humanItem}>
+                        <Text style={styles.humanItemNum}>01</Text>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.humanItemTitle}>Sin acceso del equipo al contenido de tus entries.</Text>
+                            <Text style={styles.humanItemBody}>
+                                Tenemos un dashboard interno de costos (vemos cuánto cuesta cada usuario, no qué escribió). La base de datos está cifrada en reposo (AES-256) y las políticas Row-Level Security garantizan que solo tu sesión accede a tu contenido.
+                            </Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.humanItem}>
+                        <Text style={styles.humanItemNum}>02</Text>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.humanItemTitle}>Anthropic procesa, no almacena.</Text>
+                            <Text style={styles.humanItemBody}>
+                                Usamos Claude (Anthropic) para analizar tus capturas. Bajo el acuerdo Zero Data Retention: Anthropic procesa la solicitud, devuelve la respuesta, y NO guarda tu contenido. No lo usan para entrenar modelos.
+                            </Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.humanItem}>
+                        <Text style={styles.humanItemNum}>03</Text>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.humanItemTitle}>Nunca vendemos ni compartimos tu data.</Text>
+                            <Text style={styles.humanItemBody}>
+                                Sin terceros de marketing. Sin trackers de comportamiento dentro de tus entries. Tu data no es el producto — tu suscripción lo es.
+                            </Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.humanItem}>
+                        <Text style={styles.humanItemNum}>04</Text>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.humanItemTitle}>Si te vas, tu data se va contigo.</Text>
+                            <Text style={styles.humanItemBody}>
+                                Borra tu cuenta y todo se elimina permanentemente en 30 días — incluyendo embeddings, reflejos y patrones detectados. Puedes descargar tus memorias en JSON antes de salir.
+                            </Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.humanItem}>
+                        <Text style={styles.humanItemNum}>05</Text>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.humanItemTitle}>Compromiso firmado por escrito.</Text>
+                            <Text style={styles.humanItemBody}>
+                                Puedes descargar tu Certificado de Privacidad personal desde Settings — un PDF firmado digitalmente que detalla estos compromisos para tu archivo o tu equipo legal.
+                            </Text>
+                        </View>
+                    </View>
+                </View>
+
+                <View style={{ height: 32 }} />
+
                 <Text style={styles.lastUpdate}>Última actualización: 20 de Enero de 2026</Text>
 
                 <Text style={styles.bodyText}>
@@ -107,7 +169,7 @@ const PrivacyScreen = ({ isMandatory: propIsMandatory }: { isMandatory?: boolean
 
                 <Text style={styles.sectionTitle}>3. TRANSFERENCIAS DE DATOS</Text>
                 <Text style={styles.bodyText}>
-                    Sus datos pueden ser compartidos con proveedores en la nube (ej. Supabase, Google Gemini API) con la finalidad exclusiva de alojar y procesar solicitudes de IA. Nosotros NO vendemos, rentamos ni comercializamos sus datos personales identificables.
+                    Sus datos pueden ser compartidos con proveedores en la nube (ej. Supabase para alojamiento, Anthropic/Google para procesamiento de IA bajo acuerdos de cero retención de datos) con la finalidad exclusiva de alojar y procesar solicitudes de IA. Nosotros NO vendemos, rentamos ni comercializamos sus datos personales identificables.
                 </Text>
 
                 <Text style={styles.sectionTitle}>4. DERECHOS ARCO</Text>
@@ -195,7 +257,22 @@ const styles = StyleSheet.create({
         alignItems: 'center'
     },
     acceptBtnText: { color: 'white', fontWeight: 'bold', fontSize: 14, letterSpacing: 1 },
-    disabledBtn: { opacity: 0.5 }
+    disabledBtn: { opacity: 0.5 },
+    humanSection: {
+        backgroundColor: 'rgba(192, 132, 252, 0.05)',
+        borderColor: 'rgba(192, 132, 252, 0.2)',
+        borderWidth: 1,
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 24,
+    },
+    humanHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+    humanTitle: { color: '#c084fc', fontSize: 12, fontWeight: '700', letterSpacing: 1.8 },
+    humanSub: { color: '#94a3b8', fontSize: 12, fontStyle: 'italic', marginBottom: 16 },
+    humanItem: { flexDirection: 'row', marginBottom: 14, gap: 12 },
+    humanItemNum: { color: '#c084fc', fontSize: 18, fontWeight: '800', width: 28 },
+    humanItemTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '700', marginBottom: 4 },
+    humanItemBody: { color: '#cbd5e1', fontSize: 13, lineHeight: 19 },
 });
 
 export default PrivacyScreen;
