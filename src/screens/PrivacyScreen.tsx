@@ -153,7 +153,7 @@ const PrivacyScreen = ({ isMandatory: propIsMandatory }: { isMandatory?: boolean
                     </TO>
 
                     <Text style={styles.certFooterNote}>
-                        El PDF incluye los 6 compromisos detallados, firmado por Mario Toro Silva, Fundador.
+                        El PDF incluye los 6 compromisos detallados, firmado por Macarena Group PS Mexico.
                     </Text>
                 </View>
 

@@ -156,9 +156,9 @@ function buildHtml(input: PrivacyPactInput): string {
     </div>
 
     <div class="signature">
-      <div class="sig-name">Mario Toro Silva</div>
-      <div class="sig-title">Fundador y Director General</div>
-      <div class="sig-company">Macarena Group PS Mexico — BlackBoxMind.ai</div>
+      <div class="sig-name">Macarena Group PS Mexico</div>
+      <div class="sig-title">Operador comercial de BlackBoxMind.ai</div>
+      <div class="sig-company">Compromiso institucional</div>
     </div>
 
     <div class="footer">
