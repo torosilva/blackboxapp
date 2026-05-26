@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import {
     Mic, MicOff, ArrowUp, Plus, X, RefreshCw, ChevronRight, ChevronDown,
-    LayoutDashboard, BarChart2, MessageCircle, ShieldAlert, Brain, Sparkles, MoreHorizontal,
+    Sparkles,
     Search as SearchIcon, Edit3, Settings as SettingsIcon, Send,
 } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -220,6 +220,17 @@ const CaptureScreen = () => {
         const id = setInterval(() => setRecordSecs(s => s + 1), 1000);
         return () => clearInterval(id);
     }, [isRecording]);
+
+    // Subtle mount animation for the cards group below the input. Single
+    // fade + slide-up; no stagger (kept simple intentionally).
+    const cardsOpacity = useRef(new Animated.Value(0)).current;
+    const cardsTranslate = useRef(new Animated.Value(8)).current;
+    useEffect(() => {
+        Animated.parallel([
+            Animated.timing(cardsOpacity, { toValue: 1, duration: 320, useNativeDriver: true }),
+            Animated.timing(cardsTranslate, { toValue: 0, duration: 320, useNativeDriver: true }),
+        ]).start();
+    }, []);
 
     const dotAnim = useRef(new Animated.Value(1)).current;
     useEffect(() => {
@@ -465,24 +476,10 @@ const CaptureScreen = () => {
     const CR = ChevronRight as any;
     const CD = ChevronDown as any;
     const Sp = Sparkles as any;
-    const Br = Brain as any;
-    const MH = MoreHorizontal as any;
     const SI = SearchIcon as any;
     const E3 = Edit3 as any;
     const SG = SettingsIcon as any;
     const Sn = Send as any;
-    const LD = LayoutDashboard as any;
-    const BC = BarChart2 as any;
-    const MC = MessageCircle as any;
-    const SA = ShieldAlert as any;
-
-    const shortcuts = [
-        { label: 'Mis memorias', icon: Br, onPress: () => navigation.navigate('Home') },
-        { label: 'Dashboard', icon: LD, onPress: () => navigation.navigate('Dashboard') },
-        { label: 'Reporte', icon: BC, onPress: () => navigation.navigate('WeeklyReport', {}) },
-        { label: 'Chats', icon: MC, onPress: () => navigation.navigate('ChatHub') },
-        { label: 'Mis sesgos', icon: SA, onPress: () => navigation.navigate('Settings', { initialViewMode: 'biases' }) },
-    ];
 
     // ── Reflejo de hoy — the AI with an opinion (reuses the latest verdict) ───
     // strategic_insight is an object ({ detected_bias, counter_thought,
@@ -571,6 +568,10 @@ const CaptureScreen = () => {
                 {/* SYSTEM STATE — momentum first, backlog after. Units never break
                     mid-stat (nbsp) and the bullet is bound to its stat, so no
                     orphan "·" at the start of a wrapped line. */}
+                <Animated.View style={{
+                    opacity: cardsOpacity,
+                    transform: [{ translateY: cardsTranslate }],
+                }}>
                 <View style={styles.statusBlock}>
                     {cleanHead ? (
                         <>
@@ -738,21 +739,8 @@ const CaptureScreen = () => {
                         )}
                     </View>
                 )}
+                </Animated.View>
 
-                {/* Secondary nav */}
-                <View style={styles.chipsWrap}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
-                        {shortcuts.map((s) => {
-                            const Icon = s.icon;
-                            return (
-                                <TO key={s.label} onPress={s.onPress} style={styles.chip} activeOpacity={0.7}>
-                                    <Icon size={15} color="#a5b4fc" strokeWidth={2} />
-                                    <Text style={styles.chipText}>{s.label}</Text>
-                                </TO>
-                            );
-                        })}
-                    </ScrollView>
-                </View>
             </ScrollView>
 
             {/* ── CAPTURE: demoted to a corner action ──────────────────────────── */}
@@ -886,16 +874,22 @@ const styles = StyleSheet.create({
     statsGrid: {
         flexDirection: 'row',
         gap: 8,
+        marginTop: 8,
         marginBottom: 22,
     },
     statCard: {
         flex: 1,
         backgroundColor: '#151B2C',
         borderColor: '#1E293B',
-        borderWidth: StyleSheet.hairlineWidth,
+        borderWidth: 1.5,
         borderRadius: 12,
         paddingVertical: 14,
         paddingHorizontal: 12,
+        shadowColor: '#000000',
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 3 },
+        elevation: 4,
     },
     statValue: {
         fontSize: 28,
@@ -928,6 +922,11 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         padding: 16,
         marginBottom: 28,
+        shadowColor: '#7C3AED',
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 5,
     },
     reflejoHead: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 8 },
     reflejoLabel: { color: '#c084fc', fontSize: 11, fontWeight: '900', letterSpacing: 1.5 },
@@ -973,7 +972,7 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         paddingHorizontal: 16,
         marginTop: 8,
-        marginBottom: 16,
+        marginBottom: 24,
         minHeight: 56,
         maxHeight: 200,
     },
@@ -998,6 +997,11 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         paddingHorizontal: 16,
         marginBottom: 11,
+        shadowColor: '#000000',
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 3 },
+        elevation: 4,
     },
     loopCardRegresa: {
         backgroundColor: 'rgba(168,85,247,0.07)',
@@ -1042,23 +1046,6 @@ const styles = StyleSheet.create({
     memMeta: { color: '#64748b', fontSize: 12, fontWeight: '600', marginTop: 3, textTransform: 'capitalize' },
     memAll: { paddingVertical: 6, alignSelf: 'flex-start', marginTop: 2 },
 
-    // Secondary nav chips (in scroll content)
-    chipsWrap: { marginTop: 6 },
-    chipsRow: { gap: 8, paddingHorizontal: 2, alignItems: 'center' },
-    chip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 7,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: 18,
-        backgroundColor: 'rgba(255,255,255,0.04)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.14)',
-    },
-    chipText: { color: '#cbd5e1', fontSize: 13, fontWeight: '600' },
-
-    // Single floating voice-capture FAB
     recPill: {
         position: 'absolute',
         bottom: 96,

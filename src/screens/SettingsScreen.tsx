@@ -4,7 +4,8 @@ import {
     ChevronLeft, ShieldCheck, Clock, Database, AlertCircle, Brain,
     Zap, Stethoscope, Calendar, Target, AlertTriangle, ArrowRight,
     LogOut, Trash2, MessageSquareText, Send, X, ChevronDown, ChevronUp, User,
-    CheckCircle2, Sparkles, Plus, Paperclip, Camera, Trash2 as TrashIcon, Award
+    CheckCircle2, Sparkles, Plus, Paperclip, Camera, Trash2 as TrashIcon, Award,
+    BookOpen, MessageCircle, BarChart2
 } from 'lucide-react-native';
 import { generateAndSharePrivacyPact } from '../utils/generatePrivacyPact';
 import * as WebBrowser from 'expo-web-browser';
@@ -59,6 +60,9 @@ const SettingsScreen = () => {
     const Cam = Camera as any;
     const TIc = TrashIcon as any;
     const Img = Image as any;
+    const BO = BookOpen as any;
+    const MCi = MessageCircle as any;
+    const BC2 = BarChart2 as any;
 
     const [entries, setEntries] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -365,6 +369,47 @@ const SettingsScreen = () => {
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
                 {viewMode === 'hub' ? (
                     <>
+                        {/* ═══ CONTENIDO ═══ direct nav to daily-use screens */}
+                        <Text style={styles.groupLabel}>CONTENIDO</Text>
+                        <View style={styles.section}>
+                            <TO
+                                style={styles.sectionHeader}
+                                onPress={() => navigation.navigate('Home')}
+                                activeOpacity={0.7}
+                            >
+                                <BO size={20} color="#6366f1" />
+                                <Text style={styles.sectionTitle}>Mis Memorias</Text>
+                                <AR size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                            </TO>
+                        </View>
+
+                        <View style={styles.section}>
+                            <TO
+                                style={styles.sectionHeader}
+                                onPress={() => navigation.navigate('ChatHub')}
+                                activeOpacity={0.7}
+                            >
+                                <MCi size={20} color="#6366f1" />
+                                <Text style={styles.sectionTitle}>Conversaciones</Text>
+                                <AR size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                            </TO>
+                        </View>
+
+                        <View style={styles.section}>
+                            <TO
+                                style={styles.sectionHeader}
+                                onPress={() => navigation.navigate('Dashboard')}
+                                activeOpacity={0.7}
+                            >
+                                <BC2 size={20} color="#6366f1" />
+                                <Text style={styles.sectionTitle}>Análisis & Reportes</Text>
+                                <AR size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                            </TO>
+                        </View>
+
+                        {/* ═══ PERFIL ESTRATÉGICO ═══ */}
+                        <Text style={styles.groupLabel}>PERFIL ESTRATÉGICO</Text>
+
                         {/* 0. PROFILE & IDENTITY SECTION */}
                         <View style={styles.section}>
                             <TO
@@ -594,98 +639,8 @@ const SettingsScreen = () => {
                             )}
                         </View>
 
-                        {/* 3. STRATEGIC ANALYSIS */}
-                        <View style={styles.section}>
-                            <TO
-                                style={styles.sectionHeader}
-                                onPress={() => toggleSection('analysis')}
-                                activeOpacity={0.7}
-                            >
-                                <Ste size={20} color="#a855f7" />
-                                <Text style={styles.sectionTitle}>Análisis Estratégico</Text>
-                                {expandedSections.analysis ? (
-                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
-                                ) : (
-                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
-                                )}
-                            </TO>
-
-                            {expandedSections.analysis && (
-                                <View style={styles.clinicalCard}>
-                                    <Text style={styles.clinicalDesc}>
-                                        Genera un reporte estratégico de los 7 días previos a tu sesión de rendimiento.
-                                    </Text>
-                                    <TO style={styles.dateSelector} onPress={() => setShowDatePicker(true)}>
-                                        <Cal size={18} color="#94a3b8" />
-                                        <Text style={styles.dateText}>Fin del reporte: {appointmentDate.toLocaleDateString()}</Text>
-                                    </TO>
-                                    {!!showDatePicker && (
-                                        <DateTimePicker
-                                            value={appointmentDate}
-                                            mode="date"
-                                            display="default"
-                                            onChange={onDateChange}
-                                            maximumDate={new Date()}
-                                        />
-                                    )}
-                                    <TO
-                                        style={styles.generateButton}
-                                        onPress={() => navigation.navigate('WeeklyReport', { reportEndDate: appointmentDate.toISOString() })}
-                                    >
-                                        <Text style={styles.generateButtonText}>Generar Reporte Estratégico</Text>
-                                    </TO>
-                                </View>
-                            )}
-                        </View>
-
-                        {/* 4. FEEDBACK (FRIENDS & FAMILY) */}
-                        <View style={styles.section}>
-                            <TO
-                                style={styles.sectionHeader}
-                                onPress={() => toggleSection('feedback')}
-                                activeOpacity={0.7}
-                            >
-                                <MST size={20} color="#38bdf8" />
-                                <Text style={styles.sectionTitle}>Feedback Friends & Family</Text>
-                                {expandedSections.feedback ? (
-                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
-                                ) : (
-                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
-                                )}
-                            </TO>
-
-                            {expandedSections.feedback && (
-                                <>
-                                    <TO
-                                        style={[styles.tutorialButton, { borderColor: 'rgba(56, 189, 248, 0.2)' }]}
-                                        onPress={() => setShowFeedbackModal(true)}
-                                    >
-                                        <View style={[styles.iconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.1)', width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }]}>
-                                            <MST size={18} color="#38bdf8" />
-                                        </View>
-                                        <View style={styles.policyTextContainer}>
-                                            <Text style={[styles.policyLabel, { color: '#38bdf8' }]}>Ayúdanos a mejorar</Text>
-                                            <Text style={styles.policyValue}>Reportar fallas o sugerir mejoras</Text>
-                                        </View>
-                                        <AR size={20} color="#38bdf8" />
-                                    </TO>
-                                    
-                                    <TO
-                                        style={[styles.tutorialButton, { borderColor: 'rgba(129, 140, 248, 0.2)', marginTop: 12 }]}
-                                        onPress={() => navigation.navigate('FeedbackHistory')}
-                                    >
-                                        <View style={[styles.iconCircle, { backgroundColor: 'rgba(129, 140, 248, 0.1)', width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }]}>
-                                            <Db size={18} color="#818cf8" />
-                                        </View>
-                                        <View style={styles.policyTextContainer}>
-                                            <Text style={[styles.policyLabel, { color: '#818cf8' }]}>Admin: Ver Feedback</Text>
-                                            <Text style={styles.policyValue}>Ver comentarios de testers</Text>
-                                        </View>
-                                        <AR size={20} color="#818cf8" />
-                                    </TO>
-                                </>
-                            )}
-                        </View>
+                        {/* ═══ HERRAMIENTAS ═══ */}
+                        <Text style={styles.groupLabel}>HERRAMIENTAS</Text>
 
                         {/* 5. QUICK GUIDE */}
                         <View style={styles.section}>
@@ -743,6 +698,102 @@ const SettingsScreen = () => {
                                 </>
                             )}
                         </View>
+
+                        {/* 4. FEEDBACK (FRIENDS & FAMILY) */}
+                        <View style={styles.section}>
+                            <TO
+                                style={styles.sectionHeader}
+                                onPress={() => toggleSection('feedback')}
+                                activeOpacity={0.7}
+                            >
+                                <MST size={20} color="#38bdf8" />
+                                <Text style={styles.sectionTitle}>Feedback Friends & Family</Text>
+                                {expandedSections.feedback ? (
+                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                ) : (
+                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                )}
+                            </TO>
+
+                            {expandedSections.feedback && (
+                                <>
+                                    <TO
+                                        style={[styles.tutorialButton, { borderColor: 'rgba(56, 189, 248, 0.2)' }]}
+                                        onPress={() => setShowFeedbackModal(true)}
+                                    >
+                                        <View style={[styles.iconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.1)', width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }]}>
+                                            <MST size={18} color="#38bdf8" />
+                                        </View>
+                                        <View style={styles.policyTextContainer}>
+                                            <Text style={[styles.policyLabel, { color: '#38bdf8' }]}>Ayúdanos a mejorar</Text>
+                                            <Text style={styles.policyValue}>Reportar fallas o sugerir mejoras</Text>
+                                        </View>
+                                        <AR size={20} color="#38bdf8" />
+                                    </TO>
+
+                                    <TO
+                                        style={[styles.tutorialButton, { borderColor: 'rgba(129, 140, 248, 0.2)', marginTop: 12 }]}
+                                        onPress={() => navigation.navigate('FeedbackHistory')}
+                                    >
+                                        <View style={[styles.iconCircle, { backgroundColor: 'rgba(129, 140, 248, 0.1)', width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }]}>
+                                            <Db size={18} color="#818cf8" />
+                                        </View>
+                                        <View style={styles.policyTextContainer}>
+                                            <Text style={[styles.policyLabel, { color: '#818cf8' }]}>Admin: Ver Feedback</Text>
+                                            <Text style={styles.policyValue}>Ver comentarios de testers</Text>
+                                        </View>
+                                        <AR size={20} color="#818cf8" />
+                                    </TO>
+                                </>
+                            )}
+                        </View>
+
+                        {/* 3. STRATEGIC ANALYSIS */}
+                        <View style={styles.section}>
+                            <TO
+                                style={styles.sectionHeader}
+                                onPress={() => toggleSection('analysis')}
+                                activeOpacity={0.7}
+                            >
+                                <Ste size={20} color="#a855f7" />
+                                <Text style={styles.sectionTitle}>Análisis Estratégico</Text>
+                                {expandedSections.analysis ? (
+                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                ) : (
+                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                )}
+                            </TO>
+
+                            {expandedSections.analysis && (
+                                <View style={styles.clinicalCard}>
+                                    <Text style={styles.clinicalDesc}>
+                                        Genera un reporte estratégico de los 7 días previos a tu sesión de rendimiento.
+                                    </Text>
+                                    <TO style={styles.dateSelector} onPress={() => setShowDatePicker(true)}>
+                                        <Cal size={18} color="#94a3b8" />
+                                        <Text style={styles.dateText}>Fin del reporte: {appointmentDate.toLocaleDateString()}</Text>
+                                    </TO>
+                                    {!!showDatePicker && (
+                                        <DateTimePicker
+                                            value={appointmentDate}
+                                            mode="date"
+                                            display="default"
+                                            onChange={onDateChange}
+                                            maximumDate={new Date()}
+                                        />
+                                    )}
+                                    <TO
+                                        style={styles.generateButton}
+                                        onPress={() => navigation.navigate('WeeklyReport', { reportEndDate: appointmentDate.toISOString() })}
+                                    >
+                                        <Text style={styles.generateButtonText}>Generar Reporte Estratégico</Text>
+                                    </TO>
+                                </View>
+                            )}
+                        </View>
+
+                        {/* ═══ AJUSTES ═══ */}
+                        <Text style={styles.groupLabel}>AJUSTES</Text>
 
                         {/* 6. TERMS & CONDITIONS (SUMMARY) */}
                         <View style={styles.section}>
@@ -806,6 +857,40 @@ const SettingsScreen = () => {
                                             <Text style={styles.policyValue}>Accede a tu dashboard avanzado en blackboxmind.ai</Text>
                                         </View>
                                         <AR size={20} color="#38bdf8" />
+                                    </TO>
+                                </View>
+                            )}
+                        </View>
+
+                        {/* 7. ACCOUNT (moved into hub under AJUSTES group) */}
+                        <View style={[styles.section, { marginBottom: 60 }]}>
+                            <TO
+                                style={styles.sectionHeader}
+                                onPress={() => toggleSection('account')}
+                                activeOpacity={0.7}
+                            >
+                                <SC size={20} color="#ef4444" />
+                                <Text style={styles.sectionTitle}>Cuenta</Text>
+                                {expandedSections.account ? (
+                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                ) : (
+                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                )}
+                            </TO>
+
+                            {expandedSections.account && (
+                                <View style={{ gap: 12 }}>
+                                    <TO style={styles.logoutBtn} onPress={signOut}>
+                                        <LO size={20} color="#ef4444" />
+                                        <Text style={styles.logoutBtnText}>Cerrar Sesión</Text>
+                                    </TO>
+
+                                    <TO
+                                        style={[styles.logoutBtn, { backgroundColor: 'rgba(239, 68, 68, 0.05)', borderColor: 'rgba(239, 68, 68, 0.1)' }]}
+                                        onPress={handleDeleteAccount}
+                                    >
+                                        <AT size={20} color="#ef4444" />
+                                        <Text style={[styles.logoutBtnText, { fontSize: 14, opacity: 0.8 }]}>Eliminar Cuenta y Datos</Text>
                                     </TO>
                                 </View>
                             )}
@@ -934,39 +1019,6 @@ const SettingsScreen = () => {
                     </View>
                 )}
 
-                {/* ACCOUNT SECTION */}
-                <View style={[styles.section, { marginBottom: 60 }]}>
-                    <TO
-                        style={styles.sectionHeader}
-                        onPress={() => toggleSection('account')}
-                        activeOpacity={0.7}
-                    >
-                        <SC size={20} color="#ef4444" />
-                        <Text style={styles.sectionTitle}>Cuenta</Text>
-                        {expandedSections.account ? (
-                            <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
-                        ) : (
-                            <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
-                        )}
-                    </TO>
-
-                    {expandedSections.account && (
-                        <View style={{ gap: 12 }}>
-                            <TO style={styles.logoutBtn} onPress={signOut}>
-                                <LO size={20} color="#ef4444" />
-                                <Text style={styles.logoutBtnText}>Cerrar Sesión</Text>
-                            </TO>
-
-                            <TO
-                                style={[styles.logoutBtn, { backgroundColor: 'rgba(239, 68, 68, 0.05)', borderColor: 'rgba(239, 68, 68, 0.1)' }]}
-                                onPress={handleDeleteAccount}
-                            >
-                                <AT size={20} color="#ef4444" />
-                                <Text style={[styles.logoutBtnText, { fontSize: 14, opacity: 0.8 }]}>Eliminar Cuenta y Datos</Text>
-                            </TO>
-                        </View>
-                    )}
-                </View>
 
                 <View style={styles.footer}>
                     <Text style={styles.versionText}>BlackBoxMind.ai v1.3.0</Text>
@@ -1161,6 +1213,15 @@ const styles = StyleSheet.create({
     section: {
         marginTop: 10,
         marginBottom: 30,
+    },
+    groupLabel: {
+        color: '#475569',
+        fontSize: 11,
+        fontWeight: '700',
+        letterSpacing: 2,
+        marginTop: 24,
+        marginBottom: 12,
+        paddingHorizontal: 4,
     },
     sectionHeader: {
         flexDirection: 'row',
