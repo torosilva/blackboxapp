@@ -475,26 +475,46 @@ export const SupabaseService = {
      * Plain text (ILIKE) substring search on title and content.
      * Used as fallback alongside semanticSearch so short queries like "Valida"
      * still surface entries with matching titles regardless of embedding cosine.
-     * Returns entries shaped like SearchResult (similarity unset; caller assigns).
+     *
+     * Implementation: two parallel .ilike() calls (one on title, one on content)
+     * merged by id. We use .ilike() directly instead of .or() because the
+     * Supabase JS client guarantees URL-encoding for .ilike() values, while
+     * .or() requires PostgREST URL grammar (uses * instead of % for wildcards)
+     * which is fragile across query string variations.
      */
     async textSearchEntries(userId: string, query: string, limit: number = 20): Promise<any[]> {
         if (!query?.trim() || !userId) return [];
         try {
-            // Escape ILIKE wildcards in user input
             const escaped = query.trim().replace(/[%_\\]/g, '\\$&');
             const pattern = `%${escaped}%`;
-            const { data, error } = await supabase
-                .from('entries')
-                .select('id, title, summary, content, mood_label, sentiment_score, category, created_at')
-                .eq('user_id', userId)
-                .or(`title.ilike.${pattern},content.ilike.${pattern}`)
-                .order('created_at', { ascending: false })
-                .limit(limit);
-            if (error) {
-                console.warn('SUPABASE_SERVICE: textSearchEntries error:', error.message);
-                return [];
+            const cols = 'id, title, summary, content, mood_label, sentiment_score, category, created_at';
+
+            const [titleRes, contentRes] = await Promise.all([
+                supabase
+                    .from('entries')
+                    .select(cols)
+                    .eq('user_id', userId)
+                    .ilike('title', pattern)
+                    .order('created_at', { ascending: false })
+                    .limit(limit),
+                supabase
+                    .from('entries')
+                    .select(cols)
+                    .eq('user_id', userId)
+                    .ilike('content', pattern)
+                    .order('created_at', { ascending: false })
+                    .limit(limit),
+            ]);
+
+            if (titleRes.error) console.warn('SUPABASE_SERVICE: textSearch title error:', titleRes.error.message);
+            if (contentRes.error) console.warn('SUPABASE_SERVICE: textSearch content error:', contentRes.error.message);
+
+            const byId = new Map<string, any>();
+            for (const r of (titleRes.data || [])) byId.set(r.id, { ...r, __titleHit: true });
+            for (const r of (contentRes.data || [])) {
+                if (!byId.has(r.id)) byId.set(r.id, { ...r, __titleHit: false });
             }
-            return data || [];
+            return Array.from(byId.values());
         } catch (e: any) {
             console.warn('SUPABASE_SERVICE: textSearchEntries failed:', e?.message);
             return [];
