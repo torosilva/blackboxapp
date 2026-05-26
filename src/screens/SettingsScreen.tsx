@@ -4,7 +4,8 @@ import {
     ChevronLeft, ShieldCheck, Clock, Database, AlertCircle, Brain,
     Zap, Stethoscope, Calendar, Target, AlertTriangle, ArrowRight,
     LogOut, Trash2, MessageSquareText, Send, X, ChevronDown, ChevronUp, User,
-    CheckCircle2, Sparkles, Plus, Paperclip, Camera, Trash2 as TrashIcon
+    CheckCircle2, Sparkles, Plus, Paperclip, Camera, Trash2 as TrashIcon,
+    Download
 } from 'lucide-react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as ImagePicker from 'expo-image-picker';
@@ -631,6 +632,20 @@ const SettingsScreen = () => {
                                         onPress={() => navigation.navigate('WeeklyReport', { reportEndDate: appointmentDate.toISOString() })}
                                     >
                                         <Text style={styles.generateButtonText}>Generar Reporte Estratégico</Text>
+                                    </TO>
+
+                                    <TO
+                                        style={[styles.tutorialButton, { marginTop: 12, borderColor: 'rgba(192, 132, 252, 0.2)' }]}
+                                        onPress={() => navigation.navigate('WeeklyReport', {})}
+                                    >
+                                        <View style={[styles.iconCircle, { backgroundColor: 'rgba(192, 132, 252, 0.1)', width: 40, height: 40, borderRadius: 12 }]}>
+                                            <Download size={18} color="#c084fc" />
+                                        </View>
+                                        <View style={styles.policyTextContainer}>
+                                            <Text style={[styles.policyLabel, { color: '#c084fc' }]}>Exportar Reporte</Text>
+                                            <Text style={styles.policyValue}>Descarga tu reporte semanal en PDF</Text>
+                                        </View>
+                                        <AR size={20} color="#c084fc" />
                                     </TO>
                                 </View>
                             )}
