@@ -139,21 +139,23 @@ export const SupabaseService = {
     },
 
     /**
-     * 1. Upload Audio to Supabase Storage
+     * 1. Upload Audio to Supabase Storage.
+     * Returns the INTERNAL STORAGE PATH (e.g. "<userId>/<timestamp>.m4a"),
+     * not a public URL. Playback must use getSignedAudioUrl() to generate
+     * a short-lived signed URL. Bucket "diaries" must be configured as
+     * private in Supabase dashboard for this to give real protection.
      */
     async uploadAudio(uri: string, userId: string): Promise<string | null> {
         try {
             console.log('SUPABASE_SERVICE: Attempting audio upload...');
             const fileExt = uri.split('.').pop() || 'm4a';
-            const fileName = `${userId}/${Date.now()}.${fileExt}`;
-            const filePath = `${fileName}`;
+            const filePath = `${userId}/${Date.now()}.${fileExt}`;
 
-            // Read file as Base64
             const base64 = await FileSystem.readAsStringAsync(uri, {
                 encoding: 'base64',
             });
 
-            const { data, error } = await supabase.storage
+            const { error } = await supabase.storage
                 .from('diaries')
                 .upload(filePath, decode(base64), {
                     contentType: 'audio/m4a',
@@ -165,12 +167,44 @@ export const SupabaseService = {
                 throw error;
             }
 
-            const { data: publicUrlData } = supabase.storage.from('diaries').getPublicUrl(filePath);
-            console.log('SUPABASE_SERVICE: Upload success:', publicUrlData.publicUrl);
-            return publicUrlData.publicUrl;
+            console.log('SUPABASE_SERVICE: Upload success, path:', filePath);
+            return filePath;
 
         } catch (error: any) {
             console.error('SUPABASE_SERVICE: Upload failed:', error.message || error);
+            return null;
+        }
+    },
+
+    /**
+     * Resolve an audio_url value into a playable signed URL.
+     *
+     * Handles both new and legacy formats:
+     *  - New: storage path like "<userId>/<timestamp>.m4a"
+     *  - Legacy: full public URL with ".../object/public/diaries/<userId>/<timestamp>.m4a"
+     *
+     * Signed URL expires after `expirySecs` (default 1 hour). Caller should
+     * not store the result anywhere — re-issue it on each playback session.
+     */
+    async getSignedAudioUrl(audioUrlOrPath: string, expirySecs: number = 3600): Promise<string | null> {
+        try {
+            const marker = '/object/public/diaries/';
+            const idx = audioUrlOrPath.indexOf(marker);
+            const path = idx >= 0
+                ? audioUrlOrPath.slice(idx + marker.length)
+                : audioUrlOrPath;
+
+            const { data, error } = await supabase.storage
+                .from('diaries')
+                .createSignedUrl(path, expirySecs);
+
+            if (error) {
+                console.error('SUPABASE_SERVICE: Signed URL error', error);
+                return null;
+            }
+            return data?.signedUrl ?? null;
+        } catch (error: any) {
+            console.error('SUPABASE_SERVICE: Signed URL failed:', error.message || error);
             return null;
         }
     },

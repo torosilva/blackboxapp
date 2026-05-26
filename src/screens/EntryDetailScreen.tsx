@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Platform, StatusBar, Share, Alert, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { ChevronLeft, Share2, Edit3, Trash2, Calendar, Clock, Sparkles, Zap, Check, X, Laugh, SmilePlus, Meh, Angry, UserRoundCheck, Frown, Smile, CloudRain } from 'lucide-react-native';
+import { ChevronLeft, Share2, Edit3, Trash2, Calendar, Clock, Sparkles, Zap, Check, X, Laugh, SmilePlus, Meh, Angry, UserRoundCheck, Frown, Smile, CloudRain, Play, Pause } from 'lucide-react-native';
 import { SupabaseService, supabase } from '../services/SupabaseService';
 import { aiService } from '../services/ai';
 import { ActionList } from '../components/ActionList';
@@ -11,6 +11,7 @@ import { WellnessActionCard } from '../components/WellnessActionCard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import AILoadingOverlay from '../components/AILoadingOverlay';
+import { Audio } from 'expo-av';
 
 const formatRelativeDate = (iso: string) => {
   const d = new Date(iso);
@@ -58,6 +59,70 @@ const EntryDetailScreen = () => {
   const [actionItems, setActionItems] = useState<any[]>([]);
   const [related, setRelated] = useState<any[]>([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
+
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [isAudioLoading, setIsAudioLoading] = useState(false);
+  const [audioPositionMs, setAudioPositionMs] = useState(0);
+  const [audioDurationMs, setAudioDurationMs] = useState(0);
+
+  useEffect(() => {
+    return sound ? () => { sound.unloadAsync(); } : undefined;
+  }, [sound]);
+
+  const fmtMs = (ms: number) => {
+    const total = Math.floor(ms / 1000);
+    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+  };
+
+  const toggleAudioPlayback = async () => {
+    if (!entry?.audio_url) return;
+
+    if (sound) {
+      try {
+        if (isAudioPlaying) {
+          await sound.pauseAsync();
+          setIsAudioPlaying(false);
+        } else {
+          await sound.playAsync();
+          setIsAudioPlaying(true);
+        }
+      } catch {
+        Alert.alert('Error', 'No se pudo controlar la reproducción.');
+      }
+      return;
+    }
+
+    setIsAudioLoading(true);
+    try {
+      const signedUrl = await SupabaseService.getSignedAudioUrl(entry.audio_url, 3600);
+      if (!signedUrl) {
+        Alert.alert('Audio no disponible', 'No se pudo cargar la grabación. Puede que ya haya expirado o se haya eliminado.');
+        return;
+      }
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: signedUrl },
+        { shouldPlay: true },
+        (status) => {
+          if (!status.isLoaded) return;
+          setIsAudioPlaying(status.isPlaying);
+          setAudioPositionMs(status.positionMillis || 0);
+          if (status.durationMillis) setAudioDurationMs(status.durationMillis);
+          if (status.didJustFinish) {
+            setIsAudioPlaying(false);
+            setAudioPositionMs(0);
+            newSound.setPositionAsync(0).catch(() => {});
+          }
+        }
+      );
+      setSound(newSound);
+      setIsAudioPlaying(true);
+    } catch (e) {
+      Alert.alert('Error', 'No se pudo reproducir el audio.');
+    } finally {
+      setIsAudioLoading(false);
+    }
+  };
 
   useEffect(() => {
     const loadEntry = async () => {
@@ -379,11 +444,34 @@ const EntryDetailScreen = () => {
           </LG>
         </TO>
 
-        {/* Audio URL indicator if exists */}
+        {/* Audio player (only if entry has audio) */}
         {entry.audio_url && (
-          <View style={styles.audioBadge}>
-            <Text style={styles.audioText}>🔊 Audio session recorded</Text>
-          </View>
+          <TouchableOpacity
+            style={styles.audioPlayer}
+            onPress={toggleAudioPlayback}
+            disabled={isAudioLoading}
+            activeOpacity={0.85}
+          >
+            <View style={styles.audioPlayBtn}>
+              {isAudioLoading ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : isAudioPlaying ? (
+                <Pause size={20} color="white" fill="white" />
+              ) : (
+                <Play size={20} color="white" fill="white" />
+              )}
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.audioPlayerLabel}>Grabación original</Text>
+              <Text style={styles.audioPlayerTime}>
+                {audioDurationMs > 0
+                  ? `${fmtMs(audioPositionMs)} / ${fmtMs(audioDurationMs)}`
+                  : isAudioLoading
+                    ? 'Cargando…'
+                    : 'Toca para escuchar'}
+              </Text>
+            </View>
+          </TouchableOpacity>
         )}
 
         {/* Delete Action */}
@@ -537,19 +625,38 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18
   },
-  audioBadge: {
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
+  audioPlayer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(99, 102, 241, 0.08)',
+    borderColor: 'rgba(99, 102, 241, 0.2)',
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
     marginBottom: 30,
-    marginTop: 10
+    marginTop: 10,
   },
-  audioText: {
-    color: '#6366f1',
-    fontSize: 12,
-    fontWeight: '700'
+  audioPlayBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#6366f1',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  audioPlayerLabel: {
+    color: '#cbd5e1',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  audioPlayerTime: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   deleteButton: {
     flexDirection: 'row',
