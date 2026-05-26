@@ -222,9 +222,10 @@ const CaptureScreen = () => {
     }, [isRecording]);
 
     // Mount animations: stat cards enter in cascade (0ms, 100ms, 200ms
-    // delay) with translateY+fade so each one is individually perceived.
-    // The rest of the cards (reflejo, loops, memorias) keeps the simple
-    // fade + slide-up so the eye doesn't bounce.
+    // delay). The previous version fired on mount, but stats data
+    // arrives ~50-200ms LATER from loadHome — so animations finished
+    // in the void before the cards rendered. Now they fire when stats
+    // first becomes available, gated by a ref so they play exactly once.
     const cardsOpacity = useRef(new Animated.Value(0)).current;
     const cardsTranslate = useRef(new Animated.Value(8)).current;
     const card1Opacity = useRef(new Animated.Value(0)).current;
@@ -233,7 +234,19 @@ const CaptureScreen = () => {
     const card1Translate = useRef(new Animated.Value(20)).current;
     const card2Translate = useRef(new Animated.Value(20)).current;
     const card3Translate = useRef(new Animated.Value(20)).current;
+    const statsAnimatedRef = useRef(false);
+
     useEffect(() => {
+        Animated.parallel([
+            Animated.timing(cardsOpacity, { toValue: 1, duration: 320, useNativeDriver: true }),
+            Animated.timing(cardsTranslate, { toValue: 0, duration: 320, useNativeDriver: true }),
+        ]).start();
+    }, []);
+
+    useEffect(() => {
+        if (!stats || statsAnimatedRef.current) return;
+        statsAnimatedRef.current = true;
+
         const makeCardAnim = (op: Animated.Value, tr: Animated.Value, delay: number) =>
             Animated.parallel([
                 Animated.timing(op, { toValue: 1, duration: 500, delay, useNativeDriver: true }),
@@ -241,13 +254,11 @@ const CaptureScreen = () => {
             ]);
 
         Animated.parallel([
-            Animated.timing(cardsOpacity, { toValue: 1, duration: 320, useNativeDriver: true }),
-            Animated.timing(cardsTranslate, { toValue: 0, duration: 320, useNativeDriver: true }),
             makeCardAnim(card1Opacity, card1Translate, 0),
             makeCardAnim(card2Opacity, card2Translate, 100),
             makeCardAnim(card3Opacity, card3Translate, 200),
         ]).start();
-    }, []);
+    }, [stats]);
 
     const dotAnim = useRef(new Animated.Value(1)).current;
     useEffect(() => {
