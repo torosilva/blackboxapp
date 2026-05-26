@@ -98,12 +98,18 @@ function AppNavigator() {
 
     const Nav = Stack.Navigator as any;
 
+    // Nuevo usuario que aún no completó el onboarding conversacional.
+    // El campo se setea en profiles.onboarding_completed_at al final del flow.
+    const needsOnboarding = !!user && !!profile && !profile.onboarding_completed_at;
+
     const mainNavigator = (
-        <Nav screenOptions={{ headerShown: false }}>
+        <Nav screenOptions={{ headerShown: false }} initialRouteName={needsOnboarding ? 'Onboarding' : 'Main'}>
             {user ? (
                 // === RUTAS PRIVADAS (Si está logueado) ===
                 <React.Fragment>
-                    {/* ── Main capture screen — always first so it's the default route ── */}
+                    {/* ── Onboarding conversacional: pantalla inicial para usuarios nuevos ── */}
+                    <Stack.Screen name="Onboarding" component={OnboardingScreen as any} />
+                    {/* ── Main capture screen ── */}
                     <Stack.Screen name="Main" component={CaptureScreen as any} />
                     {/* ── Detail screens pushed on top of tabs ── */}
                     <Stack.Screen name="Dashboard" component={DashboardScreen as any} />
@@ -123,7 +129,6 @@ function AppNavigator() {
                     <Stack.Screen name="Loops" component={LoopsScreen as any} />
                     <Stack.Screen name="Terms" component={TermsScreen as any} />
                     <Stack.Screen name="Privacy" component={PrivacyScreen as any} />
-                    <Stack.Screen name="Onboarding" component={OnboardingScreen as any} />
                     <Stack.Screen name="Paywall" component={PaywallScreen as any} />
                     <Stack.Screen name="InvitationCode" component={InvitationCodeScreen as any} />
                 </React.Fragment>
