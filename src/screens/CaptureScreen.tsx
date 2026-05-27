@@ -50,15 +50,21 @@ const isLikelyIncoherent = (text: string): boolean => {
     if (vowels > 0 && consonants / vowels > 3) return true;
 
     const compact = lower.replace(/\s+/g, '');
-    if (compact.length >= 6) {
+    // Bigram-repetition signal: only useful for SHORT keyboard-mash texts
+    // ("asdfasdfasdf"). In normal Spanish prose, common bigrams like "es",
+    // "en", "ar", "de", "la" repeat 6–10+ times in any message past 200
+    // chars (Aaron's report: "Estoy tomando un avión a Guadalajara…" was
+    // flagged because "es" appeared 9 times — legitimate text. So we only
+    // run this check below 80 compact chars; long-form gibberish is already
+    // caught by the consonant/vowel ratio above.
+    if (compact.length >= 6 && compact.length < 80) {
         const counts = new Map<string, number>();
         for (let i = 0; i < compact.length - 1; i++) {
             const bg = compact.slice(i, i + 2);
             if (/^[a-záéíóúüñ]{2}$/.test(bg)) counts.set(bg, (counts.get(bg) || 0) + 1);
         }
         for (const c of counts.values()) {
-            if (compact.length < 50 && c >= 4) return true;
-            if (c >= 6) return true;
+            if (c >= 4) return true;
         }
     }
     return false;
