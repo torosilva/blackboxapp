@@ -31,6 +31,8 @@ import LoopsScreen from '../screens/LoopsScreen';
 import QuickCaptureScreen from '../screens/QuickCaptureScreen';
 import PaywallScreen from '../screens/PaywallScreen';
 import InvitationCodeScreen from '../screens/InvitationCodeScreen';
+import MapasScreen from '../screens/MapasScreen';
+import EntriesByMapScreen from '../screens/EntriesByMapScreen';
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -131,6 +133,8 @@ function AppNavigator() {
                     <Stack.Screen name="Chat" component={ChatScreen as any} />
                     <Stack.Screen name="FeedbackHistory" component={FeedbackHistoryScreen as any} />
                     <Stack.Screen name="Loops" component={LoopsScreen as any} />
+                    <Stack.Screen name="Mapas" component={MapasScreen as any} />
+                    <Stack.Screen name="EntriesByMap" component={EntriesByMapScreen as any} />
                     <Stack.Screen name="Terms" component={TermsScreen as any} />
                     <Stack.Screen name="Privacy" component={PrivacyScreen as any} />
                     <Stack.Screen name="Paywall" component={PaywallScreen as any} />

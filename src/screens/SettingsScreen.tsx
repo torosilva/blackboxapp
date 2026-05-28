@@ -5,7 +5,7 @@ import {
     Zap, Stethoscope, Calendar, Target, AlertTriangle, ArrowRight,
     LogOut, Trash2, MessageSquareText, Send, X, ChevronDown, ChevronUp, User,
     CheckCircle2, Sparkles, Plus, Paperclip, Camera, Trash2 as TrashIcon, Award,
-    BookOpen, MessageCircle, BarChart2
+    BookOpen, MessageCircle, BarChart2, MapPin
 } from 'lucide-react-native';
 import { generateAndSharePrivacyPact } from '../utils/generatePrivacyPact';
 import * as WebBrowser from 'expo-web-browser';
@@ -63,6 +63,7 @@ const SettingsScreen = () => {
     const BO = BookOpen as any;
     const MCi = MessageCircle as any;
     const BC2 = BarChart2 as any;
+    const MPi = MapPin as any;
 
     const [entries, setEntries] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -407,6 +408,21 @@ const SettingsScreen = () => {
                                 <MCi size={20} color="#6366f1" />
                                 <Text style={styles.sectionTitle}>Conversaciones</Text>
                                 <AR size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                            </TO>
+                        </View>
+
+                        <View style={styles.section}>
+                            <TO
+                                style={styles.sectionHeader}
+                                onPress={() => navigation.navigate('Mapas' as any)}
+                                activeOpacity={0.7}
+                            >
+                                <MPi size={20} color="#6366f1" />
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.sectionTitle}>Tus Mapas</Text>
+                                    <Text style={styles.sectionSubText}>Temas y proyectos detectados en tu historia</Text>
+                                </View>
+                                <AR size={20} color="#94a3b8" />
                             </TO>
                         </View>
 
@@ -1274,6 +1290,12 @@ const styles = StyleSheet.create({
         color: '#ffffff',
         fontSize: 20,
         fontWeight: '700',
+    },
+    sectionSubText: {
+        color: '#94a3b8',
+        fontSize: 12,
+        fontWeight: '500',
+        marginTop: 2,
     },
     legalCard: {
         backgroundColor: '#1e293b',

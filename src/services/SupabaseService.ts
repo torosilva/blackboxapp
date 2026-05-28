@@ -1836,6 +1836,89 @@ export const SupabaseService = {
      * Fire-and-forget invocation of the analyze-patterns Edge Function.
      * Does not block — errors are logged but not thrown.
      */
+    /**
+     * Fetch detected projects / life areas (entities) for the user, ordered
+     * by most-recently-updated first. Returns rows shape from user_projects.
+     */
+    async getProjects(userId: string): Promise<any[]> {
+        if (!userId) return [];
+        try {
+            const { data, error } = await supabase
+                .from('user_projects')
+                .select('*')
+                .eq('user_id', userId)
+                .order('last_updated', { ascending: false });
+            if (error) {
+                console.warn('SUPABASE_SERVICE: getProjects error:', error.message);
+                return [];
+            }
+            return data || [];
+        } catch (err: any) {
+            console.warn('SUPABASE_SERVICE: getProjects failed:', err?.message);
+            return [];
+        }
+    },
+
+    /**
+     * Fetch a subset of entries by their ids — used by MapasScreen drill-down.
+     * Defensive: empty input returns []. RLS still enforces user_id scoping.
+     */
+    async getEntriesByIds(userId: string, entryIds: string[]): Promise<any[]> {
+        if (!userId || !Array.isArray(entryIds) || entryIds.length === 0) return [];
+        try {
+            const { data, error } = await supabase
+                .from('entries')
+                .select('id, title, summary, content, mood_label, sentiment_score, category, created_at, audio_url')
+                .eq('user_id', userId)
+                .in('id', entryIds)
+                .order('created_at', { ascending: false });
+            if (error) {
+                console.warn('SUPABASE_SERVICE: getEntriesByIds error:', error.message);
+                return [];
+            }
+            return data || [];
+        } catch (err: any) {
+            console.warn('SUPABASE_SERVICE: getEntriesByIds failed:', err?.message);
+            return [];
+        }
+    },
+
+    /**
+     * Fire-and-forget invocation of detect-projects Edge Function. Returns
+     * { success, count } so the caller can refresh the list once it lands.
+     * Errors are logged but not thrown — callers default to showing whatever
+     * is already in user_projects.
+     */
+    async triggerProjectDetection(userId: string): Promise<{ success: boolean; count: number }> {
+        try {
+            const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/detect-projects`;
+            const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+            const token = getGlobalAccessToken();
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': anonKey,
+                    'Authorization': `Bearer ${token || anonKey}`,
+                },
+                body: JSON.stringify({ userId }),
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                console.warn('SUPABASE_SERVICE: triggerProjectDetection HTTP error:', errText);
+                return { success: false, count: 0 };
+            }
+            const data = await response.json();
+            const count = data?.count ?? 0;
+            return { success: true, count };
+        } catch (err: any) {
+            console.warn('SUPABASE_SERVICE: triggerProjectDetection failed:', err?.message);
+            return { success: false, count: 0 };
+        }
+    },
+
     async triggerPatternAnalysis(userId: string): Promise<{ success: boolean; count: number }> {
         try {
             console.log('SUPABASE_SERVICE: Triggering pattern analysis for:', userId);

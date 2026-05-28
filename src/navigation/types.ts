@@ -33,4 +33,6 @@ export type RootStackParamList = {
     Privacy: { isMandatory?: boolean };
     Paywall: undefined;
     InvitationCode: undefined;
+    Mapas: undefined;
+    EntriesByMap: { mapId: string; mapName: string; entryIds: string[] };
 };
