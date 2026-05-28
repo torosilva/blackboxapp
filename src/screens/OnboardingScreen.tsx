@@ -34,20 +34,14 @@ interface Question {
 
 const ONBOARDING_QUESTIONS: Question[] = [
     {
-        id: '1',
-        title: 'BIENVENIDO A BlackBoxMind.ai',
-        subtitle: 'Tu Coach de Alto Rendimiento',
-        description: 'BlackBoxMind no es un diario; es un motor de ejecución clínica para mentes que no se detienen.',
-        icon: <Brain size={120} color="#6366f1" />,
-        color: '#6366f1'
+        id: 'q1',
+        text: '¿Qué te tiene en la cabeza esta semana? Lo más fuerte.',
+        hint: '3 segundos antes de pensar. Suelta lo que llegue.',
     },
     {
-        id: '2',
-        title: 'PASO 1: CAPTURA',
-        subtitle: 'Vacía tu mente al instante',
-        description: 'Usa el botón "QuickCapture" o el icono del Micrófono. Habla sin filtros. BlackBoxMind extraerá lo esencial.',
-        icon: <Zap size={120} color="#c084fc" />,
-        color: '#c084fc'
+        id: 'q2',
+        text: 'Interesante. ¿Esto te ha pasado antes? ¿Cuándo?',
+        hint: 'No edites. Cuéntame el patrón.',
     },
     {
         id: 'q3',
@@ -55,12 +49,9 @@ const ONBOARDING_QUESTIONS: Question[] = [
         hint: 'Sé específico. La respuesta importa.',
     },
     {
-        id: '4',
-        title: 'PASO 3: LOOPS',
-        subtitle: 'Cierra el Ciclo Ejecutivo',
-        description: 'Gestiona tus tareas en el Centro Estratégico. Lo que no marcas como verde, BlackBoxMind lo perseguirá con alertas de 72h.',
-        icon: <TrendingUp size={120} color="#22c55e" />,
-        color: '#22c55e'
+        id: 'q4',
+        text: 'Si pudieras quitarte UNA preocupación, ¿cuál sería?',
+        hint: 'Una. La que más pesa.',
     },
     {
         id: 'q5',
