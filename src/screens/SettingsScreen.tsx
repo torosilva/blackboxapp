@@ -954,11 +954,6 @@ const SettingsScreen = () => {
                             )}
                         </View>
 
-                        {/* BUILD INFO — diagnostic badge */}
-                        <Text style={{ fontSize: 10, color: '#475569', textAlign: 'center', marginTop: 8, marginBottom: 40 }}>
-                            v{(Updates as any).runtimeVersion ?? '?'} · {(Updates as any).isEmbeddedLaunch ? 'embedded' : 'ota'} {((Updates as any).updateId ?? '').slice(0, 7) || '—'}
-                            {(Updates as any).createdAt ? `\n${new Date((Updates as any).createdAt).toLocaleString('es-MX')}` : ''}
-                        </Text>
                     </>
                 ) : (
                     /* FULL DETAIL VIEW (Tasks/Biases) */
@@ -1085,7 +1080,9 @@ const SettingsScreen = () => {
 
 
                 <View style={styles.footer}>
-                    <Text style={styles.versionText}>BlackBoxMind.ai v1.3.0</Text>
+                    <Text style={styles.versionText}>
+                        BlackBoxMind.ai v1.3.1 · {(Updates as any).isEmbeddedLaunch ? 'embedded' : 'ota'} {((Updates as any).updateId ?? '').slice(0, 7) || '—'}
+                    </Text>
                     <Text style={styles.footerLegal}>© 2026 BlackBoxMind.ai. Todos los derechos reservados.</Text>
                 </View>
             </ScrollView>
