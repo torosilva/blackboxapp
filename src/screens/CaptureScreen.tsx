@@ -33,43 +33,6 @@ const NB = String.fromCharCode(160); // non-breaking space — keeps "354 abiert
 const STALE_DAYS = 14;
 const DAILY_ENTRY_CAP = 50; // hard cap of analyses per user per 24h to protect token cost
 
-// Cheap client-side heuristic to reject gibberish before paying for an
-// Anthropic analysis call. Returns true if the text looks like keyboard
-// mashing (no vowel words, very high consonant-to-vowel ratio, or a
-// short bigram that repeats unreasonably). False = looks human; let it
-// proceed to the AI. The existing minimum-length / word-count check
-// runs first and is still authoritative for very short inputs.
-const isLikelyIncoherent = (text: string): boolean => {
-    const t = (text || '').trim();
-    if (t.length < 10) return false; // covered by other check
-    const lower = t.toLowerCase();
-
-    const vowels = (lower.match(/[aeiouáéíóúü]/g) || []).length;
-    const consonants = (lower.match(/[bcdfghjklmnñpqrstvwxyz]/g) || []).length;
-    if (vowels === 0 && consonants > 4) return true;
-    if (vowels > 0 && consonants / vowels > 3) return true;
-
-    const compact = lower.replace(/\s+/g, '');
-    // Bigram-repetition signal: only useful for SHORT keyboard-mash texts
-    // ("asdfasdfasdf"). In normal Spanish prose, common bigrams like "es",
-    // "en", "ar", "de", "la" repeat 6–10+ times in any message past 200
-    // chars (Aaron's report: "Estoy tomando un avión a Guadalajara…" was
-    // flagged because "es" appeared 9 times — legitimate text. So we only
-    // run this check below 80 compact chars; long-form gibberish is already
-    // caught by the consonant/vowel ratio above.
-    if (compact.length >= 6 && compact.length < 80) {
-        const counts = new Map<string, number>();
-        for (let i = 0; i < compact.length - 1; i++) {
-            const bg = compact.slice(i, i + 2);
-            if (/^[a-záéíóúüñ]{2}$/.test(bg)) counts.set(bg, (counts.get(bg) || 0) + 1);
-        }
-        for (const c of counts.values()) {
-            if (c >= 4) return true;
-        }
-    }
-    return false;
-};
-
 // SINGLE SOURCE OF TRUTH for loop counts. Every number on the home derives
 // from here. Note: `stalled` is a SUBSET of `open` (open loops untouched
 // ≥ STALE_DAYS), not an independent total — so open ≥ stalled always holds.
@@ -318,15 +281,6 @@ const CaptureScreen = () => {
             Alert.alert(
                 'Cuéntame un poco más',
                 'Suéltalo con un poco más de detalle (un par de frases) para que BlackBoxMind pueda darte un veredicto útil.',
-                [{ text: 'Entendido' }]
-            );
-            return false;
-        }
-
-        if (isLikelyIncoherent(message)) {
-            Alert.alert(
-                'No te entendí',
-                'Tu texto parece tener letras al azar. Escribe una idea concreta — qué pasó, qué sentiste, qué decisión tienes en frente.',
                 [{ text: 'Entendido' }]
             );
             return false;

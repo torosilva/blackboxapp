@@ -1081,7 +1081,7 @@ const SettingsScreen = () => {
 
                 <View style={styles.footer}>
                     <Text style={styles.versionText}>
-                        BlackBoxMind.ai v1.3.1 · {(Updates as any).isEmbeddedLaunch ? 'embedded' : 'ota'} {((Updates as any).updateId ?? '').slice(0, 7) || '—'}
+                        BlackBoxMind.ai v1.3.2 · {(Updates as any).isEmbeddedLaunch ? 'embedded' : 'ota'} {((Updates as any).updateId ?? '').slice(0, 7) || '—'}
                     </Text>
                     <Text style={styles.footerLegal}>© 2026 BlackBoxMind.ai. Todos los derechos reservados.</Text>
                 </View>
