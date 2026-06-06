@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Platform, StatusBar, Share, Alert, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -12,6 +12,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import AILoadingOverlay from '../components/AILoadingOverlay';
 import { Audio } from 'expo-av';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeTokens } from '../theme/tokens';
 
 const formatRelativeDate = (iso: string) => {
   const d = new Date(iso);
@@ -27,6 +29,8 @@ const EntryDetailScreen = () => {
   const route = useRoute();
   const { entryId } = route.params as { entryId: string };
   const { user } = useAuth();
+  const { tokens } = useTheme();
+  const styles = useMemo(() => makeStyles(tokens), [tokens]);
 
   const SAV = SafeAreaView as any;
   const TO = TouchableOpacity as any;
@@ -301,9 +305,9 @@ const EntryDetailScreen = () => {
   if (!entry) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={{ color: '#94a3b8' }}>Entry not found.</Text>
+        <Text style={{ color: tokens.text.muted }}>Entry not found.</Text>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 20 }}>
-          <Text style={{ color: '#6366f1' }}>Go Back</Text>
+          <Text style={{ color: tokens.accent.indigo }}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -311,7 +315,7 @@ const EntryDetailScreen = () => {
 
   const getMoodIcon = (label: string, score: number = 0) => {
     const size = 28;
-    const color = '#6366f1'; // Premium Blue for detail view
+    const color = tokens.accent.indigo; // Premium Blue for detail view
 
     switch (label) {
       case 'En Flow': return <L size={size} color={color} />;
@@ -333,29 +337,29 @@ const EntryDetailScreen = () => {
       {/* Header */}
       <View style={styles.header}>
         <TO onPress={() => isEditing ? setIsEditing(false) : navigation.goBack()} style={styles.backButton}>
-          {isEditing ? <Xi size={28} color="#ffffff" /> : <CL size={28} color="#ffffff" />}
+          {isEditing ? <Xi size={28} color={tokens.text.primary} /> : <CL size={28} color={tokens.text.primary} />}
         </TO>
 
         <View style={styles.headerActions}>
           {!isEditing ? (
             <>
               <TO style={styles.actionCircle} onPress={handleShare}>
-                <S2 size={20} color="#ffffff" />
+                <S2 size={20} color={tokens.text.primary} />
               </TO>
               <TO
-                style={[styles.actionCircle, { backgroundColor: '#6366f1' }]}
+                style={[styles.actionCircle, { backgroundColor: tokens.accent.indigo }]}
                 onPress={() => setIsEditing(true)}
               >
-                <E3 size={20} color="#ffffff" />
+                <E3 size={20} color={tokens.text.primary} />
               </TO>
             </>
           ) : (
             <TO
-              style={[styles.actionCircle, { backgroundColor: '#22c55e' }]}
+              style={[styles.actionCircle, { backgroundColor: tokens.accent.green }]}
               onPress={handleSave}
               disabled={isSaving}
             >
-              {isSaving ? <View /> : <Ch size={20} color="#ffffff" />}
+              {isSaving ? <View /> : <Ch size={20} color={tokens.text.primary} />}
             </TO>
           )}
         </View>
@@ -369,11 +373,11 @@ const EntryDetailScreen = () => {
         {/* Metadata */}
         <View style={styles.metaRow}>
           <View style={styles.metaBadge}>
-            <Cal size={14} color="#6366f1" style={{ marginRight: 6 }} />
+            <Cal size={14} color={tokens.accent.indigo} style={{ marginRight: 6 }} />
             <Text style={styles.metaText}>{dateObject.toLocaleDateString()}</Text>
           </View>
           <View style={styles.metaBadge}>
-            <Clo size={14} color="#6366f1" style={{ marginRight: 6 }} />
+            <Clo size={14} color={tokens.accent.indigo} style={{ marginRight: 6 }} />
             <Text style={styles.metaText}>{dateObject.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
           </View>
           <View style={styles.moodBadgeDetail}>
@@ -381,7 +385,7 @@ const EntryDetailScreen = () => {
           </View>
           {entry.category && (
             <View style={[styles.metaBadge, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
-              <Text style={[styles.metaText, { color: '#10b981' }]}>{entry.category}</Text>
+              <Text style={[styles.metaText, { color: tokens.accent.green }]}>{entry.category}</Text>
             </View>
           )}
         </View>
@@ -393,7 +397,7 @@ const EntryDetailScreen = () => {
             value={editedTitle}
             onChangeText={setEditedTitle}
             placeholder="Título de la sesión..."
-            placeholderTextColor="#475569"
+            placeholderTextColor={tokens.text.disabled}
           />
         ) : (
           <Text style={styles.title}>{entry.title || 'Untitled Session'}</Text>
@@ -410,7 +414,7 @@ const EntryDetailScreen = () => {
             onChangeText={setEditedContent}
             multiline
             placeholder="¿Qué tienes en mente?"
-            placeholderTextColor="#475569"
+            placeholderTextColor={tokens.text.disabled}
           />
         ) : (
           <Text style={styles.bodyText}>
@@ -438,8 +442,8 @@ const EntryDetailScreen = () => {
           onPress={handleConsultWithAI}
           disabled={isSaving}
         >
-          <LG colors={['#6366f1', '#4f46e5']} start={{x:0, y:0}} end={{x:1, y:0}} style={styles.chatBtnGradient}>
-            <Sp size={20} color="white" style={{ marginRight: 10 }} />
+          <LG colors={[tokens.accent.indigo, tokens.accent.indigoStrong]} start={{x:0, y:0}} end={{x:1, y:0}} style={styles.chatBtnGradient}>
+            <Sp size={20} color={tokens.text.onAccent} style={{ marginRight: 10 }} />
             <Text style={styles.chatBtnText}>Profundizar en Chat</Text>
           </LG>
         </TO>
@@ -454,11 +458,11 @@ const EntryDetailScreen = () => {
           >
             <View style={styles.audioPlayBtn}>
               {isAudioLoading ? (
-                <ActivityIndicator size="small" color="white" />
+                <ActivityIndicator size="small" color={tokens.text.onAccent} />
               ) : isAudioPlaying ? (
-                <Pause size={20} color="white" fill="white" />
+                <Pause size={20} color={tokens.text.onAccent} fill={tokens.text.onAccent} />
               ) : (
-                <Play size={20} color="white" fill="white" />
+                <Play size={20} color={tokens.text.onAccent} fill={tokens.text.onAccent} />
               )}
             </View>
             <View style={{ flex: 1, marginLeft: 12 }}>
@@ -476,14 +480,14 @@ const EntryDetailScreen = () => {
 
         {/* Delete Action */}
         <TO style={styles.deleteButton} onPress={handleDelete}>
-          <T2 size={18} color="#ef4444" style={{ marginRight: 8 }} />
+          <T2 size={18} color={tokens.accent.red} style={{ marginRight: 8 }} />
           <Text style={styles.deleteText}>Delete memory</Text>
         </TO>
 
         {related.length > 0 && (
           <View style={styles.relatedSection}>
             <View style={styles.relatedHeader}>
-              <Sp size={14} color="#c084fc" strokeWidth={2.2} />
+              <Sp size={14} color={tokens.accent.purple} strokeWidth={2.2} />
               <Text style={styles.relatedTitle}>MEMORIAS RELACIONADAS</Text>
             </View>
             {related.map((r) => (
@@ -522,10 +526,10 @@ const EntryDetailScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: ThemeTokens) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a'
+    backgroundColor: t.bg.page
   },
   header: {
     flexDirection: 'row',
@@ -547,7 +551,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: t.border.subtle,
     justifyContent: 'center',
     alignItems: 'center'
   },
@@ -568,18 +572,18 @@ const styles = StyleSheet.create({
   metaBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    backgroundColor: t.accent.indigoSoft,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8
   },
   metaText: {
-    color: '#94a3b8',
+    color: t.text.muted,
     fontSize: 13,
     fontWeight: '600'
   },
   title: {
-    color: '#ffffff',
+    color: t.text.primary,
     fontSize: 28,
     fontWeight: '800',
     lineHeight: 36,
@@ -588,19 +592,19 @@ const styles = StyleSheet.create({
   moodBadgeDetail: {
     width: 44,
     height: 44,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: t.bg.scrim,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center'
   },
   titleInput: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: t.border.subtle,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   contentInput: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: t.bg.scrim,
     borderRadius: 16,
     padding: 20,
     minHeight: 200,
@@ -609,27 +613,27 @@ const styles = StyleSheet.create({
   divider: {
     height: 4,
     width: 40,
-    backgroundColor: '#6366f1',
+    backgroundColor: t.accent.indigo,
     borderRadius: 2,
     marginBottom: 30
   },
   bodyText: {
-    color: '#cbd5e1',
+    color: t.text.secondary,
     fontSize: 18,
     lineHeight: 28,
     fontWeight: '400',
     marginBottom: 40
   },
   counterText: {
-    color: '#d1fae5',
+    color: t.accent.green,
     fontSize: 13,
     lineHeight: 18
   },
   audioPlayer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(99, 102, 241, 0.08)',
-    borderColor: 'rgba(99, 102, 241, 0.2)',
+    backgroundColor: t.accent.indigoSoft,
+    borderColor: t.accent.indigo,
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -641,12 +645,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#6366f1',
+    backgroundColor: t.accent.indigo,
     justifyContent: 'center',
     alignItems: 'center',
   },
   audioPlayerLabel: {
-    color: '#cbd5e1',
+    color: t.text.secondary,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1.4,
@@ -654,7 +658,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   audioPlayerTime: {
-    color: '#ffffff',
+    color: t.text.primary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -666,10 +670,10 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)'
+    borderColor: t.accent.red
   },
   deleteText: {
-    color: '#ef4444',
+    color: t.accent.red,
     fontWeight: 'bold',
     fontSize: 16
   },
@@ -678,7 +682,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     elevation: 4,
-    shadowColor: '#6366f1',
+    shadowColor: t.accent.indigo,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8
@@ -690,17 +694,17 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
   },
   chatBtnText: {
-    color: 'white',
+    color: t.text.onAccent,
     fontSize: 16,
     fontWeight: 'bold',
     letterSpacing: 0.5
   },
   relatedSection: { marginTop: 32, marginBottom: 16 },
   relatedHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  relatedTitle: { color: '#c084fc', fontSize: 11, fontWeight: '700', letterSpacing: 1.8 },
+  relatedTitle: { color: t.accent.purple, fontSize: 11, fontWeight: '700', letterSpacing: 1.8 },
   relatedCard: {
-    backgroundColor: '#151B2C',
-    borderColor: '#1E293B',
+    backgroundColor: t.bg.card,
+    borderColor: t.border.default,
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 12,
     padding: 14,
@@ -708,12 +712,12 @@ const styles = StyleSheet.create({
   },
   relatedCardHead: { flexDirection: 'row', justifyContent: 'space-between',
                      alignItems: 'flex-start', marginBottom: 6, gap: 8 },
-  relatedCardTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '700', flex: 1 },
-  relatedScorePill: { backgroundColor: 'rgba(192,132,252,0.15)',
+  relatedCardTitle: { color: t.text.primary, fontSize: 14, fontWeight: '700', flex: 1 },
+  relatedScorePill: { backgroundColor: t.accent.purpleSoft,
                       paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
-  relatedScoreText: { color: '#c084fc', fontSize: 11, fontWeight: '700' },
-  relatedCardSnippet: { color: '#94a3b8', fontSize: 12, lineHeight: 18, marginBottom: 6 },
-  relatedCardMeta: { color: '#64748b', fontSize: 10, letterSpacing: 0.5 },
+  relatedScoreText: { color: t.accent.purple, fontSize: 11, fontWeight: '700' },
+  relatedCardSnippet: { color: t.text.muted, fontSize: 12, lineHeight: 18, marginBottom: 6 },
+  relatedCardMeta: { color: t.text.muted, fontSize: 10, letterSpacing: 0.5 },
 });
 
 const LG = LinearGradient as any;

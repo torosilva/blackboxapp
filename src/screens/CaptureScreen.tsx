@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
     StatusBar, Alert, KeyboardAvoidingView, Platform, Animated, ScrollView, Image, Modal, RefreshControl
@@ -12,6 +12,8 @@ import {
 } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeTokens } from '../theme/tokens';
 import { voiceService } from '../services/voice';
 import { aiService } from '../services/ai';
 import { NotificationService } from '../services/notificationService';
@@ -73,6 +75,8 @@ const truncateSentence = (raw: string, max = 240): { text: string; truncated: bo
 const CaptureScreen = () => {
     const navigation = useNavigation<any>();
     const { user, profile } = useAuth();
+    const { tokens } = useTheme();
+    const styles = useMemo(() => makeStyles(tokens), [tokens]);
 
     const [content, setContent] = useState('');
     const [draftText, setDraftText] = useState('');
@@ -492,13 +496,13 @@ const CaptureScreen = () => {
 
     return (
         <SAV style={styles.container}>
-            <StatusBar barStyle="light-content" />
+            <StatusBar barStyle={tokens.statusBar} />
 
             <ScrollView
                 contentContainerStyle={styles.body}
                 showsVerticalScrollIndicator={false}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366f1" colors={['#6366f1']} />
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tokens.accent.indigo} colors={[tokens.accent.indigo]} />
                 }
             >
                 {/* Brand mark — minimal, no wellness greeting. Overflow lives here. */}
@@ -506,10 +510,10 @@ const CaptureScreen = () => {
                     <Text style={styles.brand}>BlackBoxMind.ai</Text>
                     <View style={styles.brandActions}>
                         <TO onPress={() => navigation.navigate('Search')} style={styles.headerBtn} activeOpacity={0.7}>
-                            <SI size={20} color="rgba(255,255,255,0.8)" strokeWidth={2} />
+                            <SI size={20} color={tokens.text.secondary} strokeWidth={2} />
                         </TO>
                         <TO onPress={() => navigation.navigate('Settings')} style={styles.headerBtn} activeOpacity={0.7}>
-                            <SG size={20} color="rgba(255,255,255,0.8)" strokeWidth={2} />
+                            <SG size={20} color={tokens.text.secondary} strokeWidth={2} />
                         </TO>
                     </View>
                 </View>
@@ -518,11 +522,11 @@ const CaptureScreen = () => {
                     The mic icon adapts to Send when there's draft text. No
                     secondary floating FAB; this is the single capture entry. */}
                 <View style={styles.textCaptureCard}>
-                    <E3 size={18} color="#64748b" strokeWidth={2} />
+                    <E3 size={18} color={tokens.text.muted} strokeWidth={2} />
                     <TextInput
                         style={styles.textCaptureInput}
                         placeholder="¿Qué tienes en mente?"
-                        placeholderTextColor="#64748b"
+                        placeholderTextColor={tokens.text.muted}
                         value={draftText}
                         onChangeText={(t) => {
                             setDraftText(t);
@@ -540,7 +544,7 @@ const CaptureScreen = () => {
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                             disabled={loading || isTranscribing}
                         >
-                            <Mi size={20} color="#c084fc" strokeWidth={2.2} />
+                            <Mi size={20} color={tokens.accent.purple} strokeWidth={2.2} />
                         </TO>
                     ) : (
                         <TO
@@ -548,7 +552,7 @@ const CaptureScreen = () => {
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                             disabled={loading}
                         >
-                            <Sn size={20} color="#c084fc" strokeWidth={2.2} />
+                            <Sn size={20} color={tokens.accent.purple} strokeWidth={2.2} />
                         </TO>
                     )}
                 </View>
@@ -643,11 +647,11 @@ const CaptureScreen = () => {
                         disabled={reflejoLoading}
                     >
                         <View style={styles.reflejoHead}>
-                            <Sp size={14} color="#c084fc" strokeWidth={2.2} />
+                            <Sp size={14} color={tokens.accent.purple} strokeWidth={2.2} />
                             <Text style={styles.reflejoLabel}>REFLEJO DE HOY</Text>
                         </View>
                         {reflejoLoading ? (
-                            <Text style={[styles.reflejoText, { color: '#94a3b8' }]}>Leyendo tu backlog…</Text>
+                            <Text style={[styles.reflejoText, { color: tokens.text.muted }]}>Leyendo tu backlog…</Text>
                         ) : (
                             <>
                                 <Text style={styles.reflejoText} numberOfLines={3}>{liveReflejo}</Text>
@@ -662,7 +666,7 @@ const CaptureScreen = () => {
                         activeOpacity={0.85}
                     >
                         <View style={styles.reflejoHead}>
-                            <Sp size={14} color="#c084fc" strokeWidth={2.2} />
+                            <Sp size={14} color={tokens.accent.purple} strokeWidth={2.2} />
                             <Text style={styles.reflejoLabel}>{reflectionToday ? 'REFLEJO DE HOY' : 'ÚLTIMO REFLEJO'}</Text>
                             {!reflectionToday && !!reflection?.created_at && (
                                 <Text style={styles.reflejoDate}>· {fmtDate(reflection.created_at)}</Text>
@@ -703,13 +707,13 @@ const CaptureScreen = () => {
                                     onPress={() => navigation.navigate('Loops')}
                                     activeOpacity={0.85}
                                 >
-                                    {isReg && <RC size={16} color="#c084fc" strokeWidth={2.5} style={{ marginTop: 2 }} />}
+                                    {isReg && <RC size={16} color={tokens.accent.purple} strokeWidth={2.5} style={{ marginTop: 2 }} />}
                                     <View style={{ flex: 1 }}>
                                         <Text style={styles.loopText} numberOfLines={2}>
                                             {l.avoidance_reason || l.task}
                                         </Text>
                                     </View>
-                                    <CR size={18} color="#475569" />
+                                    <CR size={18} color={tokens.text.disabled} />
                                 </TO>
                             );
                         })}
@@ -733,7 +737,7 @@ const CaptureScreen = () => {
                         >
                             <Text style={styles.memHeader}>Memorias recientes</Text>
                             <Animated.View style={{ transform: [{ rotate: memoriesOpen ? '0deg' : '-90deg' }] }}>
-                                <CD size={16} color="#64748b" />
+                                <CD size={16} color={tokens.text.muted} />
                             </Animated.View>
                         </TO>
 
@@ -750,7 +754,7 @@ const CaptureScreen = () => {
                                         {fmtDate(e.created_at)}{e.category ? ` · ${e.category}` : ''}
                                     </Text>
                                 </View>
-                                <CR size={16} color="#475569" />
+                                <CR size={16} color={tokens.text.disabled} />
                             </TO>
                         ))}
                         {memoriesOpen && (
@@ -768,7 +772,7 @@ const CaptureScreen = () => {
             {(isRecording || isTranscribing) && (
                 <View style={styles.recPill} pointerEvents="none">
                     <Animated.View
-                        style={[styles.recDot, isTranscribing && { backgroundColor: '#6366f1' }, { transform: [{ scale: dotAnim }] }]}
+                        style={[styles.recDot, isTranscribing && { backgroundColor: tokens.accent.indigo }, { transform: [{ scale: dotAnim }] }]}
                     />
                     <Text style={styles.recPillText}>
                         {isTranscribing ? 'Transcribiendo…' : `Escuchando ${fmtSecs(recordSecs)} · toca para terminar`}
@@ -791,7 +795,7 @@ const CaptureScreen = () => {
                                 ref={inputRef}
                                 style={styles.input}
                                 placeholder={"Suéltalo sin filtro. Ej: \"Cerré el trato grande pero arrastro 3 pendientes, choqué con mi socio y otra vez no avancé en lo de mi hija.\""}
-                                placeholderTextColor="#475569"
+                                placeholderTextColor={tokens.text.disabled}
                                 multiline
                                 value={content}
                                 onChangeText={setContent}
@@ -803,7 +807,7 @@ const CaptureScreen = () => {
                             {(isRecording || isTranscribing) && (
                                 <View style={styles.recordingBar}>
                                     <Animated.View
-                                        style={[styles.recordingDot, isTranscribing && { backgroundColor: '#6366f1' }, { transform: [{ scale: dotAnim }] }]}
+                                        style={[styles.recordingDot, isTranscribing && { backgroundColor: tokens.accent.indigo }, { transform: [{ scale: dotAnim }] }]}
                                     />
                                     <Text style={styles.recordingText}>
                                         {isTranscribing ? 'Transcribiendo tu audio…' : `Escuchando ${fmtSecs(recordSecs)} · toca el micrófono para detener`}
@@ -816,7 +820,7 @@ const CaptureScreen = () => {
                                     <Image source={{ uri: pickedImage.uri }} style={styles.imageThumb} />
                                     <Text style={styles.imageHint}>Imagen adjunta · BlackBoxMind la interpretará</Text>
                                     <TO onPress={() => setPickedImage(null)} style={styles.imageRemove} activeOpacity={0.7}>
-                                        <Xx size={16} color="#fca5a5" />
+                                        <Xx size={16} color={tokens.accent.red} />
                                     </TO>
                                 </View>
                             )}
@@ -824,7 +828,7 @@ const CaptureScreen = () => {
                             <View style={styles.inputFooter}>
                                 <View style={styles.leftActions}>
                                     <TO style={styles.iconBtn} activeOpacity={0.7} onPress={pickImage} disabled={loading}>
-                                        <Pl size={20} color="#94a3b8" />
+                                        <Pl size={20} color={tokens.text.muted} />
                                     </TO>
                                     {wordCount > 0 && <Text style={styles.wordCount}>{wordCount} palabras</Text>}
                                 </View>
@@ -837,12 +841,12 @@ const CaptureScreen = () => {
                                     >
                                         {isTranscribing ? (
                                             <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                                                <Mi size={20} color="#6366f1" />
+                                                <Mi size={20} color={tokens.accent.indigo} />
                                             </Animated.View>
                                         ) : isRecording ? (
-                                            <MO size={20} color="white" />
+                                            <MO size={20} color={tokens.accent.red} />
                                         ) : (
-                                            <Mi size={20} color="#94a3b8" />
+                                            <Mi size={20} color={tokens.text.muted} />
                                         )}
                                     </TO>
                                     <TO
@@ -851,7 +855,7 @@ const CaptureScreen = () => {
                                         style={[styles.sendBtn, canSubmit ? styles.sendBtnActive : styles.sendBtnDisabled]}
                                         activeOpacity={0.8}
                                     >
-                                        <Au size={20} color={canSubmit ? 'white' : '#475569'} strokeWidth={2.5} />
+                                        <Au size={20} color={canSubmit ? tokens.text.onAccent : tokens.text.disabled} strokeWidth={2.5} />
                                     </TO>
                                 </View>
                             </View>
@@ -870,8 +874,8 @@ const CaptureScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#0a0f1e' },
+const makeStyles = (t: ThemeTokens) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: t.bg.page },
     body: {
         flexGrow: 1,
         paddingHorizontal: 20,
@@ -881,7 +885,7 @@ const styles = StyleSheet.create({
 
     brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
     brandActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    brand: { color: '#475569', fontSize: 12, fontWeight: '900', letterSpacing: 0 },
+    brand: { color: t.text.disabled, fontSize: 12, fontWeight: '900', letterSpacing: 0 },
     headerBtn: {
         width: 34, height: 34, borderRadius: 17,
         alignItems: 'center', justifyContent: 'center',
@@ -890,21 +894,21 @@ const styles = StyleSheet.create({
 
     // Home grouped card — matches styles.vistaCard in Dashboard Estratégico
     homeCard: {
-        backgroundColor: '#151B2C',
-        borderColor: '#1E293B',
+        backgroundColor: t.bg.card,
+        borderColor: t.border.default,
         borderWidth: 1.5,
         borderRadius: 14,
         paddingVertical: 16,
         paddingHorizontal: 14,
         marginBottom: 16,
-        shadowColor: '#000000',
+        shadowColor: t.shadow.color,
         shadowOpacity: 0.35,
         shadowRadius: 8,
         shadowOffset: { width: 0, height: 3 },
         elevation: 4,
     },
     homeCardTitle: {
-        color: '#94a3b8',
+        color: t.text.muted,
         fontSize: 11,
         fontWeight: '700',
         letterSpacing: 1.5,
@@ -913,8 +917,8 @@ const styles = StyleSheet.create({
 
     // System state
     statusBlock: { marginBottom: 22 },
-    statusMain: { color: '#f8fafc', fontSize: 28, fontWeight: '800', letterSpacing: 0.2 },
-    statusSub: { color: '#94a3b8', fontSize: 15, fontWeight: '600', marginTop: 6, lineHeight: 21 },
+    statusMain: { color: t.text.primary, fontSize: 28, fontWeight: '800', letterSpacing: 0.2 },
+    statusSub: { color: t.text.muted, fontSize: 15, fontWeight: '600', marginTop: 6, lineHeight: 21 },
     statsGrid: {
         flexDirection: 'row',
         gap: 8,
@@ -923,13 +927,13 @@ const styles = StyleSheet.create({
     },
     statCard: {
         flex: 1,
-        backgroundColor: '#151B2C',
-        borderColor: '#2D3548',
+        backgroundColor: t.bg.card,
+        borderColor: t.border.default,
         borderWidth: 1.5,
         borderRadius: 14,
         paddingVertical: 16,
         paddingHorizontal: 14,
-        shadowColor: '#000000',
+        shadowColor: t.shadow.color,
         shadowOpacity: 0.6,
         shadowRadius: 14,
         shadowOffset: { width: 0, height: 6 },
@@ -941,64 +945,64 @@ const styles = StyleSheet.create({
         lineHeight: 32,
         letterSpacing: 0.2,
     },
-    statValuePos: { color: '#34d399' },
-    statValueNeutral: { color: '#f1f5f9' },
-    statValueWarn: { color: '#f59e0b' },
+    statValuePos: { color: t.accent.green },
+    statValueNeutral: { color: t.text.primary },
+    statValueWarn: { color: t.accent.amber },
     statLabel: {
         fontSize: 10,
         fontWeight: '700',
-        color: '#94a3b8',
+        color: t.text.muted,
         letterSpacing: 1.5,
         marginTop: 6,
         textTransform: 'uppercase',
     },
     statSub: {
         fontSize: 10,
-        color: '#64748b',
+        color: t.text.muted,
         marginTop: 2,
     },
 
     // Reflejo de hoy — third pillar
     reflejoCard: {
-        backgroundColor: 'rgba(168,85,247,0.08)',
+        backgroundColor: t.accent.purpleSoft,
         borderWidth: 1,
-        borderColor: 'rgba(168,85,247,0.28)',
+        borderColor: t.accent.purple,
         borderRadius: 16,
         padding: 16,
         marginBottom: 28,
-        shadowColor: '#000000',
+        shadowColor: t.shadow.color,
         shadowOpacity: 0.25,
         shadowRadius: 6,
         shadowOffset: { width: 0, height: 2 },
         elevation: 3,
     },
     reflejoHead: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 8 },
-    reflejoLabel: { color: '#c084fc', fontSize: 11, fontWeight: '900', letterSpacing: 1.5 },
-    reflejoDate: { color: '#7c6a9c', fontSize: 11, fontWeight: '700' },
-    reflejoText: { color: '#e2e8f0', fontSize: 15, lineHeight: 22, fontWeight: '500' },
-    reflejoMore: { color: '#c084fc', fontSize: 13, fontWeight: '800', marginTop: 10 },
+    reflejoLabel: { color: t.accent.purple, fontSize: 11, fontWeight: '900', letterSpacing: 1.5 },
+    reflejoDate: { color: t.text.muted, fontSize: 11, fontWeight: '700' },
+    reflejoText: { color: t.text.primary, fontSize: 15, lineHeight: 22, fontWeight: '500' },
+    reflejoMore: { color: t.accent.purple, fontSize: 13, fontWeight: '800', marginTop: 10 },
 
     retryBanner: {
-        backgroundColor: 'rgba(251,191,36,0.10)',
+        backgroundColor: t.accent.amberSoft,
         borderWidth: 1,
-        borderColor: 'rgba(251,191,36,0.4)',
+        borderColor: t.accent.amber,
         borderRadius: 12,
         paddingVertical: 10,
         paddingHorizontal: 14,
         marginBottom: 22,
     },
-    retryBannerText: { color: '#fbbf24', fontSize: 13, fontWeight: '700' },
+    retryBannerText: { color: t.accent.amber, fontSize: 13, fontWeight: '700' },
 
     // Loops — primary module
     loopsModule: {
-        backgroundColor: '#151B2C',
-        borderColor: '#1E293B',
+        backgroundColor: t.bg.card,
+        borderColor: t.border.default,
         borderWidth: 1.5,
         borderRadius: 14,
         paddingVertical: 16,
         paddingHorizontal: 14,
         marginBottom: 16,
-        shadowColor: '#000000',
+        shadowColor: t.shadow.color,
         shadowOpacity: 0.35,
         shadowRadius: 8,
         shadowOffset: { width: 0, height: 3 },
@@ -1010,9 +1014,9 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         marginBottom: 14,
     },
-    loopsTitle: { color: '#e2e8f0', fontSize: 16, fontWeight: '900', letterSpacing: 1.5 },
+    loopsTitle: { color: t.text.primary, fontSize: 16, fontWeight: '900', letterSpacing: 1.5 },
     loopsTitleRegresa: {
-        color: '#f87171',
+        color: t.accent.red,
         fontSize: 18,
         fontWeight: '700',
         letterSpacing: 0,
@@ -1022,7 +1026,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        backgroundColor: '#F1F5F9',
+        backgroundColor: t.bg.inputInverted,
         borderWidth: 0,
         borderRadius: 14,
         paddingVertical: 18,
@@ -1031,7 +1035,7 @@ const styles = StyleSheet.create({
         marginBottom: 24,
         minHeight: 64,
         maxHeight: 200,
-        shadowColor: '#000000',
+        shadowColor: t.shadow.color,
         shadowOpacity: 0.35,
         shadowRadius: 12,
         shadowOffset: { width: 0, height: 4 },
@@ -1039,60 +1043,60 @@ const styles = StyleSheet.create({
     },
     textCaptureInput: {
         flex: 1,
-        color: '#0F172A',
+        color: t.text.onInverted,
         fontSize: 16,
         fontWeight: '500',
         paddingVertical: 0,
         textAlignVertical: 'center',
     },
-    loopsCounter: { color: '#34d399', fontSize: 12, fontWeight: '400', marginTop: -6, marginBottom: 12 },
-    sectionLink: { color: '#6366f1', fontSize: 13, fontWeight: '800' },
+    loopsCounter: { color: t.accent.green, fontSize: 12, fontWeight: '400', marginTop: -6, marginBottom: 12 },
+    sectionLink: { color: t.accent.indigo, fontSize: 13, fontWeight: '800' },
 
     loopCard: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        backgroundColor: '#141b2e',
+        backgroundColor: t.bg.card,
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.07)',
+        borderColor: t.border.subtle,
         paddingVertical: 16,
         paddingHorizontal: 16,
         marginBottom: 11,
-        shadowColor: '#000000',
+        shadowColor: t.shadow.color,
         shadowOpacity: 0.35,
         shadowRadius: 8,
         shadowOffset: { width: 0, height: 3 },
         elevation: 4,
     },
     loopCardRegresa: {
-        backgroundColor: 'rgba(168,85,247,0.07)',
-        borderColor: 'rgba(168,85,247,0.22)',
+        backgroundColor: t.accent.purpleSoft,
+        borderColor: t.accent.purple,
         borderLeftWidth: 3,
-        borderLeftColor: '#a855f7',
+        borderLeftColor: t.accent.purple,
     },
-    loopText: { color: '#f1f5f9', fontSize: 16, fontWeight: '600', lineHeight: 22 },
+    loopText: { color: t.text.primary, fontSize: 16, fontWeight: '600', lineHeight: 22 },
 
     emptyLoops: {
-        backgroundColor: '#141b2e',
+        backgroundColor: t.bg.card,
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.06)',
+        borderColor: t.border.subtle,
         padding: 20,
         marginBottom: 30,
     },
-    emptyLoopsText: { color: '#94a3b8', fontSize: 15, lineHeight: 22 },
+    emptyLoopsText: { color: t.text.muted, fontSize: 15, lineHeight: 22 },
 
     // Memorias — secondary
     memModule: {
-        backgroundColor: '#151B2C',
-        borderColor: '#1E293B',
+        backgroundColor: t.bg.card,
+        borderColor: t.border.default,
         borderWidth: 1.5,
         borderRadius: 14,
         paddingVertical: 16,
         paddingHorizontal: 14,
         marginBottom: 16,
-        shadowColor: '#000000',
+        shadowColor: t.shadow.color,
         shadowOpacity: 0.35,
         shadowRadius: 8,
         shadowOffset: { width: 0, height: 3 },
@@ -1105,20 +1109,20 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
         marginBottom: 8,
     },
-    memHeader: { color: '#64748b', fontSize: 13, fontWeight: '700', letterSpacing: 0.3 },
+    memHeader: { color: t.text.muted, fontSize: 13, fontWeight: '700', letterSpacing: 0.3 },
     memCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(20,27,46,0.6)',
+        backgroundColor: t.bg.card,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.05)',
+        borderColor: t.border.subtle,
         paddingHorizontal: 14,
         paddingVertical: 12,
         marginBottom: 8,
     },
-    memTitle: { color: '#cbd5e1', fontSize: 14, fontWeight: '600' },
-    memMeta: { color: '#64748b', fontSize: 12, fontWeight: '600', marginTop: 3, textTransform: 'capitalize' },
+    memTitle: { color: t.text.secondary, fontSize: 14, fontWeight: '600' },
+    memMeta: { color: t.text.muted, fontSize: 12, fontWeight: '600', marginTop: 3, textTransform: 'capitalize' },
     memAll: { paddingVertical: 6, alignSelf: 'flex-start', marginTop: 2 },
 
     recPill: {
@@ -1127,44 +1131,44 @@ const styles = StyleSheet.create({
         right: 20,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#1e293b',
+        backgroundColor: t.bg.card,
         borderRadius: 20,
         paddingHorizontal: 14,
         paddingVertical: 10,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.08)',
+        borderColor: t.border.subtle,
     },
-    recDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#ef4444', marginRight: 9 },
-    recPillText: { color: '#e2e8f0', fontSize: 13, fontWeight: '700' },
+    recDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: t.accent.red, marginRight: 9 },
+    recPillText: { color: t.text.primary, fontSize: 13, fontWeight: '700' },
 
     // Text sheet (modal)
     modalRoot: { flex: 1, justifyContent: 'flex-end' },
-    modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)' },
+    modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: t.bg.overlay },
     modalSheet: {
-        backgroundColor: '#0d1424',
+        backgroundColor: t.bg.pageMuted,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         paddingHorizontal: 16,
         paddingTop: 10,
         paddingBottom: 28,
         borderTopWidth: 1,
-        borderColor: 'rgba(255,255,255,0.08)',
+        borderColor: t.border.subtle,
     },
     sheetHandle: {
         width: 40, height: 4, borderRadius: 2,
-        backgroundColor: 'rgba(255,255,255,0.18)',
+        backgroundColor: t.border.strong,
         alignSelf: 'center', marginBottom: 14,
     },
     inputCard: {
-        backgroundColor: '#141b2e',
+        backgroundColor: t.bg.card,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.06)',
+        borderColor: t.border.subtle,
         padding: 16,
         minHeight: 150,
     },
     input: {
-        color: '#e2e8f0',
+        color: t.text.primary,
         fontSize: 16,
         lineHeight: 24,
         fontWeight: '300',
@@ -1178,31 +1182,31 @@ const styles = StyleSheet.create({
     rightActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     iconBtn: {
         width: 40, height: 40, borderRadius: 20,
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: t.border.subtle,
+        borderWidth: 1, borderColor: t.border.subtle,
         justifyContent: 'center', alignItems: 'center',
     },
-    iconBtnRecording: { backgroundColor: 'rgba(239,68,68,0.2)', borderColor: '#ef4444' },
-    wordCount: { color: '#475569', fontSize: 12 },
+    iconBtnRecording: { backgroundColor: t.accent.redSoft, borderColor: t.accent.red },
+    wordCount: { color: t.text.disabled, fontSize: 12 },
     recordingBar: {
         flexDirection: 'row', alignItems: 'center',
-        backgroundColor: 'rgba(239,68,68,0.10)',
+        backgroundColor: t.accent.redSoft,
         borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8,
         marginTop: 4, marginBottom: 8,
     },
-    recordingDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#ef4444', marginRight: 10 },
-    recordingText: { color: '#fca5a5', fontSize: 13, fontWeight: '700', flex: 1 },
+    recordingDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: t.accent.red, marginRight: 10 },
+    recordingText: { color: t.accent.red, fontSize: 13, fontWeight: '700', flex: 1 },
     imagePreview: {
         flexDirection: 'row', alignItems: 'center',
-        backgroundColor: 'rgba(99,102,241,0.10)',
+        backgroundColor: t.accent.indigoSoft,
         borderRadius: 12, padding: 8, marginTop: 4, marginBottom: 8,
     },
     imageThumb: { width: 44, height: 44, borderRadius: 8, marginRight: 10 },
-    imageHint: { color: '#a5b4fc', fontSize: 12, fontWeight: '600', flex: 1 },
+    imageHint: { color: t.text.link, fontSize: 12, fontWeight: '600', flex: 1 },
     imageRemove: { padding: 6 },
     sendBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-    sendBtnActive: { backgroundColor: '#6366f1' },
-    sendBtnDisabled: { backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
+    sendBtnActive: { backgroundColor: t.accent.indigo },
+    sendBtnDisabled: { backgroundColor: t.bg.scrim, borderWidth: 1, borderColor: t.border.subtle },
 });
 
 export default CaptureScreen;

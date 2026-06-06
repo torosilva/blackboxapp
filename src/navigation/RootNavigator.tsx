@@ -36,6 +36,7 @@ import EntriesByMapScreen from '../screens/EntriesByMapScreen';
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ThemeProvider } from '../theme/ThemeContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -208,11 +209,13 @@ export default function RootNavigator() {
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             <SafeAreaProvider>
-                <AuthProvider>
-                    <NavigationContainer ref={navigationRef}>
-                        <AppNavigator />
-                    </NavigationContainer>
-                </AuthProvider>
+                <ThemeProvider>
+                    <AuthProvider>
+                        <NavigationContainer ref={navigationRef}>
+                            <AppNavigator />
+                        </NavigationContainer>
+                    </AuthProvider>
+                </ThemeProvider>
             </SafeAreaProvider>
         </GestureHandlerRootView>
     );
