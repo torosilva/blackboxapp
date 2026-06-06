@@ -568,7 +568,7 @@ const SettingsScreen = () => {
                                 onPress={() => toggleSection('pending')}
                                 activeOpacity={0.7}
                             >
-                                <Tar size={20} color="#818cf8" />
+                                <Tar size={20} color="#4F46E5" />
                                 <Text style={styles.sectionTitle}>Pendientes activos</Text>
                                 {expandedSections.pending ? (
                                     <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
@@ -590,7 +590,7 @@ const SettingsScreen = () => {
                                                         <Text style={styles.hubTaskDesc} numberOfLines={1}>{task.description}</Text>
                                                         {task.category && (
                                                             <View style={[styles.miniBadge, { backgroundColor: task.category === 'BUSINESS' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(16, 185, 129, 0.1)' }]}>
-                                                                <Text style={[styles.miniBadgeText, { color: task.category === 'BUSINESS' ? '#818cf8' : '#10b981' }]}>{task.category.substring(0, 1)}</Text>
+                                                                <Text style={[styles.miniBadgeText, { color: task.category === 'BUSINESS' ? '#4F46E5' : '#10b981' }]}>{task.category.substring(0, 1)}</Text>
                                                             </View>
                                                         )}
                                                     </View>
@@ -693,7 +693,7 @@ const SettingsScreen = () => {
                                 onPress={() => toggleSection('guide')}
                                 activeOpacity={0.7}
                             >
-                                <Z size={20} color="#facc15" />
+                                <Z size={20} color="#CA8A04" />
                                 <Text style={styles.sectionTitle}>Manual de Estratega & Protocolos</Text>
                                 {expandedSections.guide ? (
                                     <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
@@ -709,7 +709,7 @@ const SettingsScreen = () => {
                                         onPress={() => navigation.navigate('Onboarding')}
                                     >
                                         <View style={styles.iconCircleYellow}>
-                                            <B size={18} color="#facc15" />
+                                            <B size={18} color="#CA8A04" />
                                         </View>
                                         <View style={styles.policyTextContainer}>
                                             <Text style={styles.policyLabel}>Guía Estratégica: BlackBoxMind.ai</Text>
@@ -734,7 +734,7 @@ const SettingsScreen = () => {
                                             <Sparkles size={18} color="#6366f1" />
                                         </View>
                                         <View style={styles.policyTextContainer}>
-                                            <Text style={[styles.policyLabel, { color: '#818cf8' }]}>Simular Sesión IA</Text>
+                                            <Text style={[styles.policyLabel, { color: '#4F46E5' }]}>Simular Sesión IA</Text>
                                             <Text style={styles.policyValue}>Generar ejemplo estratégico en Dashboard</Text>
                                         </View>
                                         <CL size={20} color="#475569" style={{ transform: [{ rotate: '180deg' }] }} />
@@ -750,7 +750,7 @@ const SettingsScreen = () => {
                                 onPress={() => toggleSection('feedback')}
                                 activeOpacity={0.7}
                             >
-                                <MST size={20} color="#38bdf8" />
+                                <MST size={20} color="#0284C7" />
                                 <Text style={styles.sectionTitle}>Feedback Friends & Family</Text>
                                 {expandedSections.feedback ? (
                                     <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
@@ -766,13 +766,13 @@ const SettingsScreen = () => {
                                         onPress={() => setShowFeedbackModal(true)}
                                     >
                                         <View style={[styles.iconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.1)', width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }]}>
-                                            <MST size={18} color="#38bdf8" />
+                                            <MST size={18} color="#0284C7" />
                                         </View>
                                         <View style={styles.policyTextContainer}>
-                                            <Text style={[styles.policyLabel, { color: '#38bdf8' }]}>Ayúdanos a mejorar</Text>
+                                            <Text style={[styles.policyLabel, { color: '#0284C7' }]}>Ayúdanos a mejorar</Text>
                                             <Text style={styles.policyValue}>Reportar fallas o sugerir mejoras</Text>
                                         </View>
-                                        <AR size={20} color="#38bdf8" />
+                                        <AR size={20} color="#0284C7" />
                                     </TO>
 
                                     <TO
@@ -780,13 +780,13 @@ const SettingsScreen = () => {
                                         onPress={() => navigation.navigate('FeedbackHistory')}
                                     >
                                         <View style={[styles.iconCircle, { backgroundColor: 'rgba(129, 140, 248, 0.1)', width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }]}>
-                                            <Db size={18} color="#818cf8" />
+                                            <Db size={18} color="#4F46E5" />
                                         </View>
                                         <View style={styles.policyTextContainer}>
-                                            <Text style={[styles.policyLabel, { color: '#818cf8' }]}>Admin: Ver Feedback</Text>
+                                            <Text style={[styles.policyLabel, { color: '#4F46E5' }]}>Admin: Ver Feedback</Text>
                                             <Text style={styles.policyValue}>Ver comentarios de testers</Text>
                                         </View>
-                                        <AR size={20} color="#818cf8" />
+                                        <AR size={20} color="#4F46E5" />
                                     </TO>
                                 </>
                             )}
@@ -838,13 +838,13 @@ const SettingsScreen = () => {
                                         onPress={() => navigation.navigate('WeeklyReport', {})}
                                     >
                                         <View style={[styles.iconCircle, { backgroundColor: 'rgba(192, 132, 252, 0.1)', width: 40, height: 40, borderRadius: 12 }]}>
-                                            <Download size={18} color="#c084fc" />
+                                            <Download size={18} color="#7C3AED" />
                                         </View>
                                         <View style={styles.policyTextContainer}>
-                                            <Text style={[styles.policyLabel, { color: '#c084fc' }]}>Exportar Reporte</Text>
+                                            <Text style={[styles.policyLabel, { color: '#7C3AED' }]}>Exportar Reporte</Text>
                                             <Text style={styles.policyValue}>Descarga tu reporte semanal en PDF</Text>
                                         </View>
-                                        <AR size={20} color="#c084fc" />
+                                        <AR size={20} color="#7C3AED" />
                                     </TO>
                                 </View>
                             )}
@@ -886,10 +886,10 @@ const SettingsScreen = () => {
                                     </TO>
                                     <TO style={styles.policyRow} onPress={handleDownloadPrivacyPact}>
                                         <View style={[styles.iconCircle, { backgroundColor: 'rgba(192, 132, 252, 0.1)' }]}>
-                                            <Award size={18} color="#c084fc" />
+                                            <Award size={18} color="#7C3AED" />
                                         </View>
                                         <View style={styles.policyTextContainer}>
-                                            <Text style={[styles.policyLabel, { color: '#c084fc' }]}>Certificado de Privacidad</Text>
+                                            <Text style={[styles.policyLabel, { color: '#7C3AED' }]}>Certificado de Privacidad</Text>
                                             <Text style={styles.policyValue}>Descargar PDF con tus compromisos</Text>
                                         </View>
                                         <AR size={20} color="#475569" />
@@ -908,13 +908,13 @@ const SettingsScreen = () => {
                                     {/* Web Portal Link (NEW) */}
                                     <TO style={[styles.policyRow, { marginTop: 10, paddingTop: 15, borderTopWidth: 1, borderTopColor: 'rgba(15, 23, 42, 0.08)' }]} onPress={() => WebBrowser.openBrowserAsync('https://blackboxmind.ai/dashboard')}>
                                         <View style={[styles.iconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.1)' }]}>
-                                            <Sparkles size={18} color="#38bdf8" />
+                                            <Sparkles size={18} color="#0284C7" />
                                         </View>
                                         <View style={styles.policyTextContainer}>
-                                            <Text style={[styles.policyLabel, { color: '#38bdf8' }]}>Portal Web BlackBoxMind</Text>
+                                            <Text style={[styles.policyLabel, { color: '#0284C7' }]}>Portal Web BlackBoxMind</Text>
                                             <Text style={styles.policyValue}>Accede a tu dashboard avanzado en blackboxmind.ai</Text>
                                         </View>
-                                        <AR size={20} color="#38bdf8" />
+                                        <AR size={20} color="#0284C7" />
                                     </TO>
                                 </View>
                             )}
@@ -1032,7 +1032,7 @@ const SettingsScreen = () => {
                                             style={[styles.catHeader, { backgroundColor: cat === 'BUSINESS' ? 'rgba(99, 102, 241, 0.15)' : cat === 'PERSONAL' ? 'rgba(250, 204, 21, 0.1)' : cat === 'HEALTH' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(148, 163, 184, 0.1)' }]}
                                             onPress={() => toggleCategory(cat)}
                                         >
-                                            <Text style={[styles.catHeaderText, { color: cat === 'BUSINESS' ? '#818cf8' : cat === 'PERSONAL' ? '#facc15' : cat === 'HEALTH' ? '#10b981' : '#94a3b8', flex: 1 }]}>
+                                            <Text style={[styles.catHeaderText, { color: cat === 'BUSINESS' ? '#4F46E5' : cat === 'PERSONAL' ? '#CA8A04' : cat === 'HEALTH' ? '#10b981' : '#94a3b8', flex: 1 }]}>
                                                 {cat === 'BUSINESS' ? '💼 NEGOCIOS' : cat === 'PERSONAL' ? '👤 PERSONAL' : cat === 'HEALTH' ? '🏥 SALUD' : '📋 GENERAL'}
                                             </Text>
                                             <View style={styles.catCountBadge}>
@@ -1047,7 +1047,7 @@ const SettingsScreen = () => {
                                                 onPress={() => navigation.navigate('EntryDetail', { entryId: item.entryId })}
                                             >
                                                 {viewMode === 'pending' && (
-                                                    <View style={[styles.hubTaskDot, { backgroundColor: item.priority === 'HIGH' ? '#ef4444' : '#818cf8' }]} />
+                                                    <View style={[styles.hubTaskDot, { backgroundColor: item.priority === 'HIGH' ? '#ef4444' : '#4F46E5' }]} />
                                                 )}
                                                 {viewMode === 'completed' && <CheckCircle2 size={16} color="#10b981" style={{ marginRight: 12 }} />}
                                                 <View style={{ flex: 1 }}>
@@ -1430,7 +1430,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(15, 23, 42, 0.08)',
     },
-    hubTaskDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#818cf8' },
+    hubTaskDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#4F46E5' },
     hubTaskDesc: { color: '#0F172A', fontSize: 15, fontWeight: '500' },
     hubTaskSource: { color: '#64748b', fontSize: 12, marginTop: 2 },
     moreHubText: { color: '#64748b', fontSize: 12, textAlign: 'center', marginTop: 12 },
@@ -1586,7 +1586,7 @@ const styles = StyleSheet.create({
     },
     typeButtonActive: {
         backgroundColor: 'rgba(56, 189, 248, 0.1)',
-        borderColor: '#38bdf8',
+        borderColor: '#0284C7',
     },
     typeButtonText: {
         color: '#64748b',
@@ -1594,7 +1594,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     typeButtonTextActive: {
-        color: '#38bdf8',
+        color: '#0284C7',
     },
     feedbackInput: {
         backgroundColor: 'rgba(15, 23, 42, 0.04)',
@@ -1609,12 +1609,12 @@ const styles = StyleSheet.create({
     },
     sendButton: {
         flexDirection: 'row',
-        backgroundColor: '#38bdf8',
+        backgroundColor: '#0284C7',
         height: 56,
         borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: "#38bdf8",
+        shadowColor: "#0284C7",
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 5,
@@ -1634,7 +1634,7 @@ const styles = StyleSheet.create({
     goalsContainer: { gap: 12, marginBottom: 10 },
     emptyGoals: { padding: 20, alignItems: 'center', backgroundColor: 'rgba(15, 23, 42, 0.03)', borderRadius: 20 },
     createGoalBtn: { marginTop: 10, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: 'rgba(99, 102, 241, 0.1)', borderRadius: 10 },
-    createGoalBtnText: { color: '#818cf8', fontWeight: 'bold', fontSize: 13 },
+    createGoalBtnText: { color: '#4F46E5', fontWeight: 'bold', fontSize: 13 },
     goalCard: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#FFFFFF', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(15, 23, 42, 0.08)', gap: 12 },
     goalCardCompleted: { opacity: 0.6 },
     goalCheck: { padding: 4 },
@@ -1687,7 +1687,7 @@ const styles = StyleSheet.create({
         alignSelf: 'flex-start',
     },
     attachButtonText: {
-        color: '#818cf8',
+        color: '#4F46E5',
         fontSize: 14,
         fontWeight: '600',
     },

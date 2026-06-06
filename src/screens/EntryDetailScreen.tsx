@@ -483,7 +483,7 @@ const EntryDetailScreen = () => {
         {related.length > 0 && (
           <View style={styles.relatedSection}>
             <View style={styles.relatedHeader}>
-              <Sp size={14} color="#c084fc" strokeWidth={2.2} />
+              <Sp size={14} color="#7C3AED" strokeWidth={2.2} />
               <Text style={styles.relatedTitle}>MEMORIAS RELACIONADAS</Text>
             </View>
             {related.map((r) => (
@@ -621,7 +621,7 @@ const styles = StyleSheet.create({
     marginBottom: 40
   },
   counterText: {
-    color: '#d1fae5',
+    color: '#059669',
     fontSize: 13,
     lineHeight: 18
   },
@@ -697,7 +697,7 @@ const styles = StyleSheet.create({
   },
   relatedSection: { marginTop: 32, marginBottom: 16 },
   relatedHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  relatedTitle: { color: '#c084fc', fontSize: 11, fontWeight: '700', letterSpacing: 1.8 },
+  relatedTitle: { color: '#7C3AED', fontSize: 11, fontWeight: '700', letterSpacing: 1.8 },
   relatedCard: {
     backgroundColor: '#0F172A',
     borderColor: '#E2E8F0',
@@ -711,7 +711,7 @@ const styles = StyleSheet.create({
   relatedCardTitle: { color: '#0F172A', fontSize: 14, fontWeight: '700', flex: 1 },
   relatedScorePill: { backgroundColor: 'rgba(192,132,252,0.15)',
                       paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
-  relatedScoreText: { color: '#c084fc', fontSize: 11, fontWeight: '700' },
+  relatedScoreText: { color: '#7C3AED', fontSize: 11, fontWeight: '700' },
   relatedCardSnippet: { color: '#94a3b8', fontSize: 12, lineHeight: 18, marginBottom: 6 },
   relatedCardMeta: { color: '#64748b', fontSize: 10, letterSpacing: 0.5 },
 });

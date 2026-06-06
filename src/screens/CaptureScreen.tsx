@@ -540,7 +540,7 @@ const CaptureScreen = () => {
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                             disabled={loading || isTranscribing}
                         >
-                            <Mi size={20} color="#c084fc" strokeWidth={2.2} />
+                            <Mi size={20} color="#7C3AED" strokeWidth={2.2} />
                         </TO>
                     ) : (
                         <TO
@@ -548,7 +548,7 @@ const CaptureScreen = () => {
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                             disabled={loading}
                         >
-                            <Sn size={20} color="#c084fc" strokeWidth={2.2} />
+                            <Sn size={20} color="#7C3AED" strokeWidth={2.2} />
                         </TO>
                     )}
                 </View>
@@ -643,7 +643,7 @@ const CaptureScreen = () => {
                         disabled={reflejoLoading}
                     >
                         <View style={styles.reflejoHead}>
-                            <Sp size={14} color="#c084fc" strokeWidth={2.2} />
+                            <Sp size={14} color="#7C3AED" strokeWidth={2.2} />
                             <Text style={styles.reflejoLabel}>REFLEJO DE HOY</Text>
                         </View>
                         {reflejoLoading ? (
@@ -662,7 +662,7 @@ const CaptureScreen = () => {
                         activeOpacity={0.85}
                     >
                         <View style={styles.reflejoHead}>
-                            <Sp size={14} color="#c084fc" strokeWidth={2.2} />
+                            <Sp size={14} color="#7C3AED" strokeWidth={2.2} />
                             <Text style={styles.reflejoLabel}>{reflectionToday ? 'REFLEJO DE HOY' : 'ÚLTIMO REFLEJO'}</Text>
                             {!reflectionToday && !!reflection?.created_at && (
                                 <Text style={styles.reflejoDate}>· {fmtDate(reflection.created_at)}</Text>
@@ -703,7 +703,7 @@ const CaptureScreen = () => {
                                     onPress={() => navigation.navigate('Loops')}
                                     activeOpacity={0.85}
                                 >
-                                    {isReg && <RC size={16} color="#c084fc" strokeWidth={2.5} style={{ marginTop: 2 }} />}
+                                    {isReg && <RC size={16} color="#7C3AED" strokeWidth={2.5} style={{ marginTop: 2 }} />}
                                     <View style={{ flex: 1 }}>
                                         <Text style={styles.loopText} numberOfLines={2}>
                                             {l.avoidance_reason || l.task}
@@ -816,7 +816,7 @@ const CaptureScreen = () => {
                                     <Image source={{ uri: pickedImage.uri }} style={styles.imageThumb} />
                                     <Text style={styles.imageHint}>Imagen adjunta · BlackBoxMind la interpretará</Text>
                                     <TO onPress={() => setPickedImage(null)} style={styles.imageRemove} activeOpacity={0.7}>
-                                        <Xx size={16} color="#fca5a5" />
+                                        <Xx size={16} color="#DC2626" />
                                     </TO>
                                 </View>
                             )}
@@ -941,7 +941,7 @@ const styles = StyleSheet.create({
         lineHeight: 32,
         letterSpacing: 0.2,
     },
-    statValuePos: { color: '#34d399' },
+    statValuePos: { color: '#059669' },
     statValueNeutral: { color: '#0F172A' },
     statValueWarn: { color: '#f59e0b' },
     statLabel: {
@@ -960,23 +960,23 @@ const styles = StyleSheet.create({
 
     // Reflejo de hoy — third pillar
     reflejoCard: {
-        backgroundColor: 'rgba(168,85,247,0.08)',
+        backgroundColor: '#FFFFFF',
         borderWidth: 1,
-        borderColor: 'rgba(168,85,247,0.28)',
+        borderColor: 'rgba(124, 58, 237, 0.25)',
         borderRadius: 16,
         padding: 16,
         marginBottom: 28,
-        shadowColor: '#000000',
-        shadowOpacity: 0.25,
-        shadowRadius: 6,
+        shadowColor: '#7C3AED',
+        shadowOpacity: 0.12,
+        shadowRadius: 8,
         shadowOffset: { width: 0, height: 2 },
         elevation: 3,
     },
     reflejoHead: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 8 },
-    reflejoLabel: { color: '#c084fc', fontSize: 11, fontWeight: '900', letterSpacing: 1.5 },
+    reflejoLabel: { color: '#7C3AED', fontSize: 11, fontWeight: '900', letterSpacing: 1.5 },
     reflejoDate: { color: '#9333EA', fontSize: 11, fontWeight: '700' },
-    reflejoText: { color: '#e2e8f0', fontSize: 15, lineHeight: 22, fontWeight: '500' },
-    reflejoMore: { color: '#c084fc', fontSize: 13, fontWeight: '800', marginTop: 10 },
+    reflejoText: { color: '#0F172A', fontSize: 15, lineHeight: 22, fontWeight: '500' },
+    reflejoMore: { color: '#7C3AED', fontSize: 13, fontWeight: '800', marginTop: 10 },
 
     retryBanner: {
         backgroundColor: 'rgba(251,191,36,0.10)',
@@ -987,7 +987,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         marginBottom: 22,
     },
-    retryBannerText: { color: '#fbbf24', fontSize: 13, fontWeight: '700' },
+    retryBannerText: { color: '#D97706', fontSize: 13, fontWeight: '700' },
 
     // Loops — primary module
     loopsModule: {
@@ -1010,9 +1010,9 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         marginBottom: 14,
     },
-    loopsTitle: { color: '#e2e8f0', fontSize: 16, fontWeight: '900', letterSpacing: 1.5 },
+    loopsTitle: { color: '#0F172A', fontSize: 16, fontWeight: '900', letterSpacing: 1.5 },
     loopsTitleRegresa: {
-        color: '#f87171',
+        color: '#DC2626',
         fontSize: 18,
         fontWeight: '700',
         letterSpacing: 0,
@@ -1045,7 +1045,7 @@ const styles = StyleSheet.create({
         paddingVertical: 0,
         textAlignVertical: 'center',
     },
-    loopsCounter: { color: '#34d399', fontSize: 12, fontWeight: '400', marginTop: -6, marginBottom: 12 },
+    loopsCounter: { color: '#059669', fontSize: 12, fontWeight: '400', marginTop: -6, marginBottom: 12 },
     sectionLink: { color: '#6366f1', fontSize: 13, fontWeight: '800' },
 
     loopCard: {
@@ -1135,7 +1135,7 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(15, 23, 42, 0.10)',
     },
     recDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#ef4444', marginRight: 9 },
-    recPillText: { color: '#e2e8f0', fontSize: 13, fontWeight: '700' },
+    recPillText: { color: '#0F172A', fontSize: 13, fontWeight: '700' },
 
     // Text sheet (modal)
     modalRoot: { flex: 1, justifyContent: 'flex-end' },
@@ -1164,7 +1164,7 @@ const styles = StyleSheet.create({
         minHeight: 150,
     },
     input: {
-        color: '#e2e8f0',
+        color: '#0F172A',
         fontSize: 16,
         lineHeight: 24,
         fontWeight: '300',
@@ -1191,14 +1191,14 @@ const styles = StyleSheet.create({
         marginTop: 4, marginBottom: 8,
     },
     recordingDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#ef4444', marginRight: 10 },
-    recordingText: { color: '#fca5a5', fontSize: 13, fontWeight: '700', flex: 1 },
+    recordingText: { color: '#DC2626', fontSize: 13, fontWeight: '700', flex: 1 },
     imagePreview: {
         flexDirection: 'row', alignItems: 'center',
         backgroundColor: 'rgba(99,102,241,0.10)',
         borderRadius: 12, padding: 8, marginTop: 4, marginBottom: 8,
     },
     imageThumb: { width: 44, height: 44, borderRadius: 8, marginRight: 10 },
-    imageHint: { color: '#a5b4fc', fontSize: 12, fontWeight: '600', flex: 1 },
+    imageHint: { color: '#4F46E5', fontSize: 12, fontWeight: '600', flex: 1 },
     imageRemove: { padding: 6 },
     sendBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
     sendBtnActive: { backgroundColor: '#6366f1' },

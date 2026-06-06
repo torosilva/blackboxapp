@@ -152,10 +152,10 @@ export default function LoopsScreen() {
                         }
                     >
                         <LaneHeader
-                            icon={<Clock size={15} color="#f59e0b" />}
+                            icon={<Clock size={15} color="#D97706" />}
                             title="SIN AVANCE"
                             count={stale.length}
-                            color="#f59e0b"
+                            color="#D97706"
                             hint={`Pendientes abiertos hace más de ${STALE_DAYS} días. Decide: cierra, repriorita o descarta.`}
                         />
                         {stale.map(it => (
@@ -192,10 +192,10 @@ export default function LoopsScreen() {
                 >
                     {/* ── REGRESAN — the differentiator ───────────────── */}
                     <LaneHeader
-                        icon={<RefreshCw size={15} color="#f87171" />}
+                        icon={<RefreshCw size={15} color="#DC2626" />}
                         title="REGRESAN"
                         count={regresan.length}
-                        color="#f87171"
+                        color="#DC2626"
                         hint="Lo que sigues evitando. No es falta de tiempo — es lo que cuesta enfrentar."
                     />
                     {regresan.length === 0 ? (
@@ -211,10 +211,10 @@ export default function LoopsScreen() {
 
                     {/* ── HOY ─────────────────────────────────────────── */}
                     <LaneHeader
-                        icon={<Sun size={15} color="#fbbf24" />}
+                        icon={<Sun size={15} color="#D97706" />}
                         title="HOY"
                         count={hoy.length}
-                        color="#fbbf24"
+                        color="#D97706"
                         hint="Lo que cierras hoy. Pocos, no todos."
                     />
                     {hoy.length === 0 ? (
@@ -233,10 +233,10 @@ export default function LoopsScreen() {
 
                     {/* ── RONDANDO ────────────────────────────────────── */}
                     <LaneHeader
-                        icon={<Clock size={15} color="#818cf8" />}
+                        icon={<Clock size={15} color="#4F46E5" />}
                         title="RONDANDO"
                         count={rondando.length}
-                        color="#818cf8"
+                        color="#4F46E5"
                         hint="Te da vueltas, pero no es de hoy."
                     />
                     {rondando.length === 0 ? (
@@ -365,12 +365,12 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderLeftWidth: 3,
         borderColor: 'rgba(248,113,113,0.18)',
-        borderLeftColor: '#f87171',
+        borderLeftColor: '#DC2626',
     },
     returnTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
     themeChip: { backgroundColor: 'rgba(248,113,113,0.12)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-    themeChipText: { color: '#fca5a5', fontSize: 11, fontWeight: '800', letterSpacing: 0.3 },
-    recurrenceText: { color: '#f87171', fontSize: 11, fontWeight: '800' },
+    themeChipText: { color: '#DC2626', fontSize: 11, fontWeight: '800', letterSpacing: 0.3 },
+    recurrenceText: { color: '#DC2626', fontSize: 11, fontWeight: '800' },
     avoidanceText: { color: '#0F172A', fontSize: 16, fontWeight: '600', lineHeight: 23 },
     returnDivider: { height: 1, backgroundColor: 'rgba(15, 23, 42, 0.08)', marginVertical: 14 },
     nextLabel: { color: '#64748b', fontSize: 10, fontWeight: '900', letterSpacing: 1.5, marginBottom: 4 },
