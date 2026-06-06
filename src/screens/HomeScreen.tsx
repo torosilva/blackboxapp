@@ -589,7 +589,7 @@ const HomeScreen = () => {
                 { id: 'PERSONAL', label: 'Personales', icon: <User size={14} color="currentColor" /> },
                 { id: 'DEVELOPMENT', label: 'Desarrollo Personal', icon: <SP size={14} color="currentColor" /> },
                 { id: 'WELLNESS', label: 'Bienestar', icon: <Stethoscope size={14} color="currentColor" /> },
-                { id: 'loops', label: 'Loops Activos', icon: <T size={14} color="currentColor" /> },
+                { id: 'loops', label: 'Pendientes Activos', icon: <T size={14} color="currentColor" /> },
                 { id: 'biases', label: 'Sesgos', icon: <AT size={14} color="currentColor" /> },
                 { id: 'positive', label: 'Positivo', icon: <L size={14} color="currentColor" /> },
                 { id: 'negative', label: 'Negativo', icon: <FR size={14} color="currentColor" /> },

@@ -178,7 +178,7 @@ const DashboardScreen = () => {
                 <View style={styles.vistaCard}>
                     <Text style={styles.vistaCardTitle}>ESTADO ACTUAL</Text>
                     <Text style={styles.vistaLine}>
-                        {stats.activeLoops} loops abiertos · {stalledLoopsPct}% sin avance &gt;14 días
+                        {stats.activeLoops} pendientes abiertos · {stalledLoopsPct}% sin avance &gt;14 días
                     </Text>
                 </View>
 

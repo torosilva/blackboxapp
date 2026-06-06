@@ -68,6 +68,9 @@ REGLAS:
 3. Description: 1 línea concreta. NO genérica.
 4. entry_ids: lista las id (UUID) literales de las entradas provistas que sostienen este proyecto. Solo UUIDs reales — nunca inventar.
 
+LENGUAJE NATURAL (OBLIGATORIO):
+La 'description' debe estar en español natural — NUNCA jerga consultora ni anglicismos. PROHIBIDO: "triaja", "línea de dolor", "backlog operativo", "stakeholder", "deliverable", "deep dive". Usa: "qué le duele", "pendientes acumulados", "involucrado", "entregable", "profundizar". Habla como amigo inteligente, no como McKinsey.
+
 FORMATO RESPUESTA (JSON estricto, sin Markdown, sin comentarios):
 {
   "projects": [

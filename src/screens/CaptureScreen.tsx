@@ -565,7 +565,7 @@ const CaptureScreen = () => {
                     {cleanHead ? (
                         <>
                             <Text style={styles.statusMain}>Tu cabeza está limpia</Text>
-                            <Text style={styles.statusSub}>Sin loops abiertos. Suelta lo que llegue.</Text>
+                            <Text style={styles.statusSub}>Sin pendientes abiertos. Suelta lo que llegue.</Text>
                         </>
                     ) : (
                         <View style={styles.statsGrid}>

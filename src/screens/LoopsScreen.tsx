@@ -70,10 +70,10 @@ export default function LoopsScreen() {
     const headerTitle =
         currentFilter === 'stalled' ? 'SIN AVANCE' :
         currentFilter === 'closed' ? 'COMPLETADAS' :
-        'ACTIVE LOOPS';
+        'PENDIENTES';
     const headerSub =
         currentFilter === 'stalled' ? `${stale.length} sin avance >14 días` :
-        currentFilter === 'closed' ? 'Historial de loops cerrados' :
+        currentFilter === 'closed' ? 'Historial de pendientes cerrados' :
         loading ? 'Cargando…' : `${items.length} abiertos`;
 
     // 'closed' is informational only — we don't fetch closed items here.
@@ -95,17 +95,17 @@ export default function LoopsScreen() {
                 </View>
                 <View style={styles.center}>
                     <Check size={48} color="#10b981" />
-                    <Text style={styles.emptyTitle}>Tus loops cerrados</Text>
+                    <Text style={styles.emptyTitle}>Tus pendientes cerrados</Text>
                     <Text style={styles.emptyText}>
-                        Los loops que ya cerraste se mantienen en el Centro Estratégico,
-                        bajo "Active Loops Realizados".
+                        Lo que ya cerraste se mantiene en el Centro Estratégico,
+                        bajo "Realizados".
                     </Text>
                     <TouchableOpacity
                         style={[styles.closeBtn, { marginTop: 24, paddingHorizontal: 18 }]}
                         onPress={() => navigation.navigate('Settings', { initialViewMode: 'completed' })}
                         activeOpacity={0.8}
                     >
-                        <Text style={styles.closeBtnText}>Ver loops cerrados</Text>
+                        <Text style={styles.closeBtnText}>Ver cerrados</Text>
                     </TouchableOpacity>
                 </View>
             </SafeAreaView>
@@ -135,9 +135,9 @@ export default function LoopsScreen() {
                 stale.length === 0 ? (
                     <View style={styles.center}>
                         <Sun size={48} color="#334155" />
-                        <Text style={styles.emptyTitle}>Sin loops estancados</Text>
+                        <Text style={styles.emptyTitle}>Sin pendientes estancados</Text>
                         <Text style={styles.emptyText}>
-                            Ningún loop lleva más de {STALE_DAYS} días sin avance. Buen ritmo de ejecución.
+                            Ningún pendiente lleva más de {STALE_DAYS} días sin avance. Buen ritmo de ejecución.
                         </Text>
                     </View>
                 ) : (
@@ -156,7 +156,7 @@ export default function LoopsScreen() {
                             title="SIN AVANCE"
                             count={stale.length}
                             color="#f59e0b"
-                            hint={`Loops abiertos hace más de ${STALE_DAYS} días. Decide: cierra, repriorita o descarta.`}
+                            hint={`Pendientes abiertos hace más de ${STALE_DAYS} días. Decide: cierra, repriorita o descarta.`}
                         />
                         {stale.map(it => (
                             <SimpleCard
@@ -172,7 +172,7 @@ export default function LoopsScreen() {
             ) : items.length === 0 ? (
                 <View style={styles.center}>
                     <Zap size={48} color="#334155" />
-                    <Text style={styles.emptyTitle}>Sin loops abiertos</Text>
+                    <Text style={styles.emptyTitle}>Sin pendientes abiertos</Text>
                     <Text style={styles.emptyText}>
                         Cuando registres una memoria o converses en el chat, los
                         accionables que detecte BlackBoxMind aparecerán aquí para que
@@ -201,7 +201,7 @@ export default function LoopsScreen() {
                     {regresan.length === 0 ? (
                         <Text style={styles.laneEmpty}>
                             Nada diagnosticado como evasión todavía. Aparece cuando el
-                            análisis de patrones detecta un loop que llevas evitando.
+                            análisis de patrones detecta un pendiente que llevas evitando.
                         </Text>
                     ) : (
                         regresan.map(it => (
@@ -218,7 +218,7 @@ export default function LoopsScreen() {
                         hint="Lo que cierras hoy. Pocos, no todos."
                     />
                     {hoy.length === 0 ? (
-                        <Text style={styles.laneEmpty}>Sin loops marcados para hoy.</Text>
+                        <Text style={styles.laneEmpty}>Sin pendientes marcados para hoy.</Text>
                     ) : (
                         hoy.map(it => (
                             <SimpleCard
@@ -240,7 +240,7 @@ export default function LoopsScreen() {
                         hint="Te da vueltas, pero no es de hoy."
                     />
                     {rondando.length === 0 ? (
-                        <Text style={styles.laneEmpty}>Sin loops rondando.</Text>
+                        <Text style={styles.laneEmpty}>Sin pendientes rondando.</Text>
                     ) : (
                         rondando.map(it => (
                             <SimpleCard
@@ -296,7 +296,7 @@ const ReturnCard = ({ item, onClose }: { item: any; onClose: () => void | Promis
 
         <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.8}>
             <Check size={16} color="#10b981" />
-            <Text style={styles.closeBtnText}>Cerrar este loop</Text>
+            <Text style={styles.closeBtnText}>Cerrar este pendiente</Text>
         </TouchableOpacity>
     </View>
 );

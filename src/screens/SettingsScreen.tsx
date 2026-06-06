@@ -569,7 +569,7 @@ const SettingsScreen = () => {
                                 activeOpacity={0.7}
                             >
                                 <Tar size={20} color="#818cf8" />
-                                <Text style={styles.sectionTitle}>Active Loops Pendientes</Text>
+                                <Text style={styles.sectionTitle}>Pendientes activos</Text>
                                 {expandedSections.pending ? (
                                     <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
                                 ) : (
@@ -615,7 +615,7 @@ const SettingsScreen = () => {
                                     activeOpacity={0.7}
                                 >
                                     <SC size={20} color="#10b981" />
-                                    <Text style={styles.sectionTitle}>Active Loops Realizados</Text>
+                                    <Text style={styles.sectionTitle}>Realizados</Text>
                                     {expandedSections.completed ? (
                                         <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
                                     ) : (
