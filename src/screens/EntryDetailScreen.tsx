@@ -333,20 +333,20 @@ const EntryDetailScreen = () => {
       {/* Header */}
       <View style={styles.header}>
         <TO onPress={() => isEditing ? setIsEditing(false) : navigation.goBack()} style={styles.backButton}>
-          {isEditing ? <Xi size={28} color="#ffffff" /> : <CL size={28} color="#ffffff" />}
+          {isEditing ? <Xi size={28} color="#0F172A" /> : <CL size={28} color="#0F172A" />}
         </TO>
 
         <View style={styles.headerActions}>
           {!isEditing ? (
             <>
               <TO style={styles.actionCircle} onPress={handleShare}>
-                <S2 size={20} color="#ffffff" />
+                <S2 size={20} color="#0F172A" />
               </TO>
               <TO
                 style={[styles.actionCircle, { backgroundColor: '#6366f1' }]}
                 onPress={() => setIsEditing(true)}
               >
-                <E3 size={20} color="#ffffff" />
+                <E3 size={20} color="#0F172A" />
               </TO>
             </>
           ) : (
@@ -355,7 +355,7 @@ const EntryDetailScreen = () => {
               onPress={handleSave}
               disabled={isSaving}
             >
-              {isSaving ? <View /> : <Ch size={20} color="#ffffff" />}
+              {isSaving ? <View /> : <Ch size={20} color="#0F172A" />}
             </TO>
           )}
         </View>
@@ -525,7 +525,7 @@ const EntryDetailScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a'
+    backgroundColor: '#F8FAFC'
   },
   header: {
     flexDirection: 'row',
@@ -547,7 +547,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(15, 23, 42, 0.06)',
     justifyContent: 'center',
     alignItems: 'center'
   },
@@ -579,7 +579,7 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   title: {
-    color: '#ffffff',
+    color: '#0F172A',
     fontSize: 28,
     fontWeight: '800',
     lineHeight: 36,
@@ -588,19 +588,19 @@ const styles = StyleSheet.create({
   moodBadgeDetail: {
     width: 44,
     height: 44,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: 'rgba(15, 23, 42, 0.04)',
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center'
   },
   titleInput: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(15, 23, 42, 0.06)',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   contentInput: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: 'rgba(15, 23, 42, 0.04)',
     borderRadius: 16,
     padding: 20,
     minHeight: 200,
@@ -614,7 +614,7 @@ const styles = StyleSheet.create({
     marginBottom: 30
   },
   bodyText: {
-    color: '#cbd5e1',
+    color: '#475569',
     fontSize: 18,
     lineHeight: 28,
     fontWeight: '400',
@@ -646,7 +646,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   audioPlayerLabel: {
-    color: '#cbd5e1',
+    color: '#475569',
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1.4,
@@ -654,7 +654,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   audioPlayerTime: {
-    color: '#ffffff',
+    color: '#0F172A',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -699,8 +699,8 @@ const styles = StyleSheet.create({
   relatedHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   relatedTitle: { color: '#c084fc', fontSize: 11, fontWeight: '700', letterSpacing: 1.8 },
   relatedCard: {
-    backgroundColor: '#151B2C',
-    borderColor: '#1E293B',
+    backgroundColor: '#0F172A',
+    borderColor: '#E2E8F0',
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 12,
     padding: 14,
@@ -708,7 +708,7 @@ const styles = StyleSheet.create({
   },
   relatedCardHead: { flexDirection: 'row', justifyContent: 'space-between',
                      alignItems: 'flex-start', marginBottom: 6, gap: 8 },
-  relatedCardTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '700', flex: 1 },
+  relatedCardTitle: { color: '#0F172A', fontSize: 14, fontWeight: '700', flex: 1 },
   relatedScorePill: { backgroundColor: 'rgba(192,132,252,0.15)',
                       paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
   relatedScoreText: { color: '#c084fc', fontSize: 11, fontWeight: '700' },

@@ -365,7 +365,7 @@ const SettingsScreen = () => {
 
     return (
         <SAV style={styles.container}>
-            <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+            <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
 
             {/* Header */}
             <View style={styles.header}>
@@ -373,7 +373,7 @@ const SettingsScreen = () => {
                     onPress={() => viewMode === 'hub' ? navigation.goBack() : setViewMode('hub')}
                     style={styles.backButton}
                 >
-                    <CL size={28} color="#ffffff" />
+                    <CL size={28} color="#0F172A" />
                 </TO>
                 <Text style={styles.headerTitle}>
                     {viewMode === 'hub' ? 'Centro Estratégico' :
@@ -906,7 +906,7 @@ const SettingsScreen = () => {
                                     </TO>
 
                                     {/* Web Portal Link (NEW) */}
-                                    <TO style={[styles.policyRow, { marginTop: 10, paddingTop: 15, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' }]} onPress={() => WebBrowser.openBrowserAsync('https://blackboxmind.ai/dashboard')}>
+                                    <TO style={[styles.policyRow, { marginTop: 10, paddingTop: 15, borderTopWidth: 1, borderTopColor: 'rgba(15, 23, 42, 0.08)' }]} onPress={() => WebBrowser.openBrowserAsync('https://blackboxmind.ai/dashboard')}>
                                         <View style={[styles.iconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.1)' }]}>
                                             <Sparkles size={18} color="#38bdf8" />
                                         </View>
@@ -1070,7 +1070,7 @@ const SettingsScreen = () => {
                             })
                         )}
                         <TO
-                            style={[styles.generateButton, { marginTop: 30, backgroundColor: '#334155' }]}
+                            style={[styles.generateButton, { marginTop: 30, backgroundColor: '#CBD5E1' }]}
                             onPress={() => setViewMode('hub')}
                         >
                             <Text style={styles.generateButtonText}>Volver al Hub</Text>
@@ -1157,11 +1157,11 @@ const SettingsScreen = () => {
                             disabled={isSubmittingFeedback}
                         >
                             {isSubmittingFeedback ? (
-                                <ActivityIndicator color="#ffffff" />
+                                <ActivityIndicator color="#FFFFFF" />
                             ) : (
                                 <>
                                     <Text style={styles.sendButtonText}>Enviar Feedback</Text>
-                                    <Sen size={18} color="#ffffff" style={{ marginLeft: 8 }} />
+                                    <Sen size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
                                 </>
                             )}
                         </TO>
@@ -1235,7 +1235,7 @@ const SettingsScreen = () => {
                                 disabled={!newGoalTitle.trim() || isCreatingGoal}
                             >
                                 {isCreatingGoal ? (
-                                    <ActivityIndicator color="#ffffff" />
+                                    <ActivityIndicator color="#FFFFFF" />
                                 ) : (
                                     <Text style={styles.sendButtonText}>Registrar Meta</Text>
                                 )}
@@ -1249,7 +1249,7 @@ const SettingsScreen = () => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#0f172a' },
+    container: { flex: 1, backgroundColor: '#F8FAFC' },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1262,7 +1262,7 @@ const styles = StyleSheet.create({
         padding: 4,
     },
     headerTitle: {
-        color: '#ffffff',
+        color: '#0F172A',
         fontSize: 18,
         fontWeight: '700',
         letterSpacing: 0.5,
@@ -1291,7 +1291,7 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     sectionTitle: {
-        color: '#ffffff',
+        color: '#0F172A',
         fontSize: 20,
         fontWeight: '700',
     },
@@ -1302,11 +1302,11 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     legalCard: {
-        backgroundColor: '#1e293b',
+        backgroundColor: '#FFFFFF',
         borderRadius: 24,
         padding: 24,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        borderColor: 'rgba(15, 23, 42, 0.08)',
     },
     legalIntro: {
         color: '#94a3b8',
@@ -1339,18 +1339,18 @@ const styles = StyleSheet.create({
     tutorialButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#1e293b',
+        backgroundColor: '#FFFFFF',
         borderRadius: 20,
         padding: 16,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        borderColor: 'rgba(15, 23, 42, 0.08)',
         gap: 16,
     },
     policyTextContainer: {
         flex: 1,
     },
     clinicalCard: {
-        backgroundColor: '#1e293b',
+        backgroundColor: '#FFFFFF',
         borderRadius: 24,
         padding: 20,
         borderWidth: 1,
@@ -1365,16 +1365,16 @@ const styles = StyleSheet.create({
     dateSelector: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        backgroundColor: 'rgba(15, 23, 42, 0.04)',
         padding: 14,
         borderRadius: 12,
         marginBottom: 16,
         gap: 12,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        borderColor: 'rgba(15, 23, 42, 0.08)',
     },
     dateText: {
-        color: '#ffffff',
+        color: '#0F172A',
         fontSize: 15,
         fontWeight: '500',
     },
@@ -1391,7 +1391,7 @@ const styles = StyleSheet.create({
         elevation: 8,
     },
     generateButtonText: {
-        color: '#ffffff',
+        color: '#FFFFFF',
         fontSize: 15,
         fontWeight: '700',
     },
@@ -1404,17 +1404,17 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     policyValue: {
-        color: '#ffffff',
+        color: '#0F172A',
         fontSize: 15,
         fontWeight: '600',
         lineHeight: 20,
     },
     hubCard: {
-        backgroundColor: '#1e293b',
+        backgroundColor: '#FFFFFF',
         borderRadius: 24,
         padding: 20,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        borderColor: 'rgba(15, 23, 42, 0.08)',
     },
     emptyHubText: { color: '#64748b', fontSize: 14, fontStyle: 'italic', textAlign: 'center' },
     hubTaskItem: {
@@ -1423,15 +1423,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 16,
         paddingHorizontal: 16,
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        backgroundColor: 'rgba(15, 23, 42, 0.04)',
         borderRadius: 16,
         marginBottom: 10,
         gap: 12,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        borderColor: 'rgba(15, 23, 42, 0.08)',
     },
     hubTaskDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#818cf8' },
-    hubTaskDesc: { color: '#ffffff', fontSize: 15, fontWeight: '500' },
+    hubTaskDesc: { color: '#0F172A', fontSize: 15, fontWeight: '500' },
     hubTaskSource: { color: '#64748b', fontSize: 12, marginTop: 2 },
     moreHubText: { color: '#64748b', fontSize: 12, textAlign: 'center', marginTop: 12 },
     hubBiasItem: {
@@ -1439,7 +1439,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+        borderBottomColor: 'rgba(15, 23, 42, 0.08)',
         gap: 12,
     },
     biasTag: {
@@ -1450,7 +1450,7 @@ const styles = StyleSheet.create({
     },
     biasTagText: { color: '#f59e0b', fontSize: 11, fontWeight: 'bold' },
     biasCard: {
-        backgroundColor: 'rgba(255,255,255,0.03)',
+        backgroundColor: 'rgba(15, 23, 42, 0.04)',
         borderRadius: 16,
         borderWidth: 1,
         borderColor: 'rgba(245,158,11,0.18)',
@@ -1459,12 +1459,12 @@ const styles = StyleSheet.create({
     },
     biasCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
     biasDate: { color: '#475569', fontSize: 11, fontWeight: '600', marginLeft: 10 },
-    biasMessage: { color: '#cbd5e1', fontSize: 13, lineHeight: 19 },
+    biasMessage: { color: '#475569', fontSize: 13, lineHeight: 19 },
     biasCardFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
     biasSource: { color: '#64748b', fontSize: 12, fontWeight: '600', flex: 1, marginRight: 8 },
     biasEmpty: { padding: 24, alignItems: 'center' },
     biasEmptyText: { color: '#64748b', fontSize: 13, textAlign: 'center', lineHeight: 19 },
-    hubBiasTitle: { color: '#ffffff', fontSize: 14, flex: 1 },
+    hubBiasTitle: { color: '#0F172A', fontSize: 14, flex: 1 },
     // NEW PROFILE STYLES
     profileSummary: {
         flexDirection: 'row',
@@ -1472,7 +1472,7 @@ const styles = StyleSheet.create({
         marginBottom: 24,
         paddingBottom: 20,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.05)',
+        borderBottomColor: 'rgba(15, 23, 42, 0.08)',
     },
     avatarLarge: {
         width: 80,
@@ -1490,7 +1490,7 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     profileName: {
-        color: 'white',
+        color: '#0F172A',
         fontSize: 22,
         fontWeight: 'bold',
         marginBottom: 4,
@@ -1503,14 +1503,14 @@ const styles = StyleSheet.create({
         marginTop: 0,
     },
     inputContainer: {
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        backgroundColor: 'rgba(15, 23, 42, 0.04)',
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        borderColor: 'rgba(15, 23, 42, 0.08)',
         marginBottom: 8,
     },
     profileInput: {
-        color: 'white',
+        color: '#0F172A',
         fontSize: 16,
         paddingVertical: 12,
         paddingHorizontal: 16,
@@ -1532,14 +1532,14 @@ const styles = StyleSheet.create({
         marginBottom: 40,
     },
     versionText: {
-        color: '#334155',
+        color: '#CBD5E1',
         fontSize: 12,
         fontWeight: '700',
         letterSpacing: 1,
         marginBottom: 8,
     },
     footerLegal: {
-        color: '#334155',
+        color: '#CBD5E1',
         fontSize: 11,
     },
     modalOverlay: {
@@ -1548,7 +1548,7 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     modalContent: {
-        backgroundColor: '#1e293b',
+        backgroundColor: '#FFFFFF',
         borderTopLeftRadius: 32,
         borderTopRightRadius: 32,
         padding: 24,
@@ -1561,7 +1561,7 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     modalTitle: {
-        color: '#ffffff',
+        color: '#0F172A',
         fontSize: 22,
         fontWeight: 'bold',
     },
@@ -1579,10 +1579,10 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingVertical: 10,
         borderRadius: 12,
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        backgroundColor: 'rgba(15, 23, 42, 0.08)',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        borderColor: 'rgba(15, 23, 42, 0.08)',
     },
     typeButtonActive: {
         backgroundColor: 'rgba(56, 189, 248, 0.1)',
@@ -1597,15 +1597,15 @@ const styles = StyleSheet.create({
         color: '#38bdf8',
     },
     feedbackInput: {
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        backgroundColor: 'rgba(15, 23, 42, 0.04)',
         borderRadius: 16,
         padding: 16,
-        color: '#ffffff',
+        color: '#0F172A',
         fontSize: 16,
         height: 150,
         marginBottom: 24,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        borderColor: 'rgba(15, 23, 42, 0.08)',
     },
     sendButton: {
         flexDirection: 'row',
@@ -1624,7 +1624,7 @@ const styles = StyleSheet.create({
         opacity: 0.6,
     },
     sendButtonText: {
-        color: '#ffffff',
+        color: '#FFFFFF',
         fontSize: 16,
         fontWeight: 'bold',
     },
@@ -1632,17 +1632,17 @@ const styles = StyleSheet.create({
     miniBadgeText: { fontSize: 9, fontWeight: 'bold' },
     addMiniBtn: { backgroundColor: '#6366f1', width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginLeft: 12 },
     goalsContainer: { gap: 12, marginBottom: 10 },
-    emptyGoals: { padding: 20, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 20 },
+    emptyGoals: { padding: 20, alignItems: 'center', backgroundColor: 'rgba(15, 23, 42, 0.03)', borderRadius: 20 },
     createGoalBtn: { marginTop: 10, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: 'rgba(99, 102, 241, 0.1)', borderRadius: 10 },
     createGoalBtnText: { color: '#818cf8', fontWeight: 'bold', fontSize: 13 },
-    goalCard: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#1e293b', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', gap: 12 },
+    goalCard: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#FFFFFF', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(15, 23, 42, 0.08)', gap: 12 },
     goalCardCompleted: { opacity: 0.6 },
     goalCheck: { padding: 4 },
     checkBox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: '#6366f1', justifyContent: 'center', alignItems: 'center' },
     checkBoxChecked: { backgroundColor: '#6366f1' },
-    goalTitle: { color: '#ffffff', fontSize: 16, fontWeight: '700' },
+    goalTitle: { color: '#0F172A', fontSize: 16, fontWeight: '700' },
     goalDesc: { color: '#94a3b8', fontSize: 13, marginTop: 2 },
-    goalBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.05)', marginTop: 6 },
+    goalBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: 'rgba(15, 23, 42, 0.08)', marginTop: 6 },
     goalBadgeText: { color: '#64748b', fontSize: 10, fontWeight: 'bold' },
     textCompleted: { textDecorationLine: 'line-through' },
     catHeader: {
@@ -1655,7 +1655,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.05)'
+        borderColor: 'rgba(15, 23, 42, 0.08)'
     },
     catHeaderText: {
         fontSize: 13,
@@ -1672,7 +1672,7 @@ const styles = StyleSheet.create({
         alignItems: 'center'
     },
     catCountText: {
-        color: '#ffffff',
+        color: '#0F172A',
         fontSize: 12,
         fontWeight: 'bold'
     },
@@ -1697,9 +1697,9 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         overflow: 'hidden',
         marginBottom: 24,
-        backgroundColor: '#1e293b',
+        backgroundColor: '#FFFFFF',
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderColor: 'rgba(15, 23, 42, 0.12)',
     },
     previewImage: {
         width: '100%',
@@ -1717,7 +1717,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.2)',
+        borderColor: 'rgba(15, 23, 42, 0.2)',
     },
 });
 

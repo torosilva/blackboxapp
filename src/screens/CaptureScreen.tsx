@@ -492,7 +492,7 @@ const CaptureScreen = () => {
 
     return (
         <SAV style={styles.container}>
-            <StatusBar barStyle="light-content" />
+            <StatusBar barStyle="dark-content" />
 
             <ScrollView
                 contentContainerStyle={styles.body}
@@ -506,10 +506,10 @@ const CaptureScreen = () => {
                     <Text style={styles.brand}>BlackBoxMind.ai</Text>
                     <View style={styles.brandActions}>
                         <TO onPress={() => navigation.navigate('Search')} style={styles.headerBtn} activeOpacity={0.7}>
-                            <SI size={20} color="rgba(255,255,255,0.8)" strokeWidth={2} />
+                            <SI size={20} color="rgba(15, 23, 42, 0.7)" strokeWidth={2} />
                         </TO>
                         <TO onPress={() => navigation.navigate('Settings')} style={styles.headerBtn} activeOpacity={0.7}>
-                            <SG size={20} color="rgba(255,255,255,0.8)" strokeWidth={2} />
+                            <SG size={20} color="rgba(15, 23, 42, 0.7)" strokeWidth={2} />
                         </TO>
                     </View>
                 </View>
@@ -840,7 +840,7 @@ const CaptureScreen = () => {
                                                 <Mi size={20} color="#6366f1" />
                                             </Animated.View>
                                         ) : isRecording ? (
-                                            <MO size={20} color="white" />
+                                            <MO size={20} color="#ef4444" />
                                         ) : (
                                             <Mi size={20} color="#94a3b8" />
                                         )}
@@ -871,7 +871,7 @@ const CaptureScreen = () => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#0a0f1e' },
+    container: { flex: 1, backgroundColor: '#F8FAFC' },
     body: {
         flexGrow: 1,
         paddingHorizontal: 20,
@@ -890,8 +890,8 @@ const styles = StyleSheet.create({
 
     // Home grouped card — matches styles.vistaCard in Dashboard Estratégico
     homeCard: {
-        backgroundColor: '#151B2C',
-        borderColor: '#1E293B',
+        backgroundColor: '#FFFFFF',
+        borderColor: '#E2E8F0',
         borderWidth: 1.5,
         borderRadius: 14,
         paddingVertical: 16,
@@ -913,7 +913,7 @@ const styles = StyleSheet.create({
 
     // System state
     statusBlock: { marginBottom: 22 },
-    statusMain: { color: '#f8fafc', fontSize: 28, fontWeight: '800', letterSpacing: 0.2 },
+    statusMain: { color: '#0F172A', fontSize: 28, fontWeight: '800', letterSpacing: 0.2 },
     statusSub: { color: '#94a3b8', fontSize: 15, fontWeight: '600', marginTop: 6, lineHeight: 21 },
     statsGrid: {
         flexDirection: 'row',
@@ -923,8 +923,8 @@ const styles = StyleSheet.create({
     },
     statCard: {
         flex: 1,
-        backgroundColor: '#151B2C',
-        borderColor: '#2D3548',
+        backgroundColor: '#FFFFFF',
+        borderColor: '#E2E8F0',
         borderWidth: 1.5,
         borderRadius: 14,
         paddingVertical: 16,
@@ -942,7 +942,7 @@ const styles = StyleSheet.create({
         letterSpacing: 0.2,
     },
     statValuePos: { color: '#34d399' },
-    statValueNeutral: { color: '#f1f5f9' },
+    statValueNeutral: { color: '#0F172A' },
     statValueWarn: { color: '#f59e0b' },
     statLabel: {
         fontSize: 10,
@@ -974,7 +974,7 @@ const styles = StyleSheet.create({
     },
     reflejoHead: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 8 },
     reflejoLabel: { color: '#c084fc', fontSize: 11, fontWeight: '900', letterSpacing: 1.5 },
-    reflejoDate: { color: '#7c6a9c', fontSize: 11, fontWeight: '700' },
+    reflejoDate: { color: '#9333EA', fontSize: 11, fontWeight: '700' },
     reflejoText: { color: '#e2e8f0', fontSize: 15, lineHeight: 22, fontWeight: '500' },
     reflejoMore: { color: '#c084fc', fontSize: 13, fontWeight: '800', marginTop: 10 },
 
@@ -991,8 +991,8 @@ const styles = StyleSheet.create({
 
     // Loops — primary module
     loopsModule: {
-        backgroundColor: '#151B2C',
-        borderColor: '#1E293B',
+        backgroundColor: '#FFFFFF',
+        borderColor: '#E2E8F0',
         borderWidth: 1.5,
         borderRadius: 14,
         paddingVertical: 16,
@@ -1052,10 +1052,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        backgroundColor: '#141b2e',
+        backgroundColor: '#FFFFFF',
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.07)',
+        borderColor: 'rgba(15, 23, 42, 0.10)',
         paddingVertical: 16,
         paddingHorizontal: 16,
         marginBottom: 11,
@@ -1071,13 +1071,13 @@ const styles = StyleSheet.create({
         borderLeftWidth: 3,
         borderLeftColor: '#a855f7',
     },
-    loopText: { color: '#f1f5f9', fontSize: 16, fontWeight: '600', lineHeight: 22 },
+    loopText: { color: '#0F172A', fontSize: 16, fontWeight: '600', lineHeight: 22 },
 
     emptyLoops: {
-        backgroundColor: '#141b2e',
+        backgroundColor: '#FFFFFF',
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.06)',
+        borderColor: 'rgba(15, 23, 42, 0.08)',
         padding: 20,
         marginBottom: 30,
     },
@@ -1085,8 +1085,8 @@ const styles = StyleSheet.create({
 
     // Memorias — secondary
     memModule: {
-        backgroundColor: '#151B2C',
-        borderColor: '#1E293B',
+        backgroundColor: '#FFFFFF',
+        borderColor: '#E2E8F0',
         borderWidth: 1.5,
         borderRadius: 14,
         paddingVertical: 16,
@@ -1112,12 +1112,12 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(20,27,46,0.6)',
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.05)',
+        borderColor: 'rgba(15, 23, 42, 0.08)',
         paddingHorizontal: 14,
         paddingVertical: 12,
         marginBottom: 8,
     },
-    memTitle: { color: '#cbd5e1', fontSize: 14, fontWeight: '600' },
+    memTitle: { color: '#475569', fontSize: 14, fontWeight: '600' },
     memMeta: { color: '#64748b', fontSize: 12, fontWeight: '600', marginTop: 3, textTransform: 'capitalize' },
     memAll: { paddingVertical: 6, alignSelf: 'flex-start', marginTop: 2 },
 
@@ -1127,12 +1127,12 @@ const styles = StyleSheet.create({
         right: 20,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#1e293b',
+        backgroundColor: '#FFFFFF',
         borderRadius: 20,
         paddingHorizontal: 14,
         paddingVertical: 10,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.08)',
+        borderColor: 'rgba(15, 23, 42, 0.10)',
     },
     recDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#ef4444', marginRight: 9 },
     recPillText: { color: '#e2e8f0', fontSize: 13, fontWeight: '700' },
@@ -1141,25 +1141,25 @@ const styles = StyleSheet.create({
     modalRoot: { flex: 1, justifyContent: 'flex-end' },
     modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)' },
     modalSheet: {
-        backgroundColor: '#0d1424',
+        backgroundColor: '#F1F5F9',
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         paddingHorizontal: 16,
         paddingTop: 10,
         paddingBottom: 28,
         borderTopWidth: 1,
-        borderColor: 'rgba(255,255,255,0.08)',
+        borderColor: 'rgba(15, 23, 42, 0.10)',
     },
     sheetHandle: {
         width: 40, height: 4, borderRadius: 2,
-        backgroundColor: 'rgba(255,255,255,0.18)',
+        backgroundColor: 'rgba(15, 23, 42, 0.18)',
         alignSelf: 'center', marginBottom: 14,
     },
     inputCard: {
-        backgroundColor: '#141b2e',
+        backgroundColor: '#FFFFFF',
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.06)',
+        borderColor: 'rgba(15, 23, 42, 0.08)',
         padding: 16,
         minHeight: 150,
     },
@@ -1178,8 +1178,8 @@ const styles = StyleSheet.create({
     rightActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     iconBtn: {
         width: 40, height: 40, borderRadius: 20,
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: 'rgba(15, 23, 42, 0.08)',
+        borderWidth: 1, borderColor: 'rgba(15, 23, 42, 0.12)',
         justifyContent: 'center', alignItems: 'center',
     },
     iconBtnRecording: { backgroundColor: 'rgba(239,68,68,0.2)', borderColor: '#ef4444' },
@@ -1202,7 +1202,7 @@ const styles = StyleSheet.create({
     imageRemove: { padding: 6 },
     sendBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
     sendBtnActive: { backgroundColor: '#6366f1' },
-    sendBtnDisabled: { backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
+    sendBtnDisabled: { backgroundColor: 'rgba(15, 23, 42, 0.04)', borderWidth: 1, borderColor: 'rgba(15, 23, 42, 0.08)' },
 });
 
 export default CaptureScreen;

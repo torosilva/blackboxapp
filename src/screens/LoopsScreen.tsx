@@ -82,10 +82,10 @@ export default function LoopsScreen() {
     if (currentFilter === 'closed') {
         return (
             <SafeAreaView style={styles.container}>
-                <StatusBar barStyle="light-content" />
+                <StatusBar barStyle="dark-content" />
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                        <CL color="white" size={28} />
+                        <CL color="#0F172A" size={28} />
                     </TouchableOpacity>
                     <View style={styles.headerTitleContainer}>
                         <Text style={styles.headerTitle}>{headerTitle}</Text>
@@ -114,11 +114,11 @@ export default function LoopsScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="light-content" />
+            <StatusBar barStyle="dark-content" />
 
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <CL color="white" size={28} />
+                    <CL color="#0F172A" size={28} />
                 </TouchableOpacity>
                 <View style={styles.headerTitleContainer}>
                     <Text style={styles.headerTitle}>{headerTitle}</Text>
@@ -134,7 +134,7 @@ export default function LoopsScreen() {
             ) : currentFilter === 'stalled' ? (
                 stale.length === 0 ? (
                     <View style={styles.center}>
-                        <Sun size={48} color="#334155" />
+                        <Sun size={48} color="#CBD5E1" />
                         <Text style={styles.emptyTitle}>Sin pendientes estancados</Text>
                         <Text style={styles.emptyText}>
                             Ningún pendiente lleva más de {STALE_DAYS} días sin avance. Buen ritmo de ejecución.
@@ -171,7 +171,7 @@ export default function LoopsScreen() {
                 )
             ) : items.length === 0 ? (
                 <View style={styles.center}>
-                    <Zap size={48} color="#334155" />
+                    <Zap size={48} color="#CBD5E1" />
                     <Text style={styles.emptyTitle}>Sin pendientes abiertos</Text>
                     <Text style={styles.emptyText}>
                         Cuando registres una memoria o converses en el chat, los
@@ -331,21 +331,21 @@ const SimpleCard = ({ item, onClose, moveLabel, onMove }: {
 );
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#020617' },
+    container: { flex: 1, backgroundColor: '#F8FAFC' },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 12,
         paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.06)',
+        borderBottomColor: 'rgba(15, 23, 42, 0.08)',
     },
     backBtn: { padding: 8 },
     headerTitleContainer: { flex: 1, alignItems: 'center' },
-    headerTitle: { color: 'white', fontSize: 16, fontWeight: '900', letterSpacing: 2 },
+    headerTitle: { color: '#0F172A', fontSize: 16, fontWeight: '900', letterSpacing: 2 },
     headerSub: { color: '#6366f1', fontSize: 11, fontWeight: '800', marginTop: 2 },
     center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-    emptyTitle: { color: 'white', fontSize: 18, fontWeight: '800', marginTop: 16 },
+    emptyTitle: { color: '#0F172A', fontSize: 18, fontWeight: '800', marginTop: 16 },
     emptyText: { color: '#64748b', fontSize: 14, textAlign: 'center', marginTop: 8, lineHeight: 20 },
     scrollContent: { paddingHorizontal: 16, paddingBottom: 40 },
 
@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
     laneEmpty: { color: '#475569', fontSize: 13, fontStyle: 'italic', paddingVertical: 8, lineHeight: 18 },
 
     returnCard: {
-        backgroundColor: '#1a1020',
+        backgroundColor: '#F8FAFC',
         borderRadius: 18,
         padding: 18,
         marginBottom: 12,
@@ -371,10 +371,10 @@ const styles = StyleSheet.create({
     themeChip: { backgroundColor: 'rgba(248,113,113,0.12)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
     themeChipText: { color: '#fca5a5', fontSize: 11, fontWeight: '800', letterSpacing: 0.3 },
     recurrenceText: { color: '#f87171', fontSize: 11, fontWeight: '800' },
-    avoidanceText: { color: '#f8fafc', fontSize: 16, fontWeight: '600', lineHeight: 23 },
-    returnDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginVertical: 14 },
+    avoidanceText: { color: '#0F172A', fontSize: 16, fontWeight: '600', lineHeight: 23 },
+    returnDivider: { height: 1, backgroundColor: 'rgba(15, 23, 42, 0.08)', marginVertical: 14 },
     nextLabel: { color: '#64748b', fontSize: 10, fontWeight: '900', letterSpacing: 1.5, marginBottom: 4 },
-    nextTask: { color: '#cbd5e1', fontSize: 14, lineHeight: 20 },
+    nextTask: { color: '#475569', fontSize: 14, lineHeight: 20 },
     closeBtn: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
         marginTop: 16, paddingVertical: 11, borderRadius: 12,
@@ -383,22 +383,22 @@ const styles = StyleSheet.create({
     closeBtnText: { color: '#10b981', fontSize: 14, fontWeight: '800', marginLeft: 8 },
 
     simpleCard: {
-        backgroundColor: '#151B33',
+        backgroundColor: '#FFFFFF',
         borderRadius: 16,
         padding: 14,
         marginBottom: 10,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.08)',
+        borderColor: 'rgba(15, 23, 42, 0.10)',
         flexDirection: 'row',
         alignItems: 'center',
     },
     checkbox: {
-        width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: '#334155',
+        width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: '#CBD5E1',
         alignItems: 'center', justifyContent: 'center', marginRight: 14,
     },
-    simpleTask: { color: '#fff', fontSize: 15, fontWeight: '600', marginBottom: 6, lineHeight: 20 },
+    simpleTask: { color: '#0F172A', fontSize: 15, fontWeight: '600', marginBottom: 6, lineHeight: 20 },
     simpleBadges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-    categoryBadge: { backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+    categoryBadge: { backgroundColor: 'rgba(15, 23, 42, 0.06)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
     categoryText: { color: '#94a3b8', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase' },
     priorityBadge: { backgroundColor: 'rgba(239,68,68,0.1)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
     priorityText: { color: '#ef4444', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase' },
