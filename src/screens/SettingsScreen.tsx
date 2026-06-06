@@ -1663,7 +1663,7 @@ const styles = StyleSheet.create({
         letterSpacing: 1,
     },
     catCountBadge: {
-        backgroundColor: 'rgba(0,0,0,0.3)',
+        backgroundColor: 'rgba(15, 23, 42, 0.08)',
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 10,
