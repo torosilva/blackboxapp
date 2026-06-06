@@ -15,7 +15,7 @@
             "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.blackboxmind.app",
-      "buildNumber": "4",
+      "buildNumber": "20",
       "config": {
         "usesNonExemptEncryption": false
       }
