@@ -1,14 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WELCOME_HTML } from './welcomeHtml';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeTokens } from '../theme/tokens';
 
 const STORAGE_KEY = 'BLACKBOX_WELCOME_V1_SEEN';
 
 interface Props { forceShow?: boolean; onClose?: () => void; }
 
 const WelcomeModal: React.FC<Props> = ({ forceShow, onClose }) => {
+    const { tokens } = useTheme();
+    const styles = useMemo(() => makeStyles(tokens), [tokens]);
     const [visible, setVisible] = useState(false);
 
     useEffect(() => {
@@ -46,24 +50,24 @@ const WelcomeModal: React.FC<Props> = ({ forceShow, onClose }) => {
     );
 };
 
-const styles = StyleSheet.create({
-    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
+const makeStyles = (tokens: ThemeTokens) => StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: tokens.bg.overlay, justifyContent: 'flex-end' },
     sheet: {
-        backgroundColor: '#020617',
+        backgroundColor: tokens.bg.page,
         borderTopLeftRadius: 32, borderTopRightRadius: 32,
         paddingTop: 12, paddingBottom: 24, paddingHorizontal: 16,
         height: '92%',
-        borderTopWidth: 1, borderColor: 'rgba(99,102,241,0.3)',
+        borderTopWidth: 1, borderColor: tokens.accent.indigo,
     },
-    handle: { width: 40, height: 4, backgroundColor: '#334155', borderRadius: 2, alignSelf: 'center', marginBottom: 8 },
-    web: { flex: 1, backgroundColor: '#020617' },
+    handle: { width: 40, height: 4, backgroundColor: tokens.border.strong, borderRadius: 2, alignSelf: 'center', marginBottom: 8 },
+    web: { flex: 1, backgroundColor: tokens.bg.page },
     cta: {
-        backgroundColor: '#6366f1', paddingVertical: 18, borderRadius: 20,
+        backgroundColor: tokens.accent.indigo, paddingVertical: 18, borderRadius: 20,
         alignItems: 'center', marginTop: 14,
-        shadowColor: '#6366f1', shadowOffset: { width: 0, height: 6 },
+        shadowColor: tokens.accent.indigo, shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
     },
-    ctaText: { color: 'white', fontWeight: 'bold', fontSize: 17, letterSpacing: 0.3 },
+    ctaText: { color: tokens.text.onAccent, fontWeight: 'bold', fontSize: 17, letterSpacing: 0.3 },
 });
 
 export default WelcomeModal;

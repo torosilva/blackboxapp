@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Modal } from 'react-native';
 import Animated, {
     useSharedValue,
@@ -9,6 +9,8 @@ import Animated, {
     withDelay
 } from 'react-native-reanimated';
 import { Brain, Box } from 'lucide-react-native';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeTokens } from '../theme/tokens';
 
 interface AILoadingOverlayProps {
     visible: boolean;
@@ -16,6 +18,8 @@ interface AILoadingOverlayProps {
 }
 
 const AILoadingOverlay: React.FC<AILoadingOverlayProps> = ({ visible, message = "Analizando tu mente..." }) => {
+    const { tokens } = useTheme();
+    const styles = useMemo(() => makeStyles(tokens), [tokens]);
     const brainScale = useSharedValue(1);
     const cubeRotate = useSharedValue(0);
     const cubeTranslateY = useSharedValue(0);
@@ -101,12 +105,12 @@ const AILoadingOverlay: React.FC<AILoadingOverlayProps> = ({ visible, message = 
                     <View style={styles.animationContainer}>
                         {/* The "Cube" */}
                         <Animated.View style={[styles.iconWrapper, animatedCubeStyle]}>
-                            <Box size={40} color="#818cf8" strokeWidth={1.5} />
+                            <Box size={40} color={tokens.text.link} strokeWidth={1.5} />
                         </Animated.View>
 
                         {/* The "Brain" */}
                         <Animated.View style={[styles.iconWrapper, animatedBrainStyle, styles.brainIcon]}>
-                            <Brain size={60} color="#a855f7" strokeWidth={1.5} />
+                            <Brain size={60} color={tokens.accent.purple} strokeWidth={1.5} />
                         </Animated.View>
                     </View>
 
@@ -120,10 +124,10 @@ const AILoadingOverlay: React.FC<AILoadingOverlayProps> = ({ visible, message = 
     );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (tokens: ThemeTokens) => StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(11, 16, 33, 0.95)',
+        backgroundColor: tokens.bg.overlay,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -145,7 +149,7 @@ const styles = StyleSheet.create({
         // The brain is central
     },
     loadingText: {
-        color: 'white',
+        color: tokens.text.primary,
         fontSize: 18,
         fontWeight: '600',
         letterSpacing: 1,
@@ -155,14 +159,14 @@ const styles = StyleSheet.create({
     progressBarBg: {
         width: '100%',
         height: 4,
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: tokens.border.subtle,
         borderRadius: 2,
         overflow: 'hidden',
     },
     progressBarFill: {
         width: '60%', // Static for now, or could be animated
         height: '100%',
-        backgroundColor: '#818cf8',
+        backgroundColor: tokens.text.link,
     }
 });
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -65,6 +65,8 @@ import { useAuth } from '../context/AuthContext';
 import { SupabaseService } from '../services/SupabaseService';
 import AILoadingOverlay from '../components/AILoadingOverlay';
 import { NotificationService } from '../services/notificationService';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeTokens } from '../theme/tokens';
 
 // Category → short label + color, so memorias are differentiable at a glance.
 const CATEGORY_META: Record<string, { label: string; color: string }> = {
@@ -77,6 +79,8 @@ const CATEGORY_META: Record<string, { label: string; color: string }> = {
 const catMeta = (c?: string) => CATEGORY_META[(c || '').toUpperCase()] || { label: c || 'General', color: '#64748b' };
 
 const HomeScreen = () => {
+  const { tokens } = useTheme();
+  const styles = useMemo(() => makeStyles(tokens), [tokens]);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
   const [entries, setEntries] = useState<any[]>([]);
@@ -461,7 +465,7 @@ const HomeScreen = () => {
 
   return (
     <SAV style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={tokens.statusBar} translucent backgroundColor="transparent" />
 
       {/* Premium AI Loading Overlay */}
       <Overlay
@@ -485,16 +489,16 @@ const HomeScreen = () => {
           }}
           accessibilityLabel="Volver"
         >
-          <ChevronLeft size={24} color="#94a3b8" />
+          <ChevronLeft size={24} color={tokens.text.muted} />
         </TO>
         <TO
           style={styles.iconButton}
           onPress={() => setIsMinimized(!isMinimized)}
         >
           <Animated.View style={[styles.brainIconContainer, animatedBrainStyle]}>
-            <B size={24} color={!isMinimized ? "#6366f1" : "#94a3b8"} />
+            <B size={24} color={!isMinimized ? tokens.accent.indigo : tokens.text.muted} />
             <View style={styles.gemOverlay}>
-              <D size={10} color="#00f2ff" fill="#38bdf8" />
+              <D size={10} color="#00f2ff" fill={tokens.accent.sky} />
             </View>
           </Animated.View>
           {isMinimized && <View style={styles.notificationDot} />}
@@ -520,13 +524,13 @@ const HomeScreen = () => {
           style={styles.iconButton}
           onPress={() => navigation.navigate('Loops')}
         >
-          <Z size={22} color="#94a3b8" />
+          <Z size={22} color={tokens.text.muted} />
         </TO>
         <TO
           style={styles.iconButton}
           onPress={() => navigation.navigate('Dashboard')}
         >
-          <LayoutDashboard size={22} color="#94a3b8" />
+          <LayoutDashboard size={22} color={tokens.text.muted} />
         </TO>
       </View>
 
@@ -539,14 +543,14 @@ const HomeScreen = () => {
               hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
               style={{ padding: 4 }}
             >
-              <SR size={20} color="#94a3b8" />
+              <SR size={20} color={tokens.text.muted} />
             </TO>
 
             <TextInput
               ref={searchInputRef}
               style={styles.searchInput}
               placeholder={semanticActive ? "Búsqueda semántica activa" : "Explorar memorias..."}
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={tokens.text.muted}
               value={searchQuery}
               onChangeText={(text: any) => {
                 setSearchQuery(text);
@@ -554,17 +558,17 @@ const HomeScreen = () => {
             />
 
             {semanticLoading && (
-              <ActivityIndicator size="small" color="#a855f7" style={{ marginRight: 8 }} />
+              <ActivityIndicator size="small" color={tokens.accent.purple} style={{ marginRight: 8 }} />
             )}
             {semanticActive && !semanticLoading && (
               <View style={{
-                backgroundColor: 'rgba(168, 85, 247, 0.15)',
+                backgroundColor: tokens.accent.purpleSoft,
                 paddingHorizontal: 8,
                 paddingVertical: 3,
                 borderRadius: 6,
                 marginRight: 8,
               }}>
-                <Text style={{ color: '#a855f7', fontSize: 10, fontWeight: '700' }}>SEMÁNTICA</Text>
+                <Text style={{ color: tokens.accent.purple, fontSize: 10, fontWeight: '700' }}>SEMÁNTICA</Text>
               </View>
             )}
 
@@ -572,7 +576,7 @@ const HomeScreen = () => {
               style={[styles.miniFilterBtn, (activeFilter !== 'all' || showFilters) && styles.miniFilterBtnActive]}
               onPress={() => setShowFilters(!showFilters)}
             >
-              <F size={20} color={activeFilter !== 'all' || showFilters ? 'white' : '#94a3b8'} />
+              <F size={20} color={activeFilter !== 'all' || showFilters ? tokens.text.onAccent : tokens.text.muted} />
             </TO>
           </View>
 
@@ -621,7 +625,7 @@ const HomeScreen = () => {
       <ScrollView
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchData} tintColor="#6366f1" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchData} tintColor={tokens.accent.indigo} />}
       >
         {/* AI Summary & Wellness Card */}
         {!isMinimized && (
@@ -629,16 +633,16 @@ const HomeScreen = () => {
             <View style={styles.summaryHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                 <View style={styles.sparkleIcon}>
-                  <Sparkles size={16} color="white" />
+                  <Sparkles size={16} color={tokens.text.onAccent} />
                 </View>
                 <Text style={styles.summaryTitle}>Insight Diario - BlackBoxMind.ai</Text>
               </View>
               <TouchableOpacity onPress={() => setIsMinimized(true)} style={styles.minimizeBtn}>
-                <X size={16} color="#94a3b8" />
+                <X size={16} color={tokens.text.muted} />
               </TouchableOpacity>
             </View>
             {!!summaryLoading ? (
-              <ActivityIndicator size="small" color="#a855f7" style={{ marginVertical: 10 }} />
+              <ActivityIndicator size="small" color={tokens.accent.purple} style={{ marginVertical: 10 }} />
             ) : (
               <>
                 <Text style={styles.summaryContent}>
@@ -653,7 +657,7 @@ const HomeScreen = () => {
                   >
                     {summary.action_items.slice(0, 2).map((item: any, idx: number) => (
                       <View key={idx} style={styles.miniLoopItem}>
-                        <Zap size={12} color="#818cf8" />
+                        <Zap size={12} color={tokens.text.link} />
                         <Text style={styles.miniLoopText} numberOfLines={1}>{item.description}</Text>
                       </View>
                     ))}
@@ -692,13 +696,13 @@ const HomeScreen = () => {
 
         {isCategoryDrill && (
           <TouchableOpacity onPress={() => setActiveFilter('all')} style={styles.backToCats} activeOpacity={0.7}>
-            <ChevronLeft size={16} color="#94a3b8" />
+            <ChevronLeft size={16} color={tokens.text.muted} />
             <Text style={styles.backToCatsText}>Todas las categorías</Text>
           </TouchableOpacity>
         )}
 
         {loading ? (
-          <ActivityIndicator size="large" color="#6366f1" style={{ marginTop: 40 }} />
+          <ActivityIndicator size="large" color={tokens.accent.indigo} style={{ marginTop: 40 }} />
         ) : entries.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No hay registros aún.</Text>
@@ -744,10 +748,10 @@ const HomeScreen = () => {
                       {g.count} memoria{g.count > 1 ? 's' : ''} · últ. {new Date(g.last).toLocaleDateString()}
                     </Text>
                   </View>
-                  <Text style={[styles.catCardSent, { color: avg > 0.1 ? '#10b981' : avg < -0.1 ? '#ef4444' : '#94a3b8' }]}>
+                  <Text style={[styles.catCardSent, { color: avg > 0.1 ? tokens.accent.green : avg < -0.1 ? tokens.accent.red : tokens.text.muted }]}>
                     {avg > 0.1 ? '▲' : avg < -0.1 ? '▼' : '■'} {avg.toFixed(1)}
                   </Text>
-                  <ChevronRight size={18} color="#475569" />
+                  <ChevronRight size={18} color={tokens.text.disabled} />
                 </TouchableOpacity>
               );
             })}
@@ -768,10 +772,10 @@ const HomeScreen = () => {
               <View style={styles.cardHeader}>
                 <View style={styles.cardHeaderLeft}>
                   {entry.action_items && entry.action_items.length > 0 && (
-                    <Target size={14} color="#818cf8" style={{ marginRight: 6 }} />
+                    <Target size={14} color={tokens.text.link} style={{ marginRight: 6 }} />
                   )}
                   {entry.strategic_insight?.detected_bias && (
-                    <AlertTriangle size={14} color="#f59e0b" style={{ marginRight: 6 }} />
+                    <AlertTriangle size={14} color={tokens.accent.amber} style={{ marginRight: 6 }} />
                   )}
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={styles.entryDate}>{new Date(entry.created_at).toLocaleDateString()}</Text>
@@ -800,7 +804,7 @@ const HomeScreen = () => {
                 <View style={styles.cardAnalysis}>
                   <View style={styles.analysisDivider} />
                   <View style={styles.analysisHeader}>
-                    <Sparkles size={14} color="#a855f7" />
+                    <Sparkles size={14} color={tokens.accent.purple} />
                     <Text style={styles.analysisLabel}>REPORTE BlackBoxMind.ai</Text>
                   </View>
                   {!!entry.summary && (
@@ -810,7 +814,7 @@ const HomeScreen = () => {
                   )}
                   {!!entry.wellness_recommendation && (
                     <View style={styles.miniRecommendation}>
-                      <Zap size={12} color="#f59e0b" />
+                      <Zap size={12} color={tokens.accent.amber} />
                       <Text style={styles.miniRecommendationText} numberOfLines={1}>
                         {typeof entry.wellness_recommendation === 'string'
                           ? entry.wellness_recommendation
@@ -832,7 +836,7 @@ const HomeScreen = () => {
           onPress={() => navigation.navigate('Main')}
           style={styles.fabMain}
         >
-          <P size={24} color="white" style={{ marginRight: 8 }} />
+          <P size={24} color={tokens.text.onAccent} style={{ marginRight: 8 }} />
           <Text style={styles.fabText}>Nueva Entrada</Text>
         </TO>
 
@@ -840,15 +844,15 @@ const HomeScreen = () => {
           onPress={() => navigation.navigate('ChatHub')}
           style={styles.fabSecondary}
         >
-          <Bo size={24} color="white" />
+          <Bo size={24} color={tokens.text.onAccent} />
         </TO>
       </View>
     </SAV>
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a' },
+const makeStyles = (tokens: ThemeTokens) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: tokens.bg.page },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 24,
@@ -857,7 +861,7 @@ const styles = StyleSheet.create({
   },
   streakChip: { backgroundColor: 'rgba(249,115,22,0.15)', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4, marginRight: 4, alignSelf: 'center' },
   streakText: { color: '#fb923c', fontSize: 12, fontWeight: '900' },
-  dateText: { color: '#6366f1', fontSize: 12, fontWeight: '800', letterSpacing: 1.5, marginBottom: 4 },
+  dateText: { color: tokens.accent.indigo, fontSize: 12, fontWeight: '800', letterSpacing: 1.5, marginBottom: 4 },
   logoCenterContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   headerLogo: { width: 280, height: 100 },
   searchIndicator: {
@@ -865,39 +869,39 @@ const styles = StyleSheet.create({
     bottom: 25,
     width: 40,
     height: 3,
-    backgroundColor: '#6366f1',
+    backgroundColor: tokens.accent.indigo,
     borderRadius: 2
   },
-  iconButton: { backgroundColor: 'rgba(255,255,255,0.03)', width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', position: 'relative' },
-  notificationDot: { position: 'absolute', top: 10, right: 10, width: 8, height: 8, backgroundColor: '#6366f1', borderRadius: 4, borderWidth: 1, borderColor: '#0f172a' },
+  iconButton: { backgroundColor: tokens.bg.scrim, width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: tokens.border.subtle, position: 'relative' },
+  notificationDot: { position: 'absolute', top: 10, right: 10, width: 8, height: 8, backgroundColor: tokens.accent.indigo, borderRadius: 4, borderWidth: 1, borderColor: tokens.bg.page },
   brainIconContainer: { position: 'relative', width: 24, height: 24, justifyContent: 'center', alignItems: 'center' },
   gemOverlay: { position: 'absolute', top: -2, right: -2, shadowColor: '#00f2ff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 4 },
-  moodIconContainer: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 12 },
+  moodIconContainer: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center', backgroundColor: tokens.bg.scrim, borderRadius: 12 },
   searchContainer: { paddingHorizontal: 24, marginBottom: 10 },
   filterScroll: { marginTop: 16 },
   filterContent: { gap: 10, paddingRight: 24 },
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: tokens.bg.scrim,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: tokens.border.subtle,
   },
   filterChipActive: {
-    backgroundColor: 'rgba(129, 140, 248, 0.2)',
-    borderColor: '#818cf8',
+    backgroundColor: tokens.accent.indigoSoft,
+    borderColor: tokens.text.link,
   },
-  filterChipText: { color: '#94a3b8', fontSize: 13, fontWeight: '600' },
-  filterChipTextActive: { color: 'white' },
-  filterBtnActive: { backgroundColor: '#818cf8' },
+  filterChipText: { color: tokens.text.muted, fontSize: 13, fontWeight: '600' },
+  filterChipTextActive: { color: tokens.text.onAccent },
+  filterBtnActive: { backgroundColor: tokens.text.link },
   searchBar: {
-    backgroundColor: '#1e293b', flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, height: 56, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)'
+    backgroundColor: tokens.bg.input, flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, height: 56, borderRadius: 16, borderWidth: 1, borderColor: tokens.border.subtle
   },
-  searchInput: { color: '#ffffff', flex: 1, marginLeft: 12, fontSize: 16 },
+  searchInput: { color: tokens.text.primary, flex: 1, marginLeft: 12, fontSize: 16 },
   searchBarRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   miniFilterBtn: {
     padding: 8,
@@ -905,61 +909,61 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   miniFilterBtnActive: {
-    backgroundColor: '#6366f1',
+    backgroundColor: tokens.accent.indigo,
   },
   filterBtn: {
-    width: 56, height: 56, borderRadius: 16, backgroundColor: '#1e293b',
-    justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)'
+    width: 56, height: 56, borderRadius: 16, backgroundColor: tokens.bg.input,
+    justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: tokens.border.subtle
   },
   cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   scroll: { flex: 1, paddingHorizontal: 24 },
   summaryCard: {
-    backgroundColor: 'rgba(168, 85, 247, 0.1)', borderRadius: 24, padding: 24,
-    marginBottom: 30, borderWidth: 1, borderColor: 'rgba(168, 85, 247, 0.3)'
+    backgroundColor: tokens.accent.purpleSoft, borderRadius: 24, padding: 24,
+    marginBottom: 30, borderWidth: 1, borderColor: tokens.accent.purple
   },
   summaryHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  sparkleIcon: { backgroundColor: '#a855f7', padding: 6, borderRadius: 8, marginRight: 10 },
-  summaryTitle: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' },
+  sparkleIcon: { backgroundColor: tokens.accent.purple, padding: 6, borderRadius: 8, marginRight: 10 },
+  summaryTitle: { color: tokens.text.primary, fontSize: 16, fontWeight: 'bold' },
   minimizeBtn: { padding: 4 },
   summaryContent: { color: '#e9d5ff', fontSize: 15, lineHeight: 22, fontStyle: 'italic' },
-  sectionTitle: { color: '#ffffff', fontSize: 22, fontWeight: 'bold', marginBottom: 16 },
+  sectionTitle: { color: tokens.text.primary, fontSize: 22, fontWeight: 'bold', marginBottom: 16 },
   card: {
-    backgroundColor: '#1e293b', borderRadius: 24, padding: 24, marginBottom: 16,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)'
+    backgroundColor: tokens.bg.input, borderRadius: 24, padding: 24, marginBottom: 16,
+    borderWidth: 1, borderColor: tokens.border.subtle
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  entryDate: { color: '#64748b', fontSize: 12, fontWeight: '600' },
+  entryDate: { color: tokens.text.muted, fontSize: 12, fontWeight: '600' },
   catPill: { flexDirection: 'row', alignItems: 'center', marginLeft: 10, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, borderWidth: 1 },
   catDot: { width: 6, height: 6, borderRadius: 3, marginRight: 5 },
   catPillText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
   backToCats: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, alignSelf: 'flex-start' },
-  backToCatsText: { color: '#94a3b8', fontSize: 13, fontWeight: '700', marginLeft: 4 },
-  overviewLabel: { color: '#6366f1', fontSize: 11, fontWeight: '900', letterSpacing: 2, marginBottom: 6, marginTop: 4 },
-  overviewHint: { color: '#64748b', fontSize: 11, fontWeight: '600', marginBottom: 12, lineHeight: 15 },
-  recentChip: { width: 150, padding: 14, borderRadius: 16, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.03)', marginRight: 10 },
+  backToCatsText: { color: tokens.text.muted, fontSize: 13, fontWeight: '700', marginLeft: 4 },
+  overviewLabel: { color: tokens.accent.indigo, fontSize: 11, fontWeight: '900', letterSpacing: 2, marginBottom: 6, marginTop: 4 },
+  overviewHint: { color: tokens.text.muted, fontSize: 11, fontWeight: '600', marginBottom: 12, lineHeight: 15 },
+  recentChip: { width: 150, padding: 14, borderRadius: 16, borderWidth: 1, backgroundColor: tokens.bg.scrim, marginRight: 10 },
   recentChipCat: { fontSize: 9, fontWeight: '900', letterSpacing: 1, marginBottom: 6 },
-  recentChipTitle: { color: '#e2e8f0', fontSize: 13, fontWeight: '700', lineHeight: 17, minHeight: 34 },
-  recentChipDate: { color: '#475569', fontSize: 10, fontWeight: '600', marginTop: 8 },
-  catCard: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 18, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.03)', marginBottom: 12 },
+  recentChipTitle: { color: tokens.text.primary, fontSize: 13, fontWeight: '700', lineHeight: 17, minHeight: 34 },
+  recentChipDate: { color: tokens.text.disabled, fontSize: 10, fontWeight: '600', marginTop: 8 },
+  catCard: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 18, borderWidth: 1, backgroundColor: tokens.bg.scrim, marginBottom: 12 },
   catCardDot: { width: 10, height: 10, borderRadius: 5, marginRight: 14 },
   catCardTitle: { fontSize: 15, fontWeight: '900', letterSpacing: 0.5 },
-  catCardMeta: { color: '#94a3b8', fontSize: 12, fontWeight: '600', marginTop: 3 },
+  catCardMeta: { color: tokens.text.muted, fontSize: 12, fontWeight: '600', marginTop: 3 },
   catCardSent: { fontSize: 13, fontWeight: '900', marginRight: 10 },
-  entryTitle: { color: '#ffffff', fontSize: 20, fontWeight: 'bold', marginBottom: 12 },
-  entryPreview: { color: '#94a3b8', fontSize: 15, lineHeight: 22 },
+  entryTitle: { color: tokens.text.primary, fontSize: 20, fontWeight: 'bold', marginBottom: 12 },
+  entryPreview: { color: tokens.text.muted, fontSize: 15, lineHeight: 22 },
   moodBadge: {
-    color: '#6366f1', fontSize: 10, fontWeight: 'bold',
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    color: tokens.accent.indigo, fontSize: 10, fontWeight: 'bold',
+    backgroundColor: tokens.accent.indigoSoft,
     alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2,
     borderRadius: 6, marginTop: 4, textTransform: 'uppercase'
   },
   cardAnalysis: {
     marginTop: 24,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: tokens.border.subtle,
     borderRadius: 20,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.03)',
+    borderColor: tokens.bg.scrim,
   },
   analysisDivider: {
     display: 'none', // Removed in favor of box background
@@ -971,14 +975,14 @@ const styles = StyleSheet.create({
     gap: 6
   },
   analysisLabel: {
-    color: '#a855f7',
+    color: tokens.accent.purple,
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 1.5,
     textTransform: 'uppercase'
   },
   analysisSummary: {
-    color: '#cbd5e1',
+    color: tokens.text.secondary,
     fontSize: 13,
     lineHeight: 18,
     fontStyle: 'italic',
@@ -987,38 +991,38 @@ const styles = StyleSheet.create({
   miniRecommendation: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    backgroundColor: tokens.accent.amberSoft,
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
     gap: 6,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.2)'
+    borderColor: tokens.accent.amber
   },
   miniRecommendationText: {
-    color: '#f59e0b',
+    color: tokens.accent.amber,
     fontSize: 11,
     fontWeight: '700'
   },
   recommendationBox: {
-    marginTop: 20, padding: 16, backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 16, borderLeftWidth: 3, borderLeftColor: '#a855f7'
+    marginTop: 20, padding: 16, backgroundColor: tokens.bg.scrim,
+    borderRadius: 16, borderLeftWidth: 3, borderLeftColor: tokens.accent.purple
   },
   recommendationHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 },
   recommendationType: {
-    backgroundColor: '#a855f7', color: 'white', fontSize: 9,
+    backgroundColor: tokens.accent.purple, color: tokens.text.onAccent, fontSize: 9,
     fontWeight: 'bold', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4
   },
-  recommendationTitle: { color: '#ffffff', fontSize: 14, fontWeight: 'bold' },
-  recommendationDesc: { color: '#94a3b8', fontSize: 13, lineHeight: 18, marginBottom: 12 },
+  recommendationTitle: { color: tokens.text.primary, fontSize: 14, fontWeight: 'bold' },
+  recommendationDesc: { color: tokens.text.muted, fontSize: 13, lineHeight: 18, marginBottom: 12 },
   actionButton: {
-    backgroundColor: '#ffffff', paddingVertical: 8, borderRadius: 10,
+    backgroundColor: tokens.bg.inputInverted, paddingVertical: 8, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center'
   },
-  actionButtonText: { color: '#0f172a', fontSize: 13, fontWeight: 'bold' },
+  actionButtonText: { color: tokens.text.onInverted, fontSize: 13, fontWeight: 'bold' },
   emptyContainer: { alignItems: 'center', marginTop: 50 },
-  emptyText: { color: '#475569', fontSize: 16 },
+  emptyText: { color: tokens.text.disabled, fontSize: 16 },
   weeklyCard: {
     backgroundColor: 'rgba(30, 41, 59, 0.5)',
     borderRadius: 24,
@@ -1027,8 +1031,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(168, 85, 247, 0.2)',
-    shadowColor: '#a855f7',
+    borderColor: tokens.accent.purple,
+    shadowColor: tokens.accent.purple,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
@@ -1045,18 +1049,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#3730a3'
   },
-  weeklyTitle: { color: 'white', fontSize: 16, fontWeight: 'bold' },
-  weeklySubtitle: { color: '#64748b', fontSize: 12, marginTop: 2 },
+  weeklyTitle: { color: tokens.text.primary, fontSize: 16, fontWeight: 'bold' },
+  weeklySubtitle: { color: tokens.text.muted, fontSize: 12, marginTop: 2 },
   fabContainer: { position: 'absolute', bottom: 30, left: 24, right: 24, flexDirection: 'row', gap: 12 },
   fabMain: {
-    flex: 1, backgroundColor: '#6366f1', height: 64, borderRadius: 20,
+    flex: 1, backgroundColor: tokens.accent.indigo, height: 64, borderRadius: 20,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center'
   },
   fabSecondary: {
     backgroundColor: '#ec4899', width: 64, height: 64, borderRadius: 20,
     alignItems: 'center', justifyContent: 'center'
   },
-  fabText: { color: '#ffffff', fontSize: 18, fontWeight: 'bold' },
+  fabText: { color: tokens.text.primary, fontSize: 18, fontWeight: 'bold' },
   miniLoopsList: {
     marginTop: 15,
     marginBottom: 5,
@@ -1077,7 +1081,7 @@ const styles = StyleSheet.create({
     flex: 1
   },
   moreLoopsText: {
-    color: '#818cf8',
+    color: tokens.text.link,
     fontSize: 11,
     fontWeight: 'bold',
     marginLeft: 22,

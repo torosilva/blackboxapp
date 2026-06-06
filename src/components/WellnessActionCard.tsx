@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Zap, Sparkles } from 'lucide-react-native';
 import { WellnessRecommendation } from '../core-types';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeTokens } from '../theme/tokens';
 
 interface Props {
     recommendation: WellnessRecommendation | string | null | undefined;
@@ -9,12 +11,15 @@ interface Props {
 }
 
 export const WellnessActionCard: React.FC<Props> = ({ recommendation, summary }) => {
+    const { tokens } = useTheme();
+    const styles = useMemo(() => makeStyles(tokens), [tokens]);
+
     if (!recommendation && !summary) return null;
 
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Sparkles size={20} color="#a855f7" />
+                <Sparkles size={20} color={tokens.accent.purple} />
                 <Text style={styles.title}>INSIGHT ESTRATÉGICO BlackBoxMind.ai</Text>
             </View>
 
@@ -27,7 +32,7 @@ export const WellnessActionCard: React.FC<Props> = ({ recommendation, summary })
             {recommendation && (
                 <View style={styles.recommendationBox}>
                     <View style={styles.recHeader}>
-                        <Zap size={16} color="#f59e0b" />
+                        <Zap size={16} color={tokens.accent.amber} />
                         <Text style={styles.recTitle}>
                             {typeof recommendation === 'string'
                                 ? 'Recomendación Estratégica'
@@ -45,13 +50,13 @@ export const WellnessActionCard: React.FC<Props> = ({ recommendation, summary })
     );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (tokens: ThemeTokens) => StyleSheet.create({
     container: {
-        backgroundColor: 'rgba(168, 85, 247, 0.05)',
+        backgroundColor: tokens.accent.purpleSoft,
         borderRadius: 24,
         padding: 24,
         borderWidth: 1,
-        borderColor: 'rgba(168, 85, 247, 0.2)',
+        borderColor: tokens.accent.purple,
         marginBottom: 30
     },
     header: {
@@ -61,7 +66,7 @@ const styles = StyleSheet.create({
         gap: 10
     },
     title: {
-        color: '#a855f7',
+        color: tokens.accent.purple,
         fontSize: 12,
         fontWeight: '900',
         letterSpacing: 1.5
@@ -70,17 +75,17 @@ const styles = StyleSheet.create({
         marginBottom: 20
     },
     summaryText: {
-        color: '#e9d5ff',
+        color: tokens.text.primary,
         fontSize: 15,
         lineHeight: 24,
         fontStyle: 'italic'
     },
     recommendationBox: {
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        backgroundColor: tokens.bg.scrim,
         borderRadius: 16,
         padding: 16,
         borderLeftWidth: 3,
-        borderLeftColor: '#f59e0b'
+        borderLeftColor: tokens.accent.amber
     },
     recHeader: {
         flexDirection: 'row',
@@ -89,12 +94,12 @@ const styles = StyleSheet.create({
         gap: 8
     },
     recTitle: {
-        color: '#ffffff',
+        color: tokens.text.primary,
         fontSize: 14,
         fontWeight: 'bold'
     },
     recDesc: {
-        color: '#94a3b8',
+        color: tokens.text.muted,
         fontSize: 13,
         lineHeight: 18
     }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     View,
     Text,
@@ -29,19 +29,23 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { SupabaseService } from '../services/SupabaseService';
 import { LinearGradient } from 'expo-linear-gradient';
-
-const CATEGORIES = [
-    { id: 'BUSINESS', label: 'Estrategia', icon: Briefcase, color: '#818cf8', bg: 'rgba(129, 140, 248, 0.1)' },
-    { id: 'PERSONAL', label: 'Personales', icon: User, color: '#facc15', bg: 'rgba(250, 204, 21, 0.1)' },
-    { id: 'DEVELOPMENT', label: 'Desarrollo Personal', icon: Sparkles, color: '#a855f7', bg: 'rgba(168, 85, 247, 0.1)' },
-    { id: 'WELLNESS', label: 'Bienestar', icon: Heart, color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
-    { id: 'GENERAL', label: 'Consulta General', icon: MessageSquare, color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.1)' },
-];
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeTokens } from '../theme/tokens';
 
 const ChatHubScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const { user } = useAuth();
     const isFocused = useIsFocused();
+    const { tokens } = useTheme();
+    const styles = useMemo(() => makeStyles(tokens), [tokens]);
+
+    const CATEGORIES = useMemo(() => ([
+        { id: 'BUSINESS', label: 'Estrategia', icon: Briefcase, color: tokens.text.link, bg: tokens.accent.indigoSoft },
+        { id: 'PERSONAL', label: 'Personales', icon: User, color: tokens.accent.yellow, bg: tokens.accent.yellowSoft },
+        { id: 'DEVELOPMENT', label: 'Desarrollo Personal', icon: Sparkles, color: tokens.accent.purple, bg: tokens.accent.purpleSoft },
+        { id: 'WELLNESS', label: 'Bienestar', icon: Heart, color: tokens.accent.green, bg: tokens.accent.greenSoft },
+        { id: 'GENERAL', label: 'Consulta General', icon: MessageSquare, color: tokens.text.muted, bg: tokens.bg.chip },
+    ]), [tokens]);
     
     const [threads, setThreads] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -149,22 +153,22 @@ const ChatHubScreen = () => {
     if (loading && threads.length === 0) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#6366f1" />
+                <ActivityIndicator size="large" color={tokens.accent.indigo} />
             </View>
         );
     }
 
     return (
         <SAV style={styles.container}>
-            <StatusBar barStyle="light-content" />
-            
+            <StatusBar barStyle={tokens.statusBar} />
+
             {/* Header */}
             <View style={styles.header}>
                 <TO onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <ChevronLeft color="white" size={28} />
+                    <ChevronLeft color={tokens.text.primary} size={28} />
                 </TO>
                 <View style={styles.headerTitleContainer}>
-                    <Sparkles size={20} color="#818cf8" />
+                    <Sparkles size={20} color={tokens.text.link} />
                     <Text style={styles.headerTitle}>HISTORIAL DE CHATS</Text>
                 </View>
                 <View style={{ width: 44 }} />
@@ -180,12 +184,12 @@ const ChatHubScreen = () => {
                         <View style={styles.sectionHeader}>
                             <Text style={styles.sectionTitle}>Conversaciones Recientes</Text>
                             <View style={{ flexDirection: 'row', gap: 8 }}>
-                                <TO style={[styles.addBtn, { backgroundColor: '#1e293b', borderWidth: 1, borderColor: '#334155' }]} onPress={handleQuickChat}>
-                                    <Sparkles size={16} color="#818cf8" />
-                                    <Text style={[styles.addBtnText, { color: '#818cf8' }]}>Flash</Text>
+                                <TO style={[styles.addBtn, { backgroundColor: tokens.bg.input, borderWidth: 1, borderColor: tokens.border.strong }]} onPress={handleQuickChat}>
+                                    <Sparkles size={16} color={tokens.text.link} />
+                                    <Text style={[styles.addBtnText, { color: tokens.text.link }]}>Flash</Text>
                                 </TO>
                                 <TO style={styles.addBtn} onPress={() => setShowNewThread(true)}>
-                                    <Plus size={16} color="white" />
+                                    <Plus size={16} color={tokens.text.onAccent} />
                                     <Text style={styles.addBtnText}>Nueva</Text>
                                 </TO>
                             </View>
@@ -193,7 +197,7 @@ const ChatHubScreen = () => {
 
                         {threads.length === 0 ? (
                             <View style={styles.emptyState}>
-                                <MessageSquare size={48} color="#1e293b" />
+                                <MessageSquare size={48} color={tokens.border.default} />
                                 <Text style={styles.emptyText}>No hay conversaciones activas.</Text>
                                 <Text style={styles.emptySubtext}>Inicia un nuevo hilo estratégico para comenzar.</Text>
                             </View>
@@ -221,9 +225,9 @@ const ChatHubScreen = () => {
                                             </Text>
                                         </View>
                                         <TO style={styles.deleteBtn} onPress={() => handleDeleteThread(thread.id)}>
-                                            <Trash2 size={16} color="#475569" />
+                                            <Trash2 size={16} color={tokens.text.disabled} />
                                         </TO>
-                                        <ChevronRight size={20} color="#1e293b" />
+                                        <ChevronRight size={20} color={tokens.border.default} />
                                     </TO>
                                 );
                             })
@@ -237,7 +241,7 @@ const ChatHubScreen = () => {
                         <TI
                             style={styles.input}
                             placeholder="Ej: Estrategia Q3, Plan de Salud..."
-                            placeholderTextColor="#475569"
+                            placeholderTextColor={tokens.text.disabled}
                             value={newThreadTitle}
                             onChangeText={setNewThreadTitle}
                             autoFocus
@@ -257,13 +261,13 @@ const ChatHubScreen = () => {
                                         ]}
                                         onPress={() => setSelectedCategory(cat.id)}
                                     >
-                                        <View style={[styles.catIconCircle, { backgroundColor: isSelected ? cat.color : '#1e293b' }]}>
-                                            <Icon size={24} color={isSelected ? 'white' : '#94a3b8'} />
+                                        <View style={[styles.catIconCircle, { backgroundColor: isSelected ? cat.color : tokens.bg.input }]}>
+                                            <Icon size={24} color={isSelected ? tokens.text.onAccent : tokens.text.muted} />
                                         </View>
-                                        <Text style={[styles.categoryLabel, isSelected && { color: 'white' }]}>
+                                        <Text style={[styles.categoryLabel, isSelected && { color: tokens.text.primary }]}>
                                             {cat.label}
                                         </Text>
-                                        <ChevronRight size={20} color={isSelected ? cat.color : '#1e293b'} style={{ marginLeft: 'auto' }} />
+                                        <ChevronRight size={20} color={isSelected ? cat.color : tokens.border.default} style={{ marginLeft: 'auto' }} />
                                     </TO>
                                 );
                             })}
@@ -278,7 +282,7 @@ const ChatHubScreen = () => {
                                 onPress={handleCreateThread}
                                 disabled={!newThreadTitle.trim() || loading}
                             >
-                                <LG colors={['#6366f1', '#4f46e5']} start={{x:0, y:0}} end={{x:1, y:0}} style={styles.btnGradient}>
+                                <LG colors={[tokens.accent.indigo, tokens.accent.indigoStrong]} start={{x:0, y:0}} end={{x:1, y:0}} style={styles.btnGradient}>
                                     <Text style={styles.createBtnText}>Crear y Empezar</Text>
                                 </LG>
                             </TO>
@@ -290,9 +294,9 @@ const ChatHubScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#020617' },
-    loadingContainer: { flex: 1, backgroundColor: '#020617', justifyContent: 'center', alignItems: 'center' },
+const makeStyles = (tokens: ThemeTokens) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: tokens.bg.page },
+    loadingContainer: { flex: 1, backgroundColor: tokens.bg.page, justifyContent: 'center', alignItems: 'center' },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -300,56 +304,56 @@ const styles = StyleSheet.create({
         paddingHorizontal: 15,
         paddingVertical: 15,
         borderBottomWidth: 1,
-        borderColor: '#1e293b'
+        borderColor: tokens.border.default
     },
     headerTitleContainer: { flexDirection: 'row', alignItems: 'center' },
-    headerTitle: { color: 'white', fontWeight: 'bold', letterSpacing: 2, marginLeft: 8 },
+    headerTitle: { color: tokens.text.primary, fontWeight: 'bold', letterSpacing: 2, marginLeft: 8 },
     backBtn: { padding: 8 },
-    hubSubtitle: { color: '#64748b', fontSize: 12, fontWeight: '600', paddingHorizontal: 20, paddingBottom: 8, lineHeight: 17 },
+    hubSubtitle: { color: tokens.text.muted, fontSize: 12, fontWeight: '600', paddingHorizontal: 20, paddingBottom: 8, lineHeight: 17 },
     scrollContent: { padding: 20 },
     sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    sectionTitle: { color: '#94a3b8', fontSize: 13, fontWeight: '900', letterSpacing: 1 },
-    addBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#6366f1', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
-    addBtnText: { color: 'white', fontWeight: 'bold', fontSize: 13, marginLeft: 4 },
+    sectionTitle: { color: tokens.text.muted, fontSize: 13, fontWeight: '900', letterSpacing: 1 },
+    addBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: tokens.accent.indigo, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+    addBtnText: { color: tokens.text.onAccent, fontWeight: 'bold', fontSize: 13, marginLeft: 4 },
     threadCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#0f172a',
+        backgroundColor: tokens.bg.card,
         padding: 16,
         borderRadius: 20,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.05)'
+        borderColor: tokens.border.subtle
     },
     catIcon: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
     threadInfo: { flex: 1 },
-    threadTitle: { color: 'white', fontSize: 16, fontWeight: 'bold', marginBottom: 2 },
-    threadDate: { color: '#475569', fontSize: 12 },
+    threadTitle: { color: tokens.text.primary, fontSize: 16, fontWeight: 'bold', marginBottom: 2 },
+    threadDate: { color: tokens.text.disabled, fontSize: 12 },
     deleteBtn: { padding: 8, marginRight: 8 },
     emptyState: { alignItems: 'center', marginTop: 80, gap: 16 },
-    emptyText: { color: '#cbd5e1', fontSize: 16, fontWeight: 'bold' },
-    emptySubtext: { color: '#475569', fontSize: 14, textAlign: 'center' },
+    emptyText: { color: tokens.text.secondary, fontSize: 16, fontWeight: 'bold' },
+    emptySubtext: { color: tokens.text.disabled, fontSize: 14, textAlign: 'center' },
     newThreadContainer: { gap: 20 },
-    newThreadHeading: { color: 'white', fontSize: 24, fontWeight: 'bold', marginBottom: 10 },
-    label: { color: '#94a3b8', fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 },
+    newThreadHeading: { color: tokens.text.primary, fontSize: 24, fontWeight: 'bold', marginBottom: 10 },
+    label: { color: tokens.text.muted, fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 },
     input: {
-        backgroundColor: '#0f172a',
+        backgroundColor: tokens.bg.card,
         borderRadius: 16,
         padding: 16,
-        color: 'white',
+        color: tokens.text.primary,
         fontSize: 16,
         borderWidth: 1,
-        borderColor: '#1e293b'
+        borderColor: tokens.border.default
     },
     categoryGrid: { flexDirection: 'column', gap: 12 },
     categoryItem: {
         width: '100%',
         flexDirection: 'row',
-        backgroundColor: '#0f172a',
+        backgroundColor: tokens.bg.card,
         borderRadius: 20,
         alignItems: 'center',
         borderWidth: 2,
-        borderColor: '#1e293b',
+        borderColor: tokens.border.default,
         padding: 16,
         gap: 16
     },
@@ -360,13 +364,13 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center'
     },
-    categoryLabel: { color: '#94a3b8', fontSize: 16, fontWeight: '700' },
+    categoryLabel: { color: tokens.text.muted, fontSize: 16, fontWeight: '700' },
     formActions: { flexDirection: 'row', gap: 12, marginTop: 20 },
     cancelBtn: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 18 },
-    cancelBtnText: { color: '#475569', fontWeight: 'bold' },
+    cancelBtnText: { color: tokens.text.disabled, fontWeight: 'bold' },
     createBtn: { flex: 2, borderRadius: 18, overflow: 'hidden' },
     btnGradient: { padding: 18, alignItems: 'center' },
-    createBtnText: { color: 'white', fontWeight: 'bold', fontSize: 16 }
+    createBtnText: { color: tokens.text.onAccent, fontWeight: 'bold', fontSize: 16 }
 });
 
 export default ChatHubScreen;

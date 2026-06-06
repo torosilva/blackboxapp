@@ -5,7 +5,7 @@
  * as cards in the same visual language as "Memorias recientes" on the home.
  * Tapping any card opens EntryDetail.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
     StatusBar, ActivityIndicator, RefreshControl,
@@ -15,6 +15,8 @@ import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { SupabaseService } from '../services/SupabaseService';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeTokens } from '../theme/tokens';
 
 const fmtDate = (iso?: string | null) => {
     if (!iso) return '';
@@ -27,6 +29,8 @@ const fmtDate = (iso?: string | null) => {
 };
 
 export default function EntriesByMapScreen() {
+    const { tokens } = useTheme();
+    const styles = useMemo(() => makeStyles(tokens), [tokens]);
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const { user } = useAuth();
@@ -54,10 +58,10 @@ export default function EntriesByMapScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="light-content" />
+            <StatusBar barStyle={tokens.statusBar} />
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <CL color="white" size={28} />
+                    <CL color={tokens.text.primary} size={28} />
                 </TouchableOpacity>
                 <View style={styles.headerTitleWrap}>
                     <Text style={styles.headerKind}>MAPA</Text>
@@ -69,7 +73,7 @@ export default function EntriesByMapScreen() {
 
             {loading ? (
                 <View style={styles.center}>
-                    <ActivityIndicator size="large" color="#6366f1" />
+                    <ActivityIndicator size="large" color={tokens.accent.indigo} />
                 </View>
             ) : entries.length === 0 ? (
                 <View style={styles.center}>
@@ -86,7 +90,7 @@ export default function EntriesByMapScreen() {
                         <RefreshControl
                             refreshing={refreshing}
                             onRefresh={() => { setRefreshing(true); load(); }}
-                            tintColor="#6366f1"
+                            tintColor={tokens.accent.indigo}
                         />
                     }
                 >
@@ -108,7 +112,7 @@ export default function EntriesByMapScreen() {
                                     <Text style={styles.entrySummary} numberOfLines={2}>{e.summary}</Text>
                                 )}
                             </View>
-                            <CR size={18} color="#475569" />
+                            <CR size={18} color={tokens.text.disabled} />
                         </TouchableOpacity>
                     ))}
                 </ScrollView>
@@ -117,45 +121,45 @@ export default function EntriesByMapScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#020617' },
+const makeStyles = (tokens: ThemeTokens) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: tokens.bg.page },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 12,
         paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.06)',
+        borderBottomColor: tokens.border.subtle,
     },
     backBtn: { padding: 8 },
     headerTitleWrap: { flex: 1, alignItems: 'center', paddingHorizontal: 6 },
-    headerKind: { color: '#818cf8', fontSize: 10, fontWeight: '800', letterSpacing: 1.8 },
-    headerTitle: { color: 'white', fontSize: 16, fontWeight: '800', marginTop: 2 },
-    headerSub: { color: '#64748b', fontSize: 11, fontWeight: '600', marginTop: 2 },
+    headerKind: { color: tokens.text.link, fontSize: 10, fontWeight: '800', letterSpacing: 1.8 },
+    headerTitle: { color: tokens.text.primary, fontSize: 16, fontWeight: '800', marginTop: 2 },
+    headerSub: { color: tokens.text.muted, fontSize: 11, fontWeight: '600', marginTop: 2 },
 
     center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-    emptyTitle: { color: '#e2e8f0', fontSize: 16, fontWeight: '800', textAlign: 'center' },
-    emptyText: { color: '#64748b', fontSize: 13, lineHeight: 19, marginTop: 8, textAlign: 'center' },
+    emptyTitle: { color: tokens.text.primary, fontSize: 16, fontWeight: '800', textAlign: 'center' },
+    emptyText: { color: tokens.text.muted, fontSize: 13, lineHeight: 19, marginTop: 8, textAlign: 'center' },
 
     scrollContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 },
     entryCard: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        backgroundColor: '#151B2C',
-        borderColor: '#1E293B',
+        backgroundColor: tokens.bg.card,
+        borderColor: tokens.border.default,
         borderWidth: 1.5,
         borderRadius: 14,
         paddingVertical: 14,
         paddingHorizontal: 14,
         marginBottom: 10,
-        shadowColor: '#000000',
+        shadowColor: tokens.shadow.color,
         shadowOpacity: 0.3,
         shadowRadius: 7,
         shadowOffset: { width: 0, height: 2 },
         elevation: 3,
     },
-    entryTitle: { color: '#f1f5f9', fontSize: 15, fontWeight: '700', lineHeight: 20 },
-    entryMeta: { color: '#64748b', fontSize: 11, fontWeight: '600', marginTop: 4 },
-    entrySummary: { color: '#94a3b8', fontSize: 13, lineHeight: 18, marginTop: 6 },
+    entryTitle: { color: tokens.text.primary, fontSize: 15, fontWeight: '700', lineHeight: 20 },
+    entryMeta: { color: tokens.text.muted, fontSize: 11, fontWeight: '600', marginTop: 4 },
+    entrySummary: { color: tokens.text.muted, fontSize: 13, lineHeight: 18, marginTop: 6 },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     View, Text, StyleSheet, FlatList,
     TouchableOpacity, ActivityIndicator, StatusBar,
@@ -8,9 +8,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, MessageSquare, AlertCircle, Sparkles, User, ExternalLink } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { FeedbackService } from '../services/FeedbackService';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeTokens } from '../theme/tokens';
 
 export default function FeedbackHistoryScreen() {
     const navigation = useNavigation<any>();
+    const { tokens } = useTheme();
+    const styles = useMemo(() => makeStyles(tokens), [tokens]);
     const [feedback, setFeedback] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -28,9 +32,9 @@ export default function FeedbackHistoryScreen() {
 
     const getTypeColor = (type: string) => {
         switch (type) {
-            case 'bug': return '#ef4444';
-            case 'improvement': return '#818cf8';
-            default: return '#94a3b8';
+            case 'bug': return tokens.accent.red;
+            case 'improvement': return tokens.text.link;
+            default: return tokens.text.muted;
         }
     };
 
@@ -48,17 +52,17 @@ export default function FeedbackHistoryScreen() {
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#6366f1" />
+                <ActivityIndicator size="large" color={tokens.accent.indigo} />
             </View>
         );
     }
 
     return (
         <SAV style={styles.container}>
-            <StatusBar barStyle="light-content" />
+            <StatusBar barStyle={tokens.statusBar} />
             <View style={styles.header}>
                 <TO onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <ChevronLeft color="white" size={28} />
+                    <ChevronLeft color={tokens.text.primary} size={28} />
                 </TO>
                 <Text style={styles.headerTitle}>FEEDBACK RECIBIDO</Text>
                 <View style={{ width: 44 }} />
@@ -72,11 +76,11 @@ export default function FeedbackHistoryScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={() => {
                         setRefreshing(true);
                         fetchFeedback();
-                    }} tintColor="#6366f1" />
+                    }} tintColor={tokens.accent.indigo} />
                 }
                 ListEmptyComponent={
                     <View style={styles.emptyState}>
-                        <MessageSquare size={48} color="#1e293b" />
+                        <MessageSquare size={48} color={tokens.border.default} />
                         <Text style={styles.emptyText}>No hay feedback aún.</Text>
                     </View>
                 }
@@ -103,14 +107,14 @@ export default function FeedbackHistoryScreen() {
                                     resizeMode="cover"
                                 />
                                 <View style={styles.attachmentOverlay}>
-                                    <ExternalLink size={12} color="white" />
+                                    <ExternalLink size={12} color={tokens.text.onAccent} />
                                     <Text style={styles.attachmentText}>Adjunto</Text>
                                 </View>
                             </View>
                         )}
                         
                         <View style={styles.cardBottom}>
-                            <User size={14} color="#475569" />
+                            <User size={14} color={tokens.text.disabled} />
                             <Text style={styles.userEmail}>
                                 {item.profiles?.full_name || 'Usuario Anónimo'}
                             </Text>
@@ -122,9 +126,9 @@ export default function FeedbackHistoryScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#020617' },
-    loadingContainer: { flex: 1, backgroundColor: '#020617', justifyContent: 'center', alignItems: 'center' },
+const makeStyles = (tokens: ThemeTokens) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: tokens.bg.page },
+    loadingContainer: { flex: 1, backgroundColor: tokens.bg.page, justifyContent: 'center', alignItems: 'center' },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -132,37 +136,37 @@ const styles = StyleSheet.create({
         paddingHorizontal: 15,
         paddingVertical: 15,
         borderBottomWidth: 1,
-        borderColor: '#1e293b'
+        borderColor: tokens.border.default
     },
-    headerTitle: { color: 'white', fontWeight: 'bold', letterSpacing: 2 },
+    headerTitle: { color: tokens.text.primary, fontWeight: 'bold', letterSpacing: 2 },
     backBtn: { padding: 8 },
     listContent: { padding: 20 },
     card: {
-        backgroundColor: '#0f172a',
+        backgroundColor: tokens.bg.card,
         borderRadius: 20,
         padding: 16,
         marginBottom: 16,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.05)'
+        borderColor: tokens.border.subtle
     },
     cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
     typeBadge: { borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
     typeText: { fontSize: 10, fontWeight: '900' },
-    date: { color: '#475569', fontSize: 12 },
-    content: { color: '#cbd5e1', fontSize: 15, lineHeight: 22, marginBottom: 16 },
+    date: { color: tokens.text.disabled, fontSize: 12 },
+    content: { color: tokens.text.secondary, fontSize: 15, lineHeight: 22, marginBottom: 16 },
     cardBottom: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    userEmail: { color: '#475569', fontSize: 12 },
+    userEmail: { color: tokens.text.disabled, fontSize: 12 },
     emptyState: { alignItems: 'center', marginTop: 100, gap: 16 },
-    emptyText: { color: '#475569', fontSize: 16 },
+    emptyText: { color: tokens.text.disabled, fontSize: 16 },
     attachmentContainer: {
         width: '100%',
         height: 150,
         borderRadius: 12,
         overflow: 'hidden',
         marginBottom: 16,
-        backgroundColor: '#020617',
+        backgroundColor: tokens.bg.page,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.05)'
+        borderColor: tokens.border.subtle
     },
     attachmentImage: {
         width: '100%',
@@ -172,7 +176,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 8,
         right: 8,
-        backgroundColor: 'rgba(0,0,0,0.6)',
+        backgroundColor: tokens.bg.overlay,
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 8,
@@ -181,7 +185,7 @@ const styles = StyleSheet.create({
         gap: 4
     },
     attachmentText: {
-        color: 'white',
+        color: tokens.text.onAccent,
         fontSize: 10,
         fontWeight: 'bold'
     }

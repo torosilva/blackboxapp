@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Brain, Mic, MessageSquare, TrendingUp, ChevronLeft, Crown, Check } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Purchases from 'react-native-purchases';
+import { useTheme } from '../theme/ThemeContext';
 
 // Pricing
 const MONTHLY_PRICE = 29.99;
@@ -12,6 +13,7 @@ const ANNUAL_MONTHLY = +(ANNUAL_PRICE / 12).toFixed(2);       // ~$25.49/mo
 
 const PaywallScreen = () => {
     const navigation = useNavigation<any>();
+    const { tokens } = useTheme();
     const [loading, setLoading] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
 
@@ -62,52 +64,52 @@ const PaywallScreen = () => {
     const features = [
         {
             icon: Brain,
-            color: '#6366f1',
+            color: tokens.accent.indigo,
             title: 'Registros ilimitados',
             description: 'Sin límite mensual. Registra cuando quieras.',
         },
         {
             icon: MessageSquare,
-            color: '#22c55e',
+            color: tokens.accent.green,
             title: 'Chat Estratégico BlackBoxMind.ai',
             description: 'Consultas ilimitadas con tu asesor de IA.',
         },
         {
             icon: TrendingUp,
-            color: '#38bdf8',
+            color: tokens.accent.sky,
             title: 'Reporte Semanal',
             description: 'Diagnóstico profundo de tus metas y rendimiento.',
         },
         {
             icon: Mic,
-            color: '#a855f7',
+            color: tokens.accent.purple,
             title: 'Grabación de voz',
             description: 'Transcripción automática con IA.',
         },
     ];
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#0B1021' }}>
-            <StatusBar barStyle="light-content" />
+        <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg.page }}>
+            <StatusBar barStyle={tokens.statusBar} />
 
             <ScrollView style={{ flex: 1, paddingHorizontal: 24 }}>
                 {/* Header */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 8 }}>
-                        <ChevronLeft color="#94a3b8" size={24} />
+                        <ChevronLeft color={tokens.text.muted} size={24} />
                     </TouchableOpacity>
-                    <Crown color="#facc15" size={24} />
+                    <Crown color={tokens.accent.yellow} size={24} />
                 </View>
 
                 {/* Hero */}
                 <View style={{ alignItems: 'center', marginTop: 32, marginBottom: 40 }}>
-                    <View style={{ backgroundColor: 'rgba(99,102,241,0.15)', padding: 24, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(99,102,241,0.3)', marginBottom: 24 }}>
-                        <Brain size={72} color="#6366f1" />
+                    <View style={{ backgroundColor: tokens.accent.indigoSoft, padding: 24, borderRadius: 999, borderWidth: 1, borderColor: tokens.accent.indigo, marginBottom: 24 }}>
+                        <Brain size={72} color={tokens.accent.indigo} />
                     </View>
-                    <Text style={{ color: 'white', fontSize: 30, fontWeight: 'bold', textAlign: 'center', letterSpacing: 0.5 }}>
+                    <Text style={{ color: tokens.text.primary, fontSize: 30, fontWeight: 'bold', textAlign: 'center', letterSpacing: 0.5 }}>
                         Desbloquea el Arsenal Táctico
                     </Text>
-                    <Text style={{ color: '#94a3b8', textAlign: 'center', marginTop: 12, fontSize: 16, lineHeight: 24, paddingHorizontal: 16 }}>
+                    <Text style={{ color: tokens.text.muted, textAlign: 'center', marginTop: 12, fontSize: 16, lineHeight: 24, paddingHorizontal: 16 }}>
                         Tienes el potencial básico. Hazte PRO para dominar tu ejecución sin restricciones.
                     </Text>
                 </View>
@@ -122,10 +124,10 @@ const PaywallScreen = () => {
                                     <Icon size={20} color={f.color} />
                                 </View>
                                 <View style={{ flex: 1 }}>
-                                    <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16, marginBottom: 2 }}>{f.title}</Text>
-                                    <Text style={{ color: '#64748b', fontSize: 14 }}>{f.description}</Text>
+                                    <Text style={{ color: tokens.text.primary, fontWeight: 'bold', fontSize: 16, marginBottom: 2 }}>{f.title}</Text>
+                                    <Text style={{ color: tokens.text.muted, fontSize: 14 }}>{f.description}</Text>
                                 </View>
-                                <Check size={18} color="#22c55e" style={{ marginTop: 2 }} />
+                                <Check size={18} color={tokens.accent.green} style={{ marginTop: 2 }} />
                             </View>
                         );
                     })}
@@ -138,18 +140,18 @@ const PaywallScreen = () => {
                         onPress={() => setSelectedPlan('annual')}
                         style={{
                             flex: 1, padding: 16, borderRadius: 20, borderWidth: 2,
-                            borderColor: selectedPlan === 'annual' ? '#6366f1' : '#1e293b',
-                            backgroundColor: selectedPlan === 'annual' ? 'rgba(99,102,241,0.1)' : '#0f172a',
+                            borderColor: selectedPlan === 'annual' ? tokens.accent.indigo : tokens.bg.input,
+                            backgroundColor: selectedPlan === 'annual' ? tokens.accent.indigoSoft : tokens.bg.pageMuted,
                         }}
                     >
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                            <Text style={{ color: selectedPlan === 'annual' ? '#818cf8' : '#475569', fontWeight: 'bold', fontSize: 12, letterSpacing: 1 }}>ANUAL</Text>
-                            <View style={{ backgroundColor: '#22c55e', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 }}>
-                                <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>-15%</Text>
+                            <Text style={{ color: selectedPlan === 'annual' ? tokens.text.link : tokens.text.disabled, fontWeight: 'bold', fontSize: 12, letterSpacing: 1 }}>ANUAL</Text>
+                            <View style={{ backgroundColor: tokens.accent.green, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 }}>
+                                <Text style={{ color: tokens.text.onAccent, fontSize: 10, fontWeight: 'bold' }}>-15%</Text>
                             </View>
                         </View>
-                        <Text style={{ color: 'white', fontSize: 22, fontWeight: 'bold' }}>${ANNUAL_MONTHLY}<Text style={{ fontSize: 13, color: '#64748b' }}>/mes</Text></Text>
-                        <Text style={{ color: '#475569', fontSize: 12, marginTop: 2 }}>${ANNUAL_PRICE} facturado anualmente</Text>
+                        <Text style={{ color: tokens.text.primary, fontSize: 22, fontWeight: 'bold' }}>${ANNUAL_MONTHLY}<Text style={{ fontSize: 13, color: tokens.text.muted }}>/mes</Text></Text>
+                        <Text style={{ color: tokens.text.disabled, fontSize: 12, marginTop: 2 }}>${ANNUAL_PRICE} facturado anualmente</Text>
                     </TouchableOpacity>
 
                     {/* Monthly */}
@@ -157,13 +159,13 @@ const PaywallScreen = () => {
                         onPress={() => setSelectedPlan('monthly')}
                         style={{
                             flex: 1, padding: 16, borderRadius: 20, borderWidth: 2,
-                            borderColor: selectedPlan === 'monthly' ? '#6366f1' : '#1e293b',
-                            backgroundColor: selectedPlan === 'monthly' ? 'rgba(99,102,241,0.1)' : '#0f172a',
+                            borderColor: selectedPlan === 'monthly' ? tokens.accent.indigo : tokens.bg.input,
+                            backgroundColor: selectedPlan === 'monthly' ? tokens.accent.indigoSoft : tokens.bg.pageMuted,
                         }}
                     >
-                        <Text style={{ color: selectedPlan === 'monthly' ? '#818cf8' : '#475569', fontWeight: 'bold', fontSize: 12, letterSpacing: 1, marginBottom: 4 }}>MENSUAL</Text>
-                        <Text style={{ color: 'white', fontSize: 22, fontWeight: 'bold' }}>${MONTHLY_PRICE}<Text style={{ fontSize: 13, color: '#64748b' }}>/mes</Text></Text>
-                        <Text style={{ color: '#475569', fontSize: 12, marginTop: 2 }}>Cancela cuando quieras</Text>
+                        <Text style={{ color: selectedPlan === 'monthly' ? tokens.text.link : tokens.text.disabled, fontWeight: 'bold', fontSize: 12, letterSpacing: 1, marginBottom: 4 }}>MENSUAL</Text>
+                        <Text style={{ color: tokens.text.primary, fontSize: 22, fontWeight: 'bold' }}>${MONTHLY_PRICE}<Text style={{ fontSize: 13, color: tokens.text.muted }}>/mes</Text></Text>
+                        <Text style={{ color: tokens.text.disabled, fontSize: 12, marginTop: 2 }}>Cancela cuando quieras</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -175,17 +177,17 @@ const PaywallScreen = () => {
                         style={{ overflow: 'hidden', borderRadius: 20 }}
                     >
                         <LinearGradient
-                            colors={['#6366f1', '#4f46e5']}
+                            colors={[tokens.accent.indigo, tokens.accent.indigoStrong]}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 0 }}
                             style={{ paddingVertical: 18, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 10 }}
                         >
                             {loading ? (
-                                <ActivityIndicator color="white" />
+                                <ActivityIndicator color={tokens.text.onAccent} />
                             ) : (
                                 <>
-                                    <Crown size={18} color="white" />
-                                    <Text style={{ color: 'white', fontWeight: 'black', fontSize: 17, letterSpacing: 0.5 }}>
+                                    <Crown size={18} color={tokens.text.onAccent} />
+                                    <Text style={{ color: tokens.text.onAccent, fontWeight: 'black', fontSize: 17, letterSpacing: 0.5 }}>
                                         {selectedPlan === 'annual'
                                             ? `Activar PRO · $${ANNUAL_PRICE}/año`
                                             : `Activar PRO · $${MONTHLY_PRICE}/mes`}
@@ -196,10 +198,10 @@ const PaywallScreen = () => {
                     </TouchableOpacity>
 
                     <TouchableOpacity onPress={restorePurchases} style={{ alignItems: 'center', paddingVertical: 8 }}>
-                        <Text style={{ color: '#64748b', fontSize: 14 }}>Restaurar compras</Text>
+                        <Text style={{ color: tokens.text.muted, fontSize: 14 }}>Restaurar compras</Text>
                     </TouchableOpacity>
 
-                    <Text style={{ color: '#334155', fontSize: 11, textAlign: 'center', lineHeight: 18 }}>
+                    <Text style={{ color: tokens.text.disabled, fontSize: 11, textAlign: 'center', lineHeight: 18 }}>
                         Al suscribirte aceptas nuestros Términos de Servicio y Política de Privacidad. La suscripción se renueva automáticamente. Cancela en cualquier momento desde la tienda de tu dispositivo.
                     </Text>
                 </View>

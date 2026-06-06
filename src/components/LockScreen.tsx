@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
     ActivityIndicator, AppState, Alert, Linking,
@@ -6,6 +6,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ShieldCheck, Fingerprint, KeyRound, LogOut } from 'lucide-react-native';
 import { BioAuthService } from '../services/BioAuthService';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeTokens } from '../theme/tokens';
 
 const MAX_ATTEMPTS = 5;
 
@@ -15,6 +17,8 @@ interface LockScreenProps {
 }
 
 const LockScreen: React.FC<LockScreenProps> = ({ onUnlock, onSignOut }) => {
+    const { tokens } = useTheme();
+    const styles = useMemo(() => makeStyles(tokens), [tokens]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [attempts, setAttempts] = useState(0);
@@ -113,12 +117,12 @@ const LockScreen: React.FC<LockScreenProps> = ({ onUnlock, onSignOut }) => {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.content}>
-                <ShieldCheck size={64} color="#6366f1" style={styles.icon} />
+                <ShieldCheck size={64} color={tokens.accent.indigo} style={styles.icon} />
                 <Text style={styles.title}>B L A C K B O X</Text>
                 <Text style={styles.subtitle}>Tu diario está protegido</Text>
 
                 {loading ? (
-                    <ActivityIndicator size="large" color="#6366f1" style={styles.loader} />
+                    <ActivityIndicator size="large" color={tokens.accent.indigo} style={styles.loader} />
                 ) : (
                     <View style={styles.actions}>
                         {/* Primary: biometric */}
@@ -129,9 +133,9 @@ const LockScreen: React.FC<LockScreenProps> = ({ onUnlock, onSignOut }) => {
                             disabled={loading}
                         >
                             {loading ? (
-                                <ActivityIndicator size="small" color="white" />
+                                <ActivityIndicator size="small" color={tokens.text.onAccent} />
                             ) : (
-                                <Fingerprint size={24} color="white" />
+                                <Fingerprint size={24} color={tokens.text.primary} />
                             )}
                             <Text style={styles.authText}>
                                 {loading ? 'Validando...' : 'Desbloquear con Biometría'}
@@ -148,7 +152,7 @@ const LockScreen: React.FC<LockScreenProps> = ({ onUnlock, onSignOut }) => {
                                 }
                                 activeOpacity={0.8}
                             >
-                                <KeyRound size={18} color="#94a3b8" />
+                                <KeyRound size={18} color={tokens.text.muted} />
                                 <Text style={styles.fallbackText}>Usar código del dispositivo</Text>
                             </TouchableOpacity>
                         )}
@@ -169,7 +173,7 @@ const LockScreen: React.FC<LockScreenProps> = ({ onUnlock, onSignOut }) => {
                                 }
                                 activeOpacity={0.8}
                             >
-                                <LogOut size={16} color="#ef4444" />
+                                <LogOut size={16} color={tokens.accent.red} />
                                 <Text style={styles.signOutText}>Cerrar sesión</Text>
                             </TouchableOpacity>
                         )}
@@ -189,10 +193,10 @@ const LockScreen: React.FC<LockScreenProps> = ({ onUnlock, onSignOut }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (tokens: ThemeTokens) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#020617',
+        backgroundColor: tokens.bg.page,
     },
     content: {
         flex: 1,
@@ -207,13 +211,13 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 28,
         fontWeight: 'bold',
-        color: 'white',
+        color: tokens.text.primary,
         letterSpacing: 4,
         marginBottom: 10,
     },
     subtitle: {
         fontSize: 16,
-        color: '#94a3b8',
+        color: tokens.text.muted,
         marginBottom: 40,
     },
     loader: {
@@ -227,21 +231,21 @@ const styles = StyleSheet.create({
     authButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#1e293b',
+        backgroundColor: tokens.bg.input,
         paddingVertical: 15,
         paddingHorizontal: 30,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: '#334155',
+        borderColor: tokens.border.strong,
         width: '100%',
         justifyContent: 'center',
     },
     authButtonDisabled: {
         opacity: 0.7,
-        backgroundColor: '#0f172a',
+        backgroundColor: tokens.bg.pageMuted,
     },
     authText: {
-        color: 'white',
+        color: tokens.text.primary,
         fontSize: 16,
         fontWeight: '600',
         marginLeft: 10,
@@ -253,12 +257,12 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: '#1e293b',
+        borderColor: tokens.border.default,
         width: '100%',
         justifyContent: 'center',
     },
     fallbackText: {
-        color: '#94a3b8',
+        color: tokens.text.muted,
         fontSize: 14,
         marginLeft: 8,
     },
@@ -270,18 +274,18 @@ const styles = StyleSheet.create({
         marginTop: 4,
     },
     signOutText: {
-        color: '#ef4444',
+        color: tokens.accent.red,
         fontSize: 13,
         marginLeft: 6,
     },
     errorText: {
-        color: '#f59e0b',
+        color: tokens.accent.amber,
         marginTop: 20,
         fontSize: 14,
         textAlign: 'center',
     },
     errorTextCritical: {
-        color: '#ef4444',
+        color: tokens.accent.red,
     },
 });
 

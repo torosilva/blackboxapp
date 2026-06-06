@@ -1,19 +1,24 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { UserRoundCheck } from 'lucide-react-native';
 import { StrategicInsight } from '../core-types';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeTokens } from '../theme/tokens';
 
 interface Props {
     insight: StrategicInsight | null | undefined;
 }
 
 export const BiasWarningCard: React.FC<Props> = ({ insight }) => {
+    const { tokens } = useTheme();
+    const styles = useMemo(() => makeStyles(tokens), [tokens]);
+
     if (!insight) return null;
 
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <UserRoundCheck size={20} color="#fbbf24" />
+                <UserRoundCheck size={20} color={tokens.accent.amber} />
                 <Text style={styles.title}>ESTRATEGIA & SESGOS</Text>
             </View>
 
@@ -34,13 +39,13 @@ export const BiasWarningCard: React.FC<Props> = ({ insight }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (tokens: ThemeTokens) => StyleSheet.create({
     container: {
-        backgroundColor: 'rgba(251, 191, 36, 0.05)',
+        backgroundColor: tokens.accent.amberSoft,
         borderRadius: 24,
         padding: 24,
         borderWidth: 1,
-        borderColor: 'rgba(251, 191, 36, 0.2)',
+        borderColor: tokens.accent.amber,
         marginBottom: 20
     },
     header: {
@@ -50,7 +55,7 @@ const styles = StyleSheet.create({
         gap: 10
     },
     title: {
-        color: '#fbbf24',
+        color: tokens.accent.amber,
         fontSize: 12,
         fontWeight: '900',
         letterSpacing: 1.5
@@ -60,40 +65,40 @@ const styles = StyleSheet.create({
         marginBottom: 12
     },
     biasLabel: {
-        color: '#fbbf24',
+        color: tokens.accent.amber,
         fontSize: 12,
         fontWeight: 'bold',
         marginBottom: 4
     },
     biasValue: {
-        color: '#fef3c7',
+        color: tokens.text.primary,
         fontSize: 14,
         fontWeight: '600',
         lineHeight: 20,
         flexShrink: 1
     },
     warningText: {
-        color: '#fef3c7',
+        color: tokens.text.primary,
         fontSize: 14,
         lineHeight: 20,
         fontStyle: 'italic',
         marginBottom: 16
     },
     counterBox: {
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        backgroundColor: tokens.bg.scrim,
         borderRadius: 16,
         padding: 16,
         borderLeftWidth: 3,
-        borderLeftColor: '#22c55e'
+        borderLeftColor: tokens.accent.green
     },
     counterTitle: {
-        color: '#22c55e',
+        color: tokens.accent.green,
         fontSize: 12,
         fontWeight: 'bold',
         marginBottom: 4
     },
     counterText: {
-        color: '#d1fae5',
+        color: tokens.accent.green,
         fontSize: 13,
         lineHeight: 18
     }

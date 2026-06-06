@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     View,
     Text,
@@ -19,8 +19,12 @@ import { useAuth } from '../context/AuthContext';
 import { SupabaseService } from '../services/SupabaseService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import WhatsNewModal from '../components/WhatsNewModal';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeTokens } from '../theme/tokens';
 
 const DashboardScreen = () => {
+    const { tokens } = useTheme();
+    const styles = useMemo(() => makeStyles(tokens), [tokens]);
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const { user, profile } = useAuth();
     const isFocused = useIsFocused();
@@ -138,7 +142,7 @@ const DashboardScreen = () => {
     if (loading && !refreshing) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#6366f1" />
+                <ActivityIndicator size="large" color={tokens.accent.indigo} />
             </View>
         );
     }
@@ -158,18 +162,18 @@ const DashboardScreen = () => {
     return (
         <>
         <SAV style={styles.container}>
-            <StatusBar barStyle="light-content" />
+            <StatusBar barStyle={tokens.statusBar} />
             <ScrollView
                 style={styles.scroll}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 40 }}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={fetchStats} tintColor="#6366f1" />
+                    <RefreshControl refreshing={refreshing} onRefresh={fetchStats} tintColor={tokens.accent.indigo} />
                 }
             >
                 <View style={styles.headerRow}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                        <ChevronLeft size={28} color="#e2e8f0" />
+                        <ChevronLeft size={28} color={tokens.text.primary} />
                     </TouchableOpacity>
                     <Text style={[styles.vistaHeader, {flex: 1, textAlign: 'center', marginRight: 32, marginBottom: 0}]}>Dashboard Estratégico</Text>
                 </View>
@@ -240,11 +244,11 @@ const DashboardScreen = () => {
                         </View>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingTop: 12 }}>
                             {recentThreads.map((thread) => {
-                                let iconColor = '#818cf8';
+                                let iconColor = tokens.text.link;
                                 let Icon: any = MessageSquare;
-                                if (thread.category === 'BUSINESS') iconColor = '#818cf8';
-                                else if (thread.category === 'PERSONAL') { iconColor = '#facc15'; Icon = User; }
-                                else if (thread.category === 'HEALTH') { iconColor = '#10b981'; Icon = Heart; }
+                                if (thread.category === 'BUSINESS') iconColor = tokens.text.link;
+                                else if (thread.category === 'PERSONAL') { iconColor = tokens.accent.yellow; Icon = User; }
+                                else if (thread.category === 'HEALTH') { iconColor = tokens.accent.green; Icon = Heart; }
                                 return (
                                     <TouchableOpacity
                                         key={thread.id}
@@ -271,13 +275,13 @@ const DashboardScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (tokens: ThemeTokens) => StyleSheet.create({
     headerRow: { flexDirection: 'row', alignItems: 'center', paddingTop: 4, marginBottom: 16 },
     backBtn: { padding: 6 },
     verMasBtn: { marginTop: 12, alignSelf: 'flex-start' },
-    verMasText: { color: '#6366f1', fontSize: 13, fontWeight: '700' },
-    container: { flex: 1, backgroundColor: '#020617' },
-    loadingContainer: { flex: 1, backgroundColor: '#020617', justifyContent: 'center', alignItems: 'center' },
+    verMasText: { color: tokens.accent.indigo, fontSize: 13, fontWeight: '700' },
+    container: { flex: 1, backgroundColor: tokens.bg.page },
+    loadingContainer: { flex: 1, backgroundColor: tokens.bg.page, justifyContent: 'center', alignItems: 'center' },
     scroll: { flex: 1 },
     header: {
         flexDirection: 'row',
@@ -287,17 +291,17 @@ const styles = StyleSheet.create({
         paddingTop: 0,
         marginBottom: 20
     },
-    greeting: { color: '#94a3b8', fontSize: 16, fontWeight: '500' },
-    userName: { color: '#ffffff', fontSize: 24, fontWeight: 'bold' },
+    greeting: { color: tokens.text.muted, fontSize: 16, fontWeight: '500' },
+    userName: { color: tokens.text.primary, fontSize: 24, fontWeight: 'bold' },
     profileBtn: {
         width: 44,
         height: 44,
         borderRadius: 14,
-        backgroundColor: '#1e293b',
+        backgroundColor: tokens.bg.input,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.05)'
+        borderColor: tokens.border.subtle
     },
     headerBrainCircle: {
         width: 40,
@@ -305,7 +309,7 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#6366f1',
+        shadowColor: tokens.accent.indigo,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.5,
         shadowRadius: 10,
@@ -326,39 +330,39 @@ const styles = StyleSheet.create({
         gap: 12,
         marginBottom: 30
     },
-    statCard: { flex: 1, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+    statCard: { flex: 1, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: tokens.border.subtle },
     cardGradient: { padding: 16, alignItems: 'center' },
-    statValue: { color: '#ffffff', fontSize: 22, fontWeight: 'bold', marginVertical: 4 },
-    statLabel: { color: '#94a3b8', fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+    statValue: { color: tokens.text.primary, fontSize: 22, fontWeight: 'bold', marginVertical: 4 },
+    statLabel: { color: tokens.text.muted, fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
     insightSection: {
         marginHorizontal: 24,
         borderRadius: 24,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: 'rgba(99, 102, 241, 0.2)',
+        borderColor: tokens.accent.indigoSoft,
         marginBottom: 30
     },
     insightGradient: { padding: 24 },
     insightHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 },
-    insightTitle: { color: '#818cf8', fontSize: 12, fontWeight: '900', letterSpacing: 1.5 },
-    latestMood: { color: '#94a3b8', fontSize: 14, marginBottom: 8 },
-    latestInsight: { color: '#cbd5e1', fontSize: 15, lineHeight: 22, fontStyle: 'italic' },
+    insightTitle: { color: tokens.text.link, fontSize: 12, fontWeight: '900', letterSpacing: 1.5 },
+    latestMood: { color: tokens.text.muted, fontSize: 14, marginBottom: 8 },
+    latestInsight: { color: tokens.text.secondary, fontSize: 15, lineHeight: 22, fontStyle: 'italic' },
     actionArea: { paddingHorizontal: 24, gap: 16 },
-    mainBtn: { borderRadius: 18, overflow: 'hidden', elevation: 8, shadowColor: '#6366f1', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 10 },
+    mainBtn: { borderRadius: 18, overflow: 'hidden', elevation: 8, shadowColor: tokens.accent.indigo, shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 10 },
     btnGradient: { flexDirection: 'row', alignItems: 'center', paddingVertical: 18, paddingHorizontal: 20 },
-    mainBtnText: { color: '#ffffff', fontSize: 17, fontWeight: 'bold' },
+    mainBtnText: { color: tokens.text.primary, fontSize: 17, fontWeight: 'bold' },
     dateSelector: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.05)',
+        backgroundColor: tokens.border.subtle,
         padding: 15,
         borderRadius: 16,
         marginTop: 15,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.05)'
+        borderColor: tokens.border.subtle
     },
     dateText: {
-        color: '#ffffff',
+        color: tokens.text.primary,
         fontSize: 14,
         fontWeight: '600',
         marginLeft: 10
@@ -368,14 +372,14 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#1e293b',
+        backgroundColor: tokens.bg.input,
         paddingVertical: 14,
         borderRadius: 16,
         gap: 10,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.05)'
+        borderColor: tokens.border.subtle
     },
-    secondaryBtnText: { color: '#cbd5e1', fontSize: 14, fontWeight: '600' },
+    secondaryBtnText: { color: tokens.text.secondary, fontSize: 14, fontWeight: '600' },
     footer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -384,19 +388,19 @@ const styles = StyleSheet.create({
         marginBottom: 40,
         gap: 6
     },
-    lastUpdate: { color: '#475569', fontSize: 12, fontWeight: '500' },
+    lastUpdate: { color: tokens.text.disabled, fontSize: 12, fontWeight: '500' },
     recentChatsSection: { marginBottom: 30 },
     sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, marginBottom: 15 },
-    sectionTitle: { color: '#6366f1', fontSize: 12, fontWeight: '900', letterSpacing: 1.5 },
-    viewMoreText: { color: '#94a3b8', fontSize: 12, fontWeight: '600' },
+    sectionTitle: { color: tokens.accent.indigo, fontSize: 12, fontWeight: '900', letterSpacing: 1.5 },
+    viewMoreText: { color: tokens.text.muted, fontSize: 12, fontWeight: '600' },
     recentChatsScroll: { paddingHorizontal: 24, gap: 12 },
     chatCard: {
         width: 150,
-        backgroundColor: '#1e293b',
+        backgroundColor: tokens.bg.input,
         borderRadius: 20,
         padding: 16,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.05)'
+        borderColor: tokens.border.subtle
     },
     chatIconContainer: {
         width: 36,
@@ -406,29 +410,29 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 10
     },
-    chatCardTitle: { color: 'white', fontSize: 14, fontWeight: 'bold', marginBottom: 4 },
-    chatCardDate: { color: '#475569', fontSize: 11, fontWeight: '500' },
+    chatCardTitle: { color: tokens.text.primary, fontSize: 14, fontWeight: 'bold', marginBottom: 4 },
+    chatCardDate: { color: tokens.text.disabled, fontSize: 11, fontWeight: '500' },
     seedBtn: {
         marginTop: 15,
-        backgroundColor: '#6366f1',
+        backgroundColor: tokens.accent.indigo,
         paddingVertical: 10,
         paddingHorizontal: 15,
         borderRadius: 12,
         alignSelf: 'flex-start'
     },
     seedBtnText: {
-        color: 'white',
+        color: tokens.text.onAccent,
         fontSize: 13,
         fontWeight: 'bold'
     },
     guideActionBtn: {
-        backgroundColor: '#facc15',
+        backgroundColor: tokens.accent.yellow,
         paddingVertical: 10,
         paddingHorizontal: 16,
         borderRadius: 12,
     },
     guideActionBtnText: {
-        color: '#020617',
+        color: tokens.bg.page,
         fontSize: 13,
         fontWeight: '900',
     },
@@ -436,7 +440,7 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         overflow: 'hidden',
         elevation: 10,
-        shadowColor: '#6366f1',
+        shadowColor: tokens.accent.indigo,
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.4,
         shadowRadius: 12,
@@ -456,7 +460,7 @@ const styles = StyleSheet.create({
         marginRight: 16,
     },
     quickCaptureTitle: {
-        color: 'white',
+        color: tokens.text.primary,
         fontSize: 18,
         fontWeight: 'bold',
         marginBottom: 2,
@@ -478,20 +482,20 @@ const styles = StyleSheet.create({
         padding: 24,
     },
     interventionText: {
-        color: '#cbd5e1',
+        color: tokens.text.secondary,
         fontSize: 15,
         lineHeight: 22,
         marginTop: 10,
     },
     interventionPunchline: {
-        color: '#f87171',
+        color: tokens.accent.red,
         fontSize: 13,
         fontWeight: '600',
         fontStyle: 'italic',
         marginTop: 8,
     },
     interventionBtn: {
-        backgroundColor: '#ef4444',
+        backgroundColor: tokens.accent.red,
         paddingVertical: 12,
         paddingHorizontal: 20,
         borderRadius: 12,
@@ -518,24 +522,24 @@ const styles = StyleSheet.create({
         paddingVertical: 10
     },
     reportValue: {
-        color: 'white',
+        color: tokens.text.primary,
         fontSize: 20,
         fontWeight: 'bold'
     },
     reportLabel: {
-        color: '#94a3b8',
+        color: tokens.text.muted,
         fontSize: 10,
         fontWeight: '600',
         marginTop: 4,
         textTransform: 'uppercase'
     },
     reportVerdict: {
-        color: '#cbd5e1',
+        color: tokens.text.secondary,
         fontSize: 13,
         lineHeight: 18,
         fontStyle: 'italic',
         textAlign: 'center',
-        backgroundColor: 'rgba(255,255,255,0.03)',
+        backgroundColor: tokens.bg.scrim,
         padding: 10,
         borderRadius: 12
     },
@@ -549,50 +553,50 @@ const styles = StyleSheet.create({
         alignSelf: 'center'
     },
     freeBadge: {
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-        borderColor: '#475569',
+        backgroundColor: tokens.border.subtle,
+        borderColor: tokens.text.disabled,
     },
     proBadge: {
-        backgroundColor: 'rgba(99, 102, 241, 0.2)',
-        borderColor: '#818cf8',
+        backgroundColor: tokens.accent.indigoSoft,
+        borderColor: tokens.text.link,
     },
     membershipBadgeText: {
         fontSize: 11,
         fontWeight: 'bold',
         letterSpacing: 1,
-        color: '#ffffff'
+        color: tokens.text.primary
     },
 
     // ─── Vista Estratégica refactor (2026-05) ─────────────────────────────
     vistaHeader: {
-        color: '#f1f5f9',
+        color: tokens.text.primary,
         fontSize: 22,
         fontWeight: '700',
         letterSpacing: 0.3,
         marginBottom: 16,
     },
     vistaCard: {
-        backgroundColor: '#151B2C',
-        borderColor: '#1E293B',
+        backgroundColor: tokens.bg.card,
+        borderColor: tokens.border.default,
         borderWidth: 1.5,
         borderRadius: 14,
         padding: 16,
         marginBottom: 16,
-        shadowColor: '#000000',
+        shadowColor: tokens.shadow.color,
         shadowOpacity: 0.35,
         shadowRadius: 8,
         shadowOffset: { width: 0, height: 3 },
         elevation: 4,
     },
     vistaCardTitle: {
-        color: '#94a3b8',
+        color: tokens.text.muted,
         fontSize: 11,
         fontWeight: '700',
         letterSpacing: 1.8,
         marginBottom: 10,
     },
     vistaLine: {
-        color: '#e2e8f0',
+        color: tokens.text.primary,
         fontSize: 14,
         lineHeight: 20,
         fontWeight: '500',
@@ -604,23 +608,23 @@ const styles = StyleSheet.create({
         marginBottom: 6,
     },
     vistaBigNumber: {
-        color: '#ffffff',
+        color: tokens.text.primary,
         fontSize: 28,
         fontWeight: '800',
         letterSpacing: -0.5,
     },
     vistaSubPercent: {
-        color: '#10b981',
+        color: tokens.accent.green,
         fontSize: 16,
         fontWeight: '700',
     },
     vistaEmpty: {
-        color: '#64748b',
+        color: tokens.text.muted,
         fontSize: 13,
         fontStyle: 'italic',
     },
     vistaPatternItem: {
-        color: '#e2e8f0',
+        color: tokens.text.primary,
         fontSize: 14,
         lineHeight: 22,
         fontWeight: '500',
@@ -632,7 +636,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     vistaSeeAll: {
-        color: '#818cf8',
+        color: tokens.text.link,
         fontSize: 12,
         fontWeight: '700',
     },

@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Share } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ActionItem } from '../core-types';
 import { SupabaseService } from '../services/SupabaseService';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeTokens } from '../theme/tokens';
 
 interface Props {
     actions: ActionItem[];
@@ -10,6 +12,8 @@ interface Props {
 }
 
 export const ActionList: React.FC<Props> = ({ actions, entryId }) => {
+    const { tokens } = useTheme();
+    const styles = useMemo(() => makeStyles(tokens), [tokens]);
     // Local state to handle visual "checks"
     const [items, setItems] = useState(
         actions.map(a => ({ ...a, is_completed: a.is_completed || false }))
@@ -57,7 +61,7 @@ export const ActionList: React.FC<Props> = ({ actions, entryId }) => {
         <View style={styles.container}>
             {/* SECTION TITLE */}
             <View style={styles.headerRow}>
-                <Ionicons name="flash" size={16} color="#fbbf24" />
+                <Ionicons name="flash" size={16} color={tokens.accent.amber} />
                 <Text style={styles.headerText}>
                     Active Loops (Plan de Ataque)
                 </Text>
@@ -80,7 +84,7 @@ export const ActionList: React.FC<Props> = ({ actions, entryId }) => {
                             styles.checkbox,
                             item.is_completed ? styles.checkboxChecked : styles.checkboxUnchecked
                         ]}>
-                            {item.is_completed && <Ionicons name="checkmark" size={14} color="white" />}
+                            {item.is_completed && <Ionicons name="checkmark" size={14} color={tokens.text.onAccent} />}
                         </View>
 
                         {/* TEXT AND CATEGORY */}
@@ -112,14 +116,14 @@ export const ActionList: React.FC<Props> = ({ actions, entryId }) => {
                         </View>
 
                         {/* DELEGATE (SHARE) BUTTON */}
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             onPress={(e) => {
                                 e.stopPropagation();
                                 handleShare(item);
                             }}
                             style={styles.shareButton}
                         >
-                            <Ionicons name="share-outline" size={20} color="#94a3b8" />
+                            <Ionicons name="share-outline" size={20} color={tokens.text.muted} />
                         </TouchableOpacity>
                     </TouchableOpacity>
                 ))}
@@ -128,7 +132,7 @@ export const ActionList: React.FC<Props> = ({ actions, entryId }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (tokens: ThemeTokens) => StyleSheet.create({
     container: {
         marginTop: 32,
         marginBottom: 16,
@@ -140,7 +144,7 @@ const styles = StyleSheet.create({
         paddingLeft: 4,
     },
     headerText: {
-        color: '#fbbf24',
+        color: tokens.accent.amber,
         fontSize: 12,
         fontWeight: 'bold',
         letterSpacing: 3,
@@ -158,12 +162,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     cardPending: {
-        backgroundColor: '#151B33',
-        borderColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: tokens.bg.card,
+        borderColor: tokens.border.subtle,
     },
     cardCompleted: {
-        backgroundColor: 'rgba(16, 185, 129, 0.05)',
-        borderColor: 'rgba(16, 185, 129, 0.2)',
+        backgroundColor: tokens.accent.greenSoft,
+        borderColor: tokens.accent.green,
     },
     checkbox: {
         width: 24,
@@ -176,49 +180,49 @@ const styles = StyleSheet.create({
         padding: 4, // Added padding to increase internal hit space if needed, though card is primary
     },
     checkboxUnchecked: {
-        borderColor: '#64748b',
+        borderColor: tokens.text.muted,
     },
     checkboxChecked: {
-        backgroundColor: '#10b981',
-        borderColor: '#10b981',
+        backgroundColor: tokens.accent.green,
+        borderColor: tokens.accent.green,
     },
     textContainer: {
         flex: 1,
     },
     description: {
-        color: '#ffffff',
+        color: tokens.text.primary,
         fontSize: 16,
         fontWeight: '600',
         marginBottom: 4,
     },
     textCompleted: {
-        color: '#64748b',
+        color: tokens.text.muted,
         textDecorationLine: 'line-through',
     },
     badgeRow: {
         flexDirection: 'row',
     },
     categoryBadge: {
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        backgroundColor: tokens.bg.chip,
         paddingHorizontal: 8,
         paddingVertical: 2,
         borderRadius: 6,
         marginRight: 8,
     },
     categoryText: {
-        color: '#94a3b8',
+        color: tokens.text.muted,
         fontSize: 10,
         fontWeight: 'bold',
         textTransform: 'uppercase',
     },
     priorityBadge: {
-        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        backgroundColor: tokens.accent.redSoft,
         paddingHorizontal: 8,
         paddingVertical: 2,
         borderRadius: 6,
     },
     priorityText: {
-        color: '#ef4444',
+        color: tokens.accent.red,
         fontSize: 10,
         fontWeight: 'bold',
         textTransform: 'uppercase',

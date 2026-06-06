@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import {
     ChevronLeft, ShieldCheck, Clock, Database, AlertCircle, Brain,
     Zap, Stethoscope, Calendar, Target, AlertTriangle, ArrowRight,
     LogOut, Trash2, MessageSquareText, Send, X, ChevronDown, ChevronUp, User,
     CheckCircle2, Sparkles, Plus, Paperclip, Camera, Trash2 as TrashIcon, Award,
-    BookOpen, MessageCircle, BarChart2, MapPin
+    BookOpen, MessageCircle, BarChart2, MapPin, Sun, Moon
 } from 'lucide-react-native';
 import { generateAndSharePrivacyPact } from '../utils/generatePrivacyPact';
 import * as WebBrowser from 'expo-web-browser';
@@ -24,6 +24,8 @@ import { ActionItem } from '../core-types';
 import { FeedbackService } from '../services/FeedbackService';
 import { LockService } from '../services/LockService';
 import * as Updates from 'expo-updates';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeTokens, ThemeMode } from '../theme/tokens';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -33,6 +35,8 @@ const SettingsScreen = () => {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const { user, profile, signOut, refreshProfile } = useAuth();
+    const { tokens, mode, setMode } = useTheme();
+    const styles = useMemo(() => makeStyles(tokens), [tokens]);
 
     const SAV = SafeAreaView as any;
     const TO = TouchableOpacity as any;
@@ -365,7 +369,7 @@ const SettingsScreen = () => {
 
     return (
         <SAV style={styles.container}>
-            <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+            <StatusBar barStyle={tokens.statusBar} translucent backgroundColor="transparent" />
 
             {/* Header */}
             <View style={styles.header}>
@@ -373,7 +377,7 @@ const SettingsScreen = () => {
                     onPress={() => viewMode === 'hub' ? navigation.goBack() : setViewMode('hub')}
                     style={styles.backButton}
                 >
-                    <CL size={28} color="#ffffff" />
+                    <CL size={28} color={tokens.text.primary} />
                 </TO>
                 <Text style={styles.headerTitle}>
                     {viewMode === 'hub' ? 'Centro Estratégico' :
@@ -394,9 +398,9 @@ const SettingsScreen = () => {
                                 onPress={() => navigation.navigate('Home')}
                                 activeOpacity={0.7}
                             >
-                                <BO size={20} color="#6366f1" />
+                                <BO size={20} color={tokens.accent.indigo} />
                                 <Text style={styles.sectionTitle}>Mis Memorias</Text>
-                                <AR size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                <AR size={20} color={tokens.text.muted} style={{ marginLeft: 'auto' }} />
                             </TO>
                         </View>
 
@@ -406,9 +410,9 @@ const SettingsScreen = () => {
                                 onPress={() => navigation.navigate('ChatHub')}
                                 activeOpacity={0.7}
                             >
-                                <MCi size={20} color="#6366f1" />
+                                <MCi size={20} color={tokens.accent.indigo} />
                                 <Text style={styles.sectionTitle}>Conversaciones</Text>
-                                <AR size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                <AR size={20} color={tokens.text.muted} style={{ marginLeft: 'auto' }} />
                             </TO>
                         </View>
 
@@ -418,12 +422,12 @@ const SettingsScreen = () => {
                                 onPress={() => navigation.navigate('Mapas' as any)}
                                 activeOpacity={0.7}
                             >
-                                <MPi size={20} color="#6366f1" />
+                                <MPi size={20} color={tokens.accent.indigo} />
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.sectionTitle}>Tus Mapas</Text>
                                     <Text style={styles.sectionSubText}>Temas y proyectos detectados en tu historia</Text>
                                 </View>
-                                <AR size={20} color="#94a3b8" />
+                                <AR size={20} color={tokens.text.muted} />
                             </TO>
                         </View>
 
@@ -433,9 +437,9 @@ const SettingsScreen = () => {
                                 onPress={() => navigation.navigate('Dashboard')}
                                 activeOpacity={0.7}
                             >
-                                <BC2 size={20} color="#6366f1" />
+                                <BC2 size={20} color={tokens.accent.indigo} />
                                 <Text style={styles.sectionTitle}>Dashboard Estratégico</Text>
-                                <AR size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                <AR size={20} color={tokens.text.muted} style={{ marginLeft: 'auto' }} />
                             </TO>
                         </View>
 
@@ -445,9 +449,9 @@ const SettingsScreen = () => {
                                 onPress={() => navigation.navigate('WeeklyReport', {})}
                                 activeOpacity={0.7}
                             >
-                                <BC2 size={20} color="#6366f1" />
+                                <BC2 size={20} color={tokens.accent.indigo} />
                                 <Text style={styles.sectionTitle}>Compartir mi Reporte</Text>
-                                <AR size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                <AR size={20} color={tokens.text.muted} style={{ marginLeft: 'auto' }} />
                             </TO>
                         </View>
 
@@ -461,12 +465,12 @@ const SettingsScreen = () => {
                                 onPress={() => toggleSection('profile')}
                                 activeOpacity={0.7}
                             >
-                                <U size={20} color="#6366f1" />
+                                <U size={20} color={tokens.accent.indigo} />
                                 <Text style={styles.sectionTitle}>Identidad Estratégica</Text>
                                 {expandedSections.profile ? (
-                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CU size={20} color={tokens.text.muted} style={{ marginLeft: 'auto' }} />
                                 ) : (
-                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CD size={20} color={tokens.text.muted} style={{ marginLeft: 'auto' }} />
                                 )}
                             </TO>
 
@@ -490,7 +494,7 @@ const SettingsScreen = () => {
                                                 value={fullName}
                                                 onChangeText={setFullName}
                                                 placeholder="Tu nombre o alias"
-                                                placeholderTextColor="#64748b"
+                                                placeholderTextColor={tokens.text.muted}
                                             />
                                         </View>
                                         <TO
@@ -498,7 +502,7 @@ const SettingsScreen = () => {
                                             onPress={handleUpdateProfile}
                                             disabled={isSavingProfile}
                                         >
-                                            {isSavingProfile ? <ActivityIndicator color="white" /> : <Text style={styles.generateButtonText}>Actualizar Perfil</Text>}
+                                            {isSavingProfile ? <ActivityIndicator color={tokens.text.onAccent} /> : <Text style={styles.generateButtonText}>Actualizar Perfil</Text>}
                                         </TO>
                                     </View>
                                 </View>
@@ -512,15 +516,15 @@ const SettingsScreen = () => {
                                 onPress={() => toggleSection('goals')}
                                 activeOpacity={0.7}
                             >
-                                <Sparkles size={20} color="#6366f1" />
+                                <Sparkles size={20} color={tokens.accent.indigo} />
                                 <Text style={styles.sectionTitle}>Metas Estratégicas</Text>
                                 <TO style={styles.addMiniBtn} onPress={() => setShowGoalModal(true)}>
-                                    <Plus size={16} color="white" />
+                                    <Plus size={16} color={tokens.text.onAccent} />
                                 </TO>
                                 {expandedSections.goals ? (
-                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 10 }} />
+                                    <CU size={20} color={tokens.text.muted} style={{ marginLeft: 10 }} />
                                 ) : (
-                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 10 }} />
+                                    <CD size={20} color={tokens.text.muted} style={{ marginLeft: 10 }} />
                                 )}
                             </TO>
 
@@ -541,7 +545,7 @@ const SettingsScreen = () => {
                                                     onPress={() => toggleGoalStatus(goal.id, goal.is_completed)}
                                                 >
                                                     <View style={[styles.checkBox, goal.is_completed && styles.checkBoxChecked]}>
-                                                        {goal.is_completed && <CheckCircle2 size={14} color="white" />}
+                                                        {goal.is_completed && <CheckCircle2 size={14} color={tokens.text.onAccent} />}
                                                     </View>
                                                 </TO>
                                                 <View style={{ flex: 1 }}>
@@ -552,7 +556,7 @@ const SettingsScreen = () => {
                                                     </View>
                                                 </View>
                                                 <TO onPress={() => handleDeleteGoal(goal.id)}>
-                                                    <Trash2 size={16} color="#475569" />
+                                                    <Trash2 size={16} color={tokens.text.disabled} />
                                                 </TO>
                                             </View>
                                         ))
@@ -568,12 +572,12 @@ const SettingsScreen = () => {
                                 onPress={() => toggleSection('pending')}
                                 activeOpacity={0.7}
                             >
-                                <Tar size={20} color="#818cf8" />
+                                <Tar size={20} color={tokens.text.link} />
                                 <Text style={styles.sectionTitle}>Pendientes activos</Text>
                                 {expandedSections.pending ? (
-                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CU size={20} color={tokens.text.muted} style={{ marginLeft: 'auto' }} />
                                 ) : (
-                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CD size={20} color={tokens.text.muted} style={{ marginLeft: 'auto' }} />
                                 )}
                             </TO>
 
@@ -589,8 +593,8 @@ const SettingsScreen = () => {
                                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                                                         <Text style={styles.hubTaskDesc} numberOfLines={1}>{task.description}</Text>
                                                         {task.category && (
-                                                            <View style={[styles.miniBadge, { backgroundColor: task.category === 'BUSINESS' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(16, 185, 129, 0.1)' }]}>
-                                                                <Text style={[styles.miniBadgeText, { color: task.category === 'BUSINESS' ? '#818cf8' : '#10b981' }]}>{task.category.substring(0, 1)}</Text>
+                                                            <View style={[styles.miniBadge, { backgroundColor: task.category === 'BUSINESS' ? tokens.accent.indigoSoft : 'rgba(16, 185, 129, 0.1)' }]}>
+                                                                <Text style={[styles.miniBadgeText, { color: task.category === 'BUSINESS' ? tokens.text.link : tokens.accent.green }]}>{task.category.substring(0, 1)}</Text>
                                                             </View>
                                                         )}
                                                     </View>
@@ -614,12 +618,12 @@ const SettingsScreen = () => {
                                     onPress={() => toggleSection('completed')}
                                     activeOpacity={0.7}
                                 >
-                                    <SC size={20} color="#10b981" />
+                                    <SC size={20} color={tokens.accent.green} />
                                     <Text style={styles.sectionTitle}>Realizados</Text>
                                     {expandedSections.completed ? (
-                                        <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                        <CU size={20} color={tokens.text.muted} style={{ marginLeft: 'auto' }} />
                                     ) : (
-                                        <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                        <CD size={20} color={tokens.text.muted} style={{ marginLeft: 'auto' }} />
                                     )}
                                 </TO>
 
@@ -630,9 +634,9 @@ const SettingsScreen = () => {
                                     >
                                         {completedTasks.slice(0, 3).map((task, idx) => (
                                             <View key={idx} style={styles.hubTaskItem}>
-                                                <SC size={16} color="#10b981" style={{ marginRight: 12 }} />
+                                                <SC size={16} color={tokens.accent.green} style={{ marginRight: 12 }} />
                                                 <View style={{ flex: 1 }}>
-                                                    <Text style={[styles.hubTaskDesc, { textDecorationLine: 'line-through', color: '#64748b' }]} numberOfLines={1}>
+                                                    <Text style={[styles.hubTaskDesc, { textDecorationLine: 'line-through', color: tokens.text.muted }]} numberOfLines={1}>
                                                         {task.description}
                                                     </Text>
                                                 </View>
@@ -653,12 +657,12 @@ const SettingsScreen = () => {
                                 onPress={() => toggleSection('biases')}
                                 activeOpacity={0.7}
                             >
-                                <AT size={20} color="#f59e0b" />
+                                <AT size={20} color={tokens.accent.amber} />
                                 <Text style={styles.sectionTitle}>Historial de Sesgos</Text>
                                 {expandedSections.biases ? (
-                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CU size={20} color={tokens.text.muted} style={{ marginLeft: 'auto' }} />
                                 ) : (
-                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CD size={20} color={tokens.text.muted} style={{ marginLeft: 'auto' }} />
                                 )}
                             </TO>
 
@@ -693,12 +697,12 @@ const SettingsScreen = () => {
                                 onPress={() => toggleSection('guide')}
                                 activeOpacity={0.7}
                             >
-                                <Z size={20} color="#facc15" />
+                                <Z size={20} color={tokens.accent.yellow} />
                                 <Text style={styles.sectionTitle}>Manual de Estratega & Protocolos</Text>
                                 {expandedSections.guide ? (
-                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CU size={20} color={tokens.text.muted} style={{ marginLeft: 'auto' }} />
                                 ) : (
-                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CD size={20} color={tokens.text.muted} style={{ marginLeft: 'auto' }} />
                                 )}
                             </TO>
 
@@ -709,13 +713,13 @@ const SettingsScreen = () => {
                                         onPress={() => navigation.navigate('Onboarding')}
                                     >
                                         <View style={styles.iconCircleYellow}>
-                                            <B size={18} color="#facc15" />
+                                            <B size={18} color={tokens.accent.yellow} />
                                         </View>
                                         <View style={styles.policyTextContainer}>
                                             <Text style={styles.policyLabel}>Guía Estratégica: BlackBoxMind.ai</Text>
                                             <Text style={styles.policyValue}>Ver explicación de Metas vs Loops y protocolos de ejecución.</Text>
                                         </View>
-                                        <CL size={20} color="#475569" style={{ transform: [{ rotate: '180deg' }] }} />
+                                        <CL size={20} color={tokens.text.disabled} style={{ transform: [{ rotate: '180deg' }] }} />
                                     </TO>
 
                                     <TO
@@ -730,14 +734,14 @@ const SettingsScreen = () => {
                                             }
                                         }}
                                     >
-                                        <View style={[styles.iconCircle, { backgroundColor: 'rgba(99, 102, 241, 0.1)' }]}>
-                                            <Sparkles size={18} color="#6366f1" />
+                                        <View style={[styles.iconCircle, { backgroundColor: tokens.accent.indigoSoft }]}>
+                                            <Sparkles size={18} color={tokens.accent.indigo} />
                                         </View>
                                         <View style={styles.policyTextContainer}>
-                                            <Text style={[styles.policyLabel, { color: '#818cf8' }]}>Simular Sesión IA</Text>
+                                            <Text style={[styles.policyLabel, { color: tokens.text.link }]}>Simular Sesión IA</Text>
                                             <Text style={styles.policyValue}>Generar ejemplo estratégico en Dashboard</Text>
                                         </View>
-                                        <CL size={20} color="#475569" style={{ transform: [{ rotate: '180deg' }] }} />
+                                        <CL size={20} color={tokens.text.disabled} style={{ transform: [{ rotate: '180deg' }] }} />
                                     </TO>
                                 </>
                             )}
@@ -750,12 +754,12 @@ const SettingsScreen = () => {
                                 onPress={() => toggleSection('feedback')}
                                 activeOpacity={0.7}
                             >
-                                <MST size={20} color="#38bdf8" />
+                                <MST size={20} color={tokens.accent.sky} />
                                 <Text style={styles.sectionTitle}>Feedback Friends & Family</Text>
                                 {expandedSections.feedback ? (
-                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CU size={20} color={tokens.text.muted} style={{ marginLeft: 'auto' }} />
                                 ) : (
-                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CD size={20} color={tokens.text.muted} style={{ marginLeft: 'auto' }} />
                                 )}
                             </TO>
 
@@ -766,13 +770,13 @@ const SettingsScreen = () => {
                                         onPress={() => setShowFeedbackModal(true)}
                                     >
                                         <View style={[styles.iconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.1)', width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }]}>
-                                            <MST size={18} color="#38bdf8" />
+                                            <MST size={18} color={tokens.accent.sky} />
                                         </View>
                                         <View style={styles.policyTextContainer}>
-                                            <Text style={[styles.policyLabel, { color: '#38bdf8' }]}>Ayúdanos a mejorar</Text>
+                                            <Text style={[styles.policyLabel, { color: tokens.accent.sky }]}>Ayúdanos a mejorar</Text>
                                             <Text style={styles.policyValue}>Reportar fallas o sugerir mejoras</Text>
                                         </View>
-                                        <AR size={20} color="#38bdf8" />
+                                        <AR size={20} color={tokens.accent.sky} />
                                     </TO>
 
                                     <TO
@@ -780,13 +784,13 @@ const SettingsScreen = () => {
                                         onPress={() => navigation.navigate('FeedbackHistory')}
                                     >
                                         <View style={[styles.iconCircle, { backgroundColor: 'rgba(129, 140, 248, 0.1)', width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }]}>
-                                            <Db size={18} color="#818cf8" />
+                                            <Db size={18} color={tokens.text.link} />
                                         </View>
                                         <View style={styles.policyTextContainer}>
-                                            <Text style={[styles.policyLabel, { color: '#818cf8' }]}>Admin: Ver Feedback</Text>
+                                            <Text style={[styles.policyLabel, { color: tokens.text.link }]}>Admin: Ver Feedback</Text>
                                             <Text style={styles.policyValue}>Ver comentarios de testers</Text>
                                         </View>
-                                        <AR size={20} color="#818cf8" />
+                                        <AR size={20} color={tokens.text.link} />
                                     </TO>
                                 </>
                             )}
@@ -799,12 +803,12 @@ const SettingsScreen = () => {
                                 onPress={() => toggleSection('analysis')}
                                 activeOpacity={0.7}
                             >
-                                <Ste size={20} color="#a855f7" />
+                                <Ste size={20} color={tokens.accent.purple} />
                                 <Text style={styles.sectionTitle}>Análisis Estratégico</Text>
                                 {expandedSections.analysis ? (
-                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CU size={20} color={tokens.text.muted} style={{ marginLeft: 'auto' }} />
                                 ) : (
-                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CD size={20} color={tokens.text.muted} style={{ marginLeft: 'auto' }} />
                                 )}
                             </TO>
 
@@ -814,7 +818,7 @@ const SettingsScreen = () => {
                                         Genera un reporte estratégico de los 7 días previos a tu sesión de rendimiento.
                                     </Text>
                                     <TO style={styles.dateSelector} onPress={() => setShowDatePicker(true)}>
-                                        <Cal size={18} color="#94a3b8" />
+                                        <Cal size={18} color={tokens.text.muted} />
                                         <Text style={styles.dateText}>Fin del reporte: {appointmentDate.toLocaleDateString()}</Text>
                                     </TO>
                                     {!!showDatePicker && (
@@ -838,13 +842,13 @@ const SettingsScreen = () => {
                                         onPress={() => navigation.navigate('WeeklyReport', {})}
                                     >
                                         <View style={[styles.iconCircle, { backgroundColor: 'rgba(192, 132, 252, 0.1)', width: 40, height: 40, borderRadius: 12 }]}>
-                                            <Download size={18} color="#c084fc" />
+                                            <Download size={18} color={tokens.accent.purple} />
                                         </View>
                                         <View style={styles.policyTextContainer}>
-                                            <Text style={[styles.policyLabel, { color: '#c084fc' }]}>Exportar Reporte</Text>
+                                            <Text style={[styles.policyLabel, { color: tokens.accent.purple }]}>Exportar Reporte</Text>
                                             <Text style={styles.policyValue}>Descarga tu reporte semanal en PDF</Text>
                                         </View>
-                                        <AR size={20} color="#c084fc" />
+                                        <AR size={20} color={tokens.accent.purple} />
                                     </TO>
                                 </View>
                             )}
@@ -853,6 +857,43 @@ const SettingsScreen = () => {
                         {/* ═══ AJUSTES ═══ */}
                         <Text style={styles.groupLabel}>AJUSTES</Text>
 
+                        {/* Theme toggle — first under AJUSTES */}
+                        <View style={styles.section}>
+                            <View style={styles.themeRow}>
+                                <View style={styles.themeIconCircle}>
+                                    {mode === 'dark' ? (
+                                        <Moon size={20} color={tokens.accent.indigo} />
+                                    ) : (
+                                        <Sun size={20} color={tokens.accent.amber} />
+                                    )}
+                                </View>
+                                <View style={styles.themeTextContainer}>
+                                    <Text style={styles.themeTitle}>Apariencia</Text>
+                                    <Text style={styles.themeSub}>
+                                        {mode === 'dark' ? 'Modo oscuro' : 'Modo claro'}
+                                    </Text>
+                                </View>
+                                <View style={styles.themeToggleGroup}>
+                                    <TO
+                                        onPress={() => setMode('dark')}
+                                        style={[styles.themeChip, mode === 'dark' && styles.themeChipActive]}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Moon size={14} color={mode === 'dark' ? tokens.text.onAccent : tokens.text.muted} />
+                                        <Text style={[styles.themeChipText, mode === 'dark' && styles.themeChipTextActive]}>Oscuro</Text>
+                                    </TO>
+                                    <TO
+                                        onPress={() => setMode('light')}
+                                        style={[styles.themeChip, mode === 'light' && styles.themeChipActive]}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Sun size={14} color={mode === 'light' ? tokens.text.onAccent : tokens.text.muted} />
+                                        <Text style={[styles.themeChipText, mode === 'light' && styles.themeChipTextActive]}>Claro</Text>
+                                    </TO>
+                                </View>
+                            </View>
+                        </View>
+
                         {/* 6. TERMS & CONDITIONS (SUMMARY) */}
                         <View style={styles.section}>
                             <TO
@@ -860,12 +901,12 @@ const SettingsScreen = () => {
                                 onPress={() => toggleSection('privacy')}
                                 activeOpacity={0.7}
                             >
-                                <SC size={20} color="#6366f1" />
+                                <SC size={20} color={tokens.accent.indigo} />
                                 <Text style={styles.sectionTitle}>Privacidad y Datos</Text>
                                 {expandedSections.privacy ? (
-                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CU size={20} color={tokens.text.muted} style={{ marginLeft: 'auto' }} />
                                 ) : (
-                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CD size={20} color={tokens.text.muted} style={{ marginLeft: 'auto' }} />
                                 )}
                             </TO>
 
@@ -876,45 +917,45 @@ const SettingsScreen = () => {
                                     </Text>
                                     <TO style={styles.policyRow} onPress={() => navigation.navigate('Privacy')}>
                                         <View style={styles.iconCircle}>
-                                            <SC size={18} color="#6366f1" />
+                                            <SC size={18} color={tokens.accent.indigo} />
                                         </View>
                                         <View style={styles.policyTextContainer}>
                                             <Text style={styles.policyLabel}>Aviso de Privacidad</Text>
                                             <Text style={styles.policyValue}>Lee cómo protegemos tu información.</Text>
                                         </View>
-                                        <AR size={20} color="#475569" />
+                                        <AR size={20} color={tokens.text.disabled} />
                                     </TO>
                                     <TO style={styles.policyRow} onPress={handleDownloadPrivacyPact}>
                                         <View style={[styles.iconCircle, { backgroundColor: 'rgba(192, 132, 252, 0.1)' }]}>
-                                            <Award size={18} color="#c084fc" />
+                                            <Award size={18} color={tokens.accent.purple} />
                                         </View>
                                         <View style={styles.policyTextContainer}>
-                                            <Text style={[styles.policyLabel, { color: '#c084fc' }]}>Certificado de Privacidad</Text>
+                                            <Text style={[styles.policyLabel, { color: tokens.accent.purple }]}>Certificado de Privacidad</Text>
                                             <Text style={styles.policyValue}>Descargar PDF con tus compromisos</Text>
                                         </View>
-                                        <AR size={20} color="#475569" />
+                                        <AR size={20} color={tokens.text.disabled} />
                                     </TO>
                                     <TO style={styles.policyRow} onPress={() => WebBrowser.openBrowserAsync('https://blackboxmind.ai/terms')}>
-                                        <View style={[styles.iconCircle, { backgroundColor: 'rgba(99, 102, 241, 0.1)' }]}>
-                                            <Db size={18} color="#6366f1" />
+                                        <View style={[styles.iconCircle, { backgroundColor: tokens.accent.indigoSoft }]}>
+                                            <Db size={18} color={tokens.accent.indigo} />
                                         </View>
                                         <View style={styles.policyTextContainer}>
                                             <Text style={styles.policyLabel}>Términos de Servicio</Text>
                                             <Text style={styles.policyValue}>Reglas de uso de la plataforma.</Text>
                                         </View>
-                                        <AR size={20} color="#475569" />
+                                        <AR size={20} color={tokens.text.disabled} />
                                     </TO>
 
                                     {/* Web Portal Link (NEW) */}
-                                    <TO style={[styles.policyRow, { marginTop: 10, paddingTop: 15, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' }]} onPress={() => WebBrowser.openBrowserAsync('https://blackboxmind.ai/dashboard')}>
+                                    <TO style={[styles.policyRow, { marginTop: 10, paddingTop: 15, borderTopWidth: 1, borderTopColor: tokens.border.subtle }]} onPress={() => WebBrowser.openBrowserAsync('https://blackboxmind.ai/dashboard')}>
                                         <View style={[styles.iconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.1)' }]}>
-                                            <Sparkles size={18} color="#38bdf8" />
+                                            <Sparkles size={18} color={tokens.accent.sky} />
                                         </View>
                                         <View style={styles.policyTextContainer}>
-                                            <Text style={[styles.policyLabel, { color: '#38bdf8' }]}>Portal Web BlackBoxMind</Text>
+                                            <Text style={[styles.policyLabel, { color: tokens.accent.sky }]}>Portal Web BlackBoxMind</Text>
                                             <Text style={styles.policyValue}>Accede a tu dashboard avanzado en blackboxmind.ai</Text>
                                         </View>
-                                        <AR size={20} color="#38bdf8" />
+                                        <AR size={20} color={tokens.accent.sky} />
                                     </TO>
                                 </View>
                             )}
@@ -927,19 +968,19 @@ const SettingsScreen = () => {
                                 onPress={() => toggleSection('account')}
                                 activeOpacity={0.7}
                             >
-                                <SC size={20} color="#ef4444" />
+                                <SC size={20} color={tokens.accent.red} />
                                 <Text style={styles.sectionTitle}>Cuenta</Text>
                                 {expandedSections.account ? (
-                                    <CU size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CU size={20} color={tokens.text.muted} style={{ marginLeft: 'auto' }} />
                                 ) : (
-                                    <CD size={20} color="#94a3b8" style={{ marginLeft: 'auto' }} />
+                                    <CD size={20} color={tokens.text.muted} style={{ marginLeft: 'auto' }} />
                                 )}
                             </TO>
 
                             {expandedSections.account && (
                                 <View style={{ gap: 12 }}>
                                     <TO style={styles.logoutBtn} onPress={signOut}>
-                                        <LO size={20} color="#ef4444" />
+                                        <LO size={20} color={tokens.accent.red} />
                                         <Text style={styles.logoutBtnText}>Cerrar Sesión</Text>
                                     </TO>
 
@@ -947,7 +988,7 @@ const SettingsScreen = () => {
                                         style={[styles.logoutBtn, { backgroundColor: 'rgba(239, 68, 68, 0.05)', borderColor: 'rgba(239, 68, 68, 0.1)' }]}
                                         onPress={handleDeleteAccount}
                                     >
-                                        <AT size={20} color="#ef4444" />
+                                        <AT size={20} color={tokens.accent.red} />
                                         <Text style={[styles.logoutBtnText, { fontSize: 14, opacity: 0.8 }]}>Eliminar Cuenta y Datos</Text>
                                     </TO>
                                 </View>
@@ -991,7 +1032,7 @@ const SettingsScreen = () => {
                                             <Text style={styles.biasSource} numberOfLines={1}>
                                                 De: {item.entryTitle}
                                             </Text>
-                                            <AR size={14} color="#475569" />
+                                            <AR size={14} color={tokens.text.disabled} />
                                         </View>
                                     </TO>
                                 ))
@@ -1032,13 +1073,13 @@ const SettingsScreen = () => {
                                             style={[styles.catHeader, { backgroundColor: cat === 'BUSINESS' ? 'rgba(99, 102, 241, 0.15)' : cat === 'PERSONAL' ? 'rgba(250, 204, 21, 0.1)' : cat === 'HEALTH' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(148, 163, 184, 0.1)' }]}
                                             onPress={() => toggleCategory(cat)}
                                         >
-                                            <Text style={[styles.catHeaderText, { color: cat === 'BUSINESS' ? '#818cf8' : cat === 'PERSONAL' ? '#facc15' : cat === 'HEALTH' ? '#10b981' : '#94a3b8', flex: 1 }]}>
+                                            <Text style={[styles.catHeaderText, { color: cat === 'BUSINESS' ? tokens.text.link : cat === 'PERSONAL' ? tokens.accent.yellow : cat === 'HEALTH' ? tokens.accent.green : tokens.text.muted, flex: 1 }]}>
                                                 {cat === 'BUSINESS' ? '💼 NEGOCIOS' : cat === 'PERSONAL' ? '👤 PERSONAL' : cat === 'HEALTH' ? '🏥 SALUD' : '📋 GENERAL'}
                                             </Text>
                                             <View style={styles.catCountBadge}>
                                                 <Text style={styles.catCountText}>{items.length}</Text>
                                             </View>
-                                            {isCatExpanded ? <CU size={18} color="#94a3b8" /> : <CD size={18} color="#94a3b8" />}
+                                            {isCatExpanded ? <CU size={18} color={tokens.text.muted} /> : <CD size={18} color={tokens.text.muted} />}
                                         </TO>
                                         {isCatExpanded && sortedItems.map((item: any, idx: number) => (
                                             <TO
@@ -1047,22 +1088,22 @@ const SettingsScreen = () => {
                                                 onPress={() => navigation.navigate('EntryDetail', { entryId: item.entryId })}
                                             >
                                                 {viewMode === 'pending' && (
-                                                    <View style={[styles.hubTaskDot, { backgroundColor: item.priority === 'HIGH' ? '#ef4444' : '#818cf8' }]} />
+                                                    <View style={[styles.hubTaskDot, { backgroundColor: item.priority === 'HIGH' ? tokens.accent.red : tokens.text.link }]} />
                                                 )}
-                                                {viewMode === 'completed' && <CheckCircle2 size={16} color="#10b981" style={{ marginRight: 12 }} />}
+                                                {viewMode === 'completed' && <CheckCircle2 size={16} color={tokens.accent.green} style={{ marginRight: 12 }} />}
                                                 <View style={{ flex: 1 }}>
                                                     <Text style={[
                                                         styles.hubTaskDesc,
-                                                        viewMode === 'completed' && { textDecorationLine: 'line-through', color: '#64748b' }
+                                                        viewMode === 'completed' && { textDecorationLine: 'line-through', color: tokens.text.muted }
                                                     ]}>
                                                         {item.description}
                                                     </Text>
                                                     <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
-                                                        {item.priority === 'HIGH' && <Text style={{fontSize: 10, color: '#ef4444', fontWeight: 'bold'}}>ALTA</Text>}
+                                                        {item.priority === 'HIGH' && <Text style={{fontSize: 10, color: tokens.accent.red, fontWeight: 'bold'}}>ALTA</Text>}
                                                         <Text style={styles.hubTaskSource}>En: {item.entryTitle}</Text>
                                                     </View>
                                                 </View>
-                                                <AR size={14} color="#475569" />
+                                                <AR size={14} color={tokens.text.disabled} />
                                             </TO>
                                         ))}
                                     </View>
@@ -1070,7 +1111,7 @@ const SettingsScreen = () => {
                             })
                         )}
                         <TO
-                            style={[styles.generateButton, { marginTop: 30, backgroundColor: '#334155' }]}
+                            style={[styles.generateButton, { marginTop: 30, backgroundColor: tokens.border.strong }]}
                             onPress={() => setViewMode('hub')}
                         >
                             <Text style={styles.generateButtonText}>Volver al Hub</Text>
@@ -1099,7 +1140,7 @@ const SettingsScreen = () => {
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Enviar Feedback</Text>
                             <TO onPress={() => setShowFeedbackModal(false)}>
-                                <Xi size={24} color="#94a3b8" />
+                                <Xi size={24} color={tokens.text.muted} />
                             </TO>
                         </View>
 
@@ -1128,7 +1169,7 @@ const SettingsScreen = () => {
                         <TI
                             style={styles.feedbackInput}
                             placeholder="Cuéntanos más detalles..."
-                            placeholderTextColor="#64748b"
+                            placeholderTextColor={tokens.text.muted}
                             multiline
                             numberOfLines={6}
                             value={feedbackContent}
@@ -1141,12 +1182,12 @@ const SettingsScreen = () => {
                             <View style={styles.imagePreviewContainer}>
                                 <Img source={{ uri: feedbackImage }} style={styles.previewImage} />
                                 <TO style={styles.removeImageBtn} onPress={() => setFeedbackImage(null)}>
-                                    <TIc size={16} color="white" />
+                                    <TIc size={16} color={tokens.text.onAccent} />
                                 </TO>
                             </View>
                         ) : (
                             <TO style={styles.attachButton} onPress={pickImage}>
-                                <PC size={18} color="#6366f1" style={{ marginRight: 8 }} />
+                                <PC size={18} color={tokens.accent.indigo} style={{ marginRight: 8 }} />
                                 <Text style={styles.attachButtonText}>Adjuntar Imagen</Text>
                             </TO>
                         )}
@@ -1157,11 +1198,11 @@ const SettingsScreen = () => {
                             disabled={isSubmittingFeedback}
                         >
                             {isSubmittingFeedback ? (
-                                <ActivityIndicator color="#ffffff" />
+                                <ActivityIndicator color={tokens.text.onAccent} />
                             ) : (
                                 <>
                                     <Text style={styles.sendButtonText}>Enviar Feedback</Text>
-                                    <Sen size={18} color="#ffffff" style={{ marginLeft: 8 }} />
+                                    <Sen size={18} color={tokens.text.onAccent} style={{ marginLeft: 8 }} />
                                 </>
                             )}
                         </TO>
@@ -1184,7 +1225,7 @@ const SettingsScreen = () => {
                             <View style={styles.modalHeader}>
                                 <Text style={styles.modalTitle}>Nueva Meta Estratégica</Text>
                                 <TO onPress={() => setShowGoalModal(false)}>
-                                    <Xi size={24} color="#94a3b8" />
+                                    <Xi size={24} color={tokens.text.muted} />
                                 </TO>
                             </View>
 
@@ -1193,7 +1234,7 @@ const SettingsScreen = () => {
                             <TI
                                 style={styles.feedbackInput}
                                 placeholder="Título de la meta (Ej: Lanzar producto X)"
-                                placeholderTextColor="#64748b"
+                                placeholderTextColor={tokens.text.muted}
                                 value={newGoalTitle}
                                 onChangeText={setNewGoalTitle}
                             />
@@ -1201,7 +1242,7 @@ const SettingsScreen = () => {
                             <TI
                                 style={[styles.feedbackInput, { height: 80, marginTop: 12 }]}
                                 placeholder="Descripción o métrica de éxito..."
-                                placeholderTextColor="#64748b"
+                                placeholderTextColor={tokens.text.muted}
                                 multiline
                                 value={newGoalDesc}
                                 onChangeText={setNewGoalDesc}
@@ -1230,12 +1271,12 @@ const SettingsScreen = () => {
                             </View>
 
                             <TO
-                                style={[styles.sendButton, (!newGoalTitle.trim() || isCreatingGoal) && styles.sendButtonDisabled, { backgroundColor: '#6366f1', marginTop: 30 }]}
+                                style={[styles.sendButton, (!newGoalTitle.trim() || isCreatingGoal) && styles.sendButtonDisabled, { backgroundColor: tokens.accent.indigo, marginTop: 30 }]}
                                 onPress={handleCreateGoal}
                                 disabled={!newGoalTitle.trim() || isCreatingGoal}
                             >
                                 {isCreatingGoal ? (
-                                    <ActivityIndicator color="#ffffff" />
+                                    <ActivityIndicator color={tokens.text.onAccent} />
                                 ) : (
                                     <Text style={styles.sendButtonText}>Registrar Meta</Text>
                                 )}
@@ -1248,8 +1289,8 @@ const SettingsScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#0f172a' },
+const makeStyles = (tokens: ThemeTokens) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: tokens.bg.page },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1262,7 +1303,7 @@ const styles = StyleSheet.create({
         padding: 4,
     },
     headerTitle: {
-        color: '#ffffff',
+        color: tokens.text.primary,
         fontSize: 18,
         fontWeight: '700',
         letterSpacing: 0.5,
@@ -1276,7 +1317,7 @@ const styles = StyleSheet.create({
         marginBottom: 30,
     },
     groupLabel: {
-        color: '#475569',
+        color: tokens.text.disabled,
         fontSize: 11,
         fontWeight: '700',
         letterSpacing: 2,
@@ -1291,25 +1332,25 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     sectionTitle: {
-        color: '#ffffff',
+        color: tokens.text.primary,
         fontSize: 20,
         fontWeight: '700',
     },
     sectionSubText: {
-        color: '#94a3b8',
+        color: tokens.text.muted,
         fontSize: 12,
         fontWeight: '500',
         marginTop: 2,
     },
     legalCard: {
-        backgroundColor: '#1e293b',
+        backgroundColor: tokens.bg.card,
         borderRadius: 24,
         padding: 24,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        borderColor: tokens.border.subtle,
     },
     legalIntro: {
-        color: '#94a3b8',
+        color: tokens.text.muted,
         fontSize: 15,
         lineHeight: 22,
         marginBottom: 24,
@@ -1339,25 +1380,25 @@ const styles = StyleSheet.create({
     tutorialButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#1e293b',
+        backgroundColor: tokens.bg.card,
         borderRadius: 20,
         padding: 16,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        borderColor: tokens.border.subtle,
         gap: 16,
     },
     policyTextContainer: {
         flex: 1,
     },
     clinicalCard: {
-        backgroundColor: '#1e293b',
+        backgroundColor: tokens.bg.card,
         borderRadius: 24,
         padding: 20,
         borderWidth: 1,
         borderColor: 'rgba(168, 85, 247, 0.2)',
     },
     clinicalDesc: {
-        color: '#94a3b8',
+        color: tokens.text.muted,
         fontSize: 14,
         lineHeight: 20,
         marginBottom: 20,
@@ -1365,38 +1406,38 @@ const styles = StyleSheet.create({
     dateSelector: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        backgroundColor: tokens.bg.scrim,
         padding: 14,
         borderRadius: 12,
         marginBottom: 16,
         gap: 12,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        borderColor: tokens.border.subtle,
     },
     dateText: {
-        color: '#ffffff',
+        color: tokens.text.primary,
         fontSize: 15,
         fontWeight: '500',
     },
     generateButton: {
-        backgroundColor: '#a855f7',
+        backgroundColor: tokens.accent.purple,
         height: 50,
         borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: "#a855f7",
+        shadowColor: tokens.accent.purple,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 5,
         elevation: 8,
     },
     generateButtonText: {
-        color: '#ffffff',
+        color: tokens.text.primary,
         fontSize: 15,
         fontWeight: '700',
     },
     policyLabel: {
-        color: '#64748b',
+        color: tokens.text.muted,
         fontSize: 12,
         fontWeight: '600',
         textTransform: 'uppercase',
@@ -1404,42 +1445,42 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     policyValue: {
-        color: '#ffffff',
+        color: tokens.text.primary,
         fontSize: 15,
         fontWeight: '600',
         lineHeight: 20,
     },
     hubCard: {
-        backgroundColor: '#1e293b',
+        backgroundColor: tokens.bg.card,
         borderRadius: 24,
         padding: 20,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        borderColor: tokens.border.subtle,
     },
-    emptyHubText: { color: '#64748b', fontSize: 14, fontStyle: 'italic', textAlign: 'center' },
+    emptyHubText: { color: tokens.text.muted, fontSize: 14, fontStyle: 'italic', textAlign: 'center' },
     hubTaskItem: {
         width: '100%',
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 16,
         paddingHorizontal: 16,
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        backgroundColor: tokens.bg.scrim,
         borderRadius: 16,
         marginBottom: 10,
         gap: 12,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        borderColor: tokens.border.subtle,
     },
-    hubTaskDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#818cf8' },
-    hubTaskDesc: { color: '#ffffff', fontSize: 15, fontWeight: '500' },
-    hubTaskSource: { color: '#64748b', fontSize: 12, marginTop: 2 },
-    moreHubText: { color: '#64748b', fontSize: 12, textAlign: 'center', marginTop: 12 },
+    hubTaskDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: tokens.text.link },
+    hubTaskDesc: { color: tokens.text.primary, fontSize: 15, fontWeight: '500' },
+    hubTaskSource: { color: tokens.text.muted, fontSize: 12, marginTop: 2 },
+    moreHubText: { color: tokens.text.muted, fontSize: 12, textAlign: 'center', marginTop: 12 },
     hubBiasItem: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+        borderBottomColor: tokens.border.subtle,
         gap: 12,
     },
     biasTag: {
@@ -1448,9 +1489,9 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
         borderRadius: 8,
     },
-    biasTagText: { color: '#f59e0b', fontSize: 11, fontWeight: 'bold' },
+    biasTagText: { color: tokens.accent.amber, fontSize: 11, fontWeight: 'bold' },
     biasCard: {
-        backgroundColor: 'rgba(255,255,255,0.03)',
+        backgroundColor: tokens.bg.scrim,
         borderRadius: 16,
         borderWidth: 1,
         borderColor: 'rgba(245,158,11,0.18)',
@@ -1458,13 +1499,13 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     biasCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-    biasDate: { color: '#475569', fontSize: 11, fontWeight: '600', marginLeft: 10 },
-    biasMessage: { color: '#cbd5e1', fontSize: 13, lineHeight: 19 },
+    biasDate: { color: tokens.text.disabled, fontSize: 11, fontWeight: '600', marginLeft: 10 },
+    biasMessage: { color: tokens.text.secondary, fontSize: 13, lineHeight: 19 },
     biasCardFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
-    biasSource: { color: '#64748b', fontSize: 12, fontWeight: '600', flex: 1, marginRight: 8 },
+    biasSource: { color: tokens.text.muted, fontSize: 12, fontWeight: '600', flex: 1, marginRight: 8 },
     biasEmpty: { padding: 24, alignItems: 'center' },
-    biasEmptyText: { color: '#64748b', fontSize: 13, textAlign: 'center', lineHeight: 19 },
-    hubBiasTitle: { color: '#ffffff', fontSize: 14, flex: 1 },
+    biasEmptyText: { color: tokens.text.muted, fontSize: 13, textAlign: 'center', lineHeight: 19 },
+    hubBiasTitle: { color: tokens.text.primary, fontSize: 14, flex: 1 },
     // NEW PROFILE STYLES
     profileSummary: {
         flexDirection: 'row',
@@ -1472,17 +1513,17 @@ const styles = StyleSheet.create({
         marginBottom: 24,
         paddingBottom: 20,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.05)',
+        borderBottomColor: tokens.border.subtle,
     },
     avatarLarge: {
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: '#6366f1',
+        backgroundColor: tokens.accent.indigo,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 3,
-        borderColor: 'rgba(99, 102, 241, 0.3)',
+        borderColor: tokens.accent.indigo,
     },
     avatarText: {
         color: 'white',
@@ -1496,17 +1537,17 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     profileEmail: {
-        color: '#94a3b8',
+        color: tokens.text.muted,
         fontSize: 14,
     },
     editSection: {
         marginTop: 0,
     },
     inputContainer: {
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        backgroundColor: tokens.bg.scrim,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        borderColor: tokens.border.subtle,
         marginBottom: 8,
     },
     profileInput: {
@@ -1525,30 +1566,30 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(239, 68, 68, 0.2)',
     },
-    logoutBtnText: { color: '#ef4444', fontSize: 16, fontWeight: '700' },
+    logoutBtnText: { color: tokens.accent.red, fontSize: 16, fontWeight: '700' },
     footer: {
         alignItems: 'center',
         marginTop: 20,
         marginBottom: 40,
     },
     versionText: {
-        color: '#334155',
+        color: tokens.border.strong,
         fontSize: 12,
         fontWeight: '700',
         letterSpacing: 1,
         marginBottom: 8,
     },
     footerLegal: {
-        color: '#334155',
+        color: tokens.border.strong,
         fontSize: 11,
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        backgroundColor: tokens.bg.overlay,
         justifyContent: 'flex-end',
     },
     modalContent: {
-        backgroundColor: '#1e293b',
+        backgroundColor: tokens.bg.card,
         borderTopLeftRadius: 32,
         borderTopRightRadius: 32,
         padding: 24,
@@ -1561,12 +1602,12 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     modalTitle: {
-        color: '#ffffff',
+        color: tokens.text.primary,
         fontSize: 22,
         fontWeight: 'bold',
     },
     modalSubtitle: {
-        color: '#94a3b8',
+        color: tokens.text.muted,
         fontSize: 16,
         marginBottom: 16,
     },
@@ -1579,42 +1620,42 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingVertical: 10,
         borderRadius: 12,
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        backgroundColor: tokens.border.subtle,
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        borderColor: tokens.border.subtle,
     },
     typeButtonActive: {
         backgroundColor: 'rgba(56, 189, 248, 0.1)',
-        borderColor: '#38bdf8',
+        borderColor: tokens.accent.sky,
     },
     typeButtonText: {
-        color: '#64748b',
+        color: tokens.text.muted,
         fontSize: 14,
         fontWeight: '600',
     },
     typeButtonTextActive: {
-        color: '#38bdf8',
+        color: tokens.accent.sky,
     },
     feedbackInput: {
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        backgroundColor: tokens.bg.scrim,
         borderRadius: 16,
         padding: 16,
-        color: '#ffffff',
+        color: tokens.text.primary,
         fontSize: 16,
         height: 150,
         marginBottom: 24,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        borderColor: tokens.border.subtle,
     },
     sendButton: {
         flexDirection: 'row',
-        backgroundColor: '#38bdf8',
+        backgroundColor: tokens.accent.sky,
         height: 56,
         borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: "#38bdf8",
+        shadowColor: tokens.accent.sky,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 5,
@@ -1624,26 +1665,26 @@ const styles = StyleSheet.create({
         opacity: 0.6,
     },
     sendButtonText: {
-        color: '#ffffff',
+        color: tokens.text.primary,
         fontSize: 16,
         fontWeight: 'bold',
     },
     miniBadge: { paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 },
     miniBadgeText: { fontSize: 9, fontWeight: 'bold' },
-    addMiniBtn: { backgroundColor: '#6366f1', width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginLeft: 12 },
+    addMiniBtn: { backgroundColor: tokens.accent.indigo, width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginLeft: 12 },
     goalsContainer: { gap: 12, marginBottom: 10 },
-    emptyGoals: { padding: 20, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 20 },
-    createGoalBtn: { marginTop: 10, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: 'rgba(99, 102, 241, 0.1)', borderRadius: 10 },
-    createGoalBtnText: { color: '#818cf8', fontWeight: 'bold', fontSize: 13 },
-    goalCard: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#1e293b', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', gap: 12 },
+    emptyGoals: { padding: 20, alignItems: 'center', backgroundColor: tokens.bg.scrim, borderRadius: 20 },
+    createGoalBtn: { marginTop: 10, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: tokens.accent.indigoSoft, borderRadius: 10 },
+    createGoalBtnText: { color: tokens.text.link, fontWeight: 'bold', fontSize: 13 },
+    goalCard: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: tokens.bg.card, borderRadius: 20, borderWidth: 1, borderColor: tokens.border.subtle, gap: 12 },
     goalCardCompleted: { opacity: 0.6 },
     goalCheck: { padding: 4 },
-    checkBox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: '#6366f1', justifyContent: 'center', alignItems: 'center' },
-    checkBoxChecked: { backgroundColor: '#6366f1' },
-    goalTitle: { color: '#ffffff', fontSize: 16, fontWeight: '700' },
-    goalDesc: { color: '#94a3b8', fontSize: 13, marginTop: 2 },
-    goalBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.05)', marginTop: 6 },
-    goalBadgeText: { color: '#64748b', fontSize: 10, fontWeight: 'bold' },
+    checkBox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: tokens.accent.indigo, justifyContent: 'center', alignItems: 'center' },
+    checkBoxChecked: { backgroundColor: tokens.accent.indigo },
+    goalTitle: { color: tokens.text.primary, fontSize: 16, fontWeight: '700' },
+    goalDesc: { color: tokens.text.muted, fontSize: 13, marginTop: 2 },
+    goalBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: tokens.border.subtle, marginTop: 6 },
+    goalBadgeText: { color: tokens.text.muted, fontSize: 10, fontWeight: 'bold' },
     textCompleted: { textDecorationLine: 'line-through' },
     catHeader: {
         paddingVertical: 14,
@@ -1655,7 +1696,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.05)'
+        borderColor: tokens.border.subtle
     },
     catHeaderText: {
         fontSize: 13,
@@ -1663,7 +1704,7 @@ const styles = StyleSheet.create({
         letterSpacing: 1,
     },
     catCountBadge: {
-        backgroundColor: 'rgba(0,0,0,0.3)',
+        backgroundColor: tokens.border.subtle,
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 10,
@@ -1672,7 +1713,7 @@ const styles = StyleSheet.create({
         alignItems: 'center'
     },
     catCountText: {
-        color: '#ffffff',
+        color: tokens.text.primary,
         fontSize: 12,
         fontWeight: 'bold'
     },
@@ -1681,13 +1722,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 12,
         paddingHorizontal: 16,
-        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+        backgroundColor: tokens.accent.indigoSoft,
         borderRadius: 12,
         marginBottom: 24,
         alignSelf: 'flex-start',
     },
     attachButtonText: {
-        color: '#818cf8',
+        color: tokens.text.link,
         fontSize: 14,
         fontWeight: '600',
     },
@@ -1697,9 +1738,9 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         overflow: 'hidden',
         marginBottom: 24,
-        backgroundColor: '#1e293b',
+        backgroundColor: tokens.bg.card,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderColor: tokens.border.subtle,
     },
     previewImage: {
         width: '100%',
@@ -1710,14 +1751,64 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 8,
         right: 8,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        backgroundColor: tokens.bg.overlay,
         width: 32,
         height: 32,
         borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.2)',
+        borderColor: tokens.border.strong,
+    },
+
+    // Theme toggle
+    themeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: tokens.bg.card,
+        borderWidth: 1,
+        borderColor: tokens.border.default,
+        borderRadius: 14,
+        paddingVertical: 14,
+        paddingHorizontal: 14,
+        gap: 12,
+    },
+    themeIconCircle: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: tokens.accent.indigoSoft,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    themeTextContainer: { flex: 1 },
+    themeTitle: { color: tokens.text.primary, fontSize: 15, fontWeight: '700' },
+    themeSub: { color: tokens.text.muted, fontSize: 12, fontWeight: '500', marginTop: 2 },
+    themeToggleGroup: {
+        flexDirection: 'row',
+        backgroundColor: tokens.bg.chip,
+        borderRadius: 10,
+        padding: 3,
+        gap: 2,
+    },
+    themeChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        paddingVertical: 7,
+        paddingHorizontal: 10,
+        borderRadius: 8,
+    },
+    themeChipActive: {
+        backgroundColor: tokens.accent.indigo,
+    },
+    themeChipText: {
+        color: tokens.text.muted,
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    themeChipTextActive: {
+        color: tokens.text.onAccent,
     },
 });
 

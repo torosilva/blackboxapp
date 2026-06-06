@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     View,
     Text,
@@ -16,11 +16,15 @@ import { useNavigation, NavigationRouteContext } from '@react-navigation/native'
 import { SupabaseService } from '../services/SupabaseService';
 import { useAuth } from '../context/AuthContext';
 import { generateAndSharePrivacyPact, generateCertId } from '../utils/generatePrivacyPact';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeTokens } from '../theme/tokens';
 
 const PrivacyScreen = ({ isMandatory: propIsMandatory }: { isMandatory?: boolean }) => {
     const navigation = useNavigation<any>();
     const route: any = React.useContext(NavigationRouteContext);
     const { user, profile, refreshProfile } = useAuth();
+    const { tokens } = useTheme();
+    const styles = useMemo(() => makeStyles(tokens), [tokens]);
 
     const SAV = SafeAreaView as any;
     const TO = TouchableOpacity as any;
@@ -87,16 +91,16 @@ const PrivacyScreen = ({ isMandatory: propIsMandatory }: { isMandatory?: boolean
 
     return (
         <SAV style={styles.container}>
-            <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+            <StatusBar barStyle={tokens.statusBar} translucent backgroundColor="transparent" />
 
             <View style={styles.header}>
                 {!isMandatory && (
                     <TO onPress={() => navigation.goBack()} style={styles.backBtn}>
-                        <CL color="white" size={28} />
+                        <CL color={tokens.text.primary} size={28} />
                     </TO>
                 )}
                 <View style={styles.titleContainer}>
-                    <L size={20} color="#6366f1" />
+                    <L size={20} color={tokens.accent.indigo} />
                     <Text style={styles.headerTitle}>AVISO DE PRIVACIDAD</Text>
                 </View>
                 {!isMandatory && <View style={{ width: 44 }} />}
@@ -106,7 +110,7 @@ const PrivacyScreen = ({ isMandatory: propIsMandatory }: { isMandatory?: boolean
                 <View style={styles.certCard}>
                     <View style={styles.certHeader}>
                         <View style={styles.certBrandRow}>
-                            <Aw size={14} color="#c084fc" />
+                            <Aw size={14} color={tokens.accent.purple} />
                             <Text style={styles.certBrandText}>BLACKBOXMIND.AI</Text>
                         </View>
                         <View style={styles.certStatusPill}>
@@ -143,10 +147,10 @@ const PrivacyScreen = ({ isMandatory: propIsMandatory }: { isMandatory?: boolean
                         disabled={downloadingPact}
                     >
                         {downloadingPact ? (
-                            <ActivityIndicator color="#FFFFFF" size="small" />
+                            <ActivityIndicator color={tokens.text.onAccent} size="small" />
                         ) : (
                             <>
-                                <Dl size={16} color="#FFFFFF" />
+                                <Dl size={16} color={tokens.text.onAccent} />
                                 <Text style={styles.certBtnText}>Descargar PDF oficial</Text>
                             </>
                         )}
@@ -159,7 +163,7 @@ const PrivacyScreen = ({ isMandatory: propIsMandatory }: { isMandatory?: boolean
 
                 <View style={styles.humanSection}>
                     <View style={styles.humanHeader}>
-                        <L size={18} color="#c084fc" />
+                        <L size={18} color={tokens.accent.purple} />
                         <Text style={styles.humanTitle}>TU PRIVACIDAD EN 60 SEGUNDOS</Text>
                     </View>
                     <Text style={styles.humanSub}>
@@ -286,7 +290,7 @@ const PrivacyScreen = ({ isMandatory: propIsMandatory }: { isMandatory?: boolean
                         disabled={loading}
                     >
                         {loading ? (
-                            <ActivityIndicator color="white" />
+                            <ActivityIndicator color={tokens.text.onAccent} />
                         ) : (
                             <Text style={styles.acceptBtnText}>ACEPTO EL AVISO DE PRIVACIDAD</Text>
                         )}
@@ -297,8 +301,8 @@ const PrivacyScreen = ({ isMandatory: propIsMandatory }: { isMandatory?: boolean
     );
 };
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#020617' },
+const makeStyles = (tokens: ThemeTokens) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: tokens.bg.page },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -307,67 +311,67 @@ const styles = StyleSheet.create({
         paddingTop: Platform.OS === 'ios' ? 10 : 15,
         paddingBottom: 15,
         borderBottomWidth: 1,
-        borderColor: '#1e293b'
+        borderColor: tokens.border.default
     },
     titleContainer: { flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'center' },
-    headerTitle: { color: 'white', fontWeight: 'bold', fontSize: 13, letterSpacing: 2, marginLeft: 10 },
+    headerTitle: { color: tokens.text.primary, fontWeight: 'bold', fontSize: 13, letterSpacing: 2, marginLeft: 10 },
     backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
     content: { flex: 1 },
     scrollContent: { padding: 20 },
-    lastUpdate: { color: '#94a3b8', fontSize: 12, marginBottom: 20, fontStyle: 'italic' },
-    sectionTitle: { color: 'white', fontWeight: 'bold', fontSize: 16, marginTop: 25, marginBottom: 10 },
-    subSectionTitle: { color: '#818cf8', fontWeight: 'bold', fontSize: 14, marginTop: 15, marginBottom: 8 },
-    bodyText: { color: '#cbd5e1', fontSize: 14, lineHeight: 22, marginBottom: 10 },
-    bulletItem: { color: '#cbd5e1', fontSize: 14, lineHeight: 22, paddingLeft: 10, marginBottom: 4 },
+    lastUpdate: { color: tokens.text.muted, fontSize: 12, marginBottom: 20, fontStyle: 'italic' },
+    sectionTitle: { color: tokens.text.primary, fontWeight: 'bold', fontSize: 16, marginTop: 25, marginBottom: 10 },
+    subSectionTitle: { color: tokens.text.link, fontWeight: 'bold', fontSize: 14, marginTop: 15, marginBottom: 8 },
+    bodyText: { color: tokens.text.secondary, fontSize: 14, lineHeight: 22, marginBottom: 10 },
+    bulletItem: { color: tokens.text.secondary, fontSize: 14, lineHeight: 22, paddingLeft: 10, marginBottom: 4 },
     warningBox: {
-        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        backgroundColor: tokens.accent.redSoft,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: 'rgba(239, 68, 68, 0.3)',
+        borderColor: tokens.accent.redSoft,
         padding: 15,
         marginTop: 20,
         marginBottom: 10
     },
-    warningTitle: { color: '#f87171', fontWeight: 'bold', fontSize: 14, marginBottom: 5 },
-    warningText: { color: '#fca5a5', fontSize: 13, lineHeight: 20 },
+    warningTitle: { color: tokens.accent.red, fontWeight: 'bold', fontSize: 14, marginBottom: 5 },
+    warningText: { color: tokens.accent.red, fontSize: 13, lineHeight: 20 },
     footer: {
         padding: 20,
         borderTopWidth: 1,
-        borderColor: '#1e293b',
-        backgroundColor: '#0f172a'
+        borderColor: tokens.border.default,
+        backgroundColor: tokens.bg.card
     },
-    footerNote: { color: '#94a3b8', fontSize: 12, textAlign: 'center', marginBottom: 15 },
+    footerNote: { color: tokens.text.muted, fontSize: 12, textAlign: 'center', marginBottom: 15 },
     acceptBtn: {
-        backgroundColor: '#6366f1',
+        backgroundColor: tokens.accent.indigo,
         paddingVertical: 16,
         borderRadius: 12,
         alignItems: 'center'
     },
-    acceptBtnText: { color: 'white', fontWeight: 'bold', fontSize: 14, letterSpacing: 1 },
+    acceptBtnText: { color: tokens.text.onAccent, fontWeight: 'bold', fontSize: 14, letterSpacing: 1 },
     disabledBtn: { opacity: 0.5 },
     humanSection: {
-        backgroundColor: 'rgba(192, 132, 252, 0.05)',
-        borderColor: 'rgba(192, 132, 252, 0.2)',
+        backgroundColor: tokens.accent.purpleSoft,
+        borderColor: tokens.accent.purpleSoft,
         borderWidth: 1,
         borderRadius: 12,
         padding: 16,
         marginBottom: 24,
     },
     humanHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-    humanTitle: { color: '#c084fc', fontSize: 12, fontWeight: '700', letterSpacing: 1.8 },
-    humanSub: { color: '#94a3b8', fontSize: 12, fontStyle: 'italic', marginBottom: 16 },
+    humanTitle: { color: tokens.accent.purple, fontSize: 12, fontWeight: '700', letterSpacing: 1.8 },
+    humanSub: { color: tokens.text.muted, fontSize: 12, fontStyle: 'italic', marginBottom: 16 },
     humanItem: { flexDirection: 'row', marginBottom: 14, gap: 12 },
-    humanItemNum: { color: '#c084fc', fontSize: 18, fontWeight: '800', width: 28 },
-    humanItemTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '700', marginBottom: 4 },
-    humanItemBody: { color: '#cbd5e1', fontSize: 13, lineHeight: 19 },
+    humanItemNum: { color: tokens.accent.purple, fontSize: 18, fontWeight: '800', width: 28 },
+    humanItemTitle: { color: tokens.text.primary, fontSize: 14, fontWeight: '700', marginBottom: 4 },
+    humanItemBody: { color: tokens.text.secondary, fontSize: 13, lineHeight: 19 },
     certCard: {
-        backgroundColor: '#0f172a',
-        borderColor: 'rgba(192, 132, 252, 0.35)',
+        backgroundColor: tokens.bg.card,
+        borderColor: tokens.accent.purpleSoft,
         borderWidth: 1,
         borderRadius: 16,
         padding: 20,
         marginBottom: 20,
-        shadowColor: '#c084fc',
+        shadowColor: tokens.shadow.color,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
         shadowRadius: 12,
@@ -380,13 +384,13 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     certBrandRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    certBrandText: { color: '#c084fc', fontSize: 10, fontWeight: '800', letterSpacing: 2 },
+    certBrandText: { color: tokens.accent.purple, fontSize: 10, fontWeight: '800', letterSpacing: 2 },
     certStatusPill: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        backgroundColor: 'rgba(16, 185, 129, 0.12)',
-        borderColor: 'rgba(16, 185, 129, 0.3)',
+        backgroundColor: tokens.accent.greenSoft,
+        borderColor: tokens.accent.greenSoft,
         borderWidth: 1,
         paddingHorizontal: 10,
         paddingVertical: 4,
@@ -396,19 +400,19 @@ const styles = StyleSheet.create({
         width: 6,
         height: 6,
         borderRadius: 3,
-        backgroundColor: '#10b981',
+        backgroundColor: tokens.accent.green,
     },
-    certStatusText: { color: '#10b981', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-    certTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', letterSpacing: -0.3 },
-    certSubtitle: { color: '#94a3b8', fontSize: 12, marginTop: 2 },
+    certStatusText: { color: tokens.accent.green, fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+    certTitle: { color: tokens.text.primary, fontSize: 22, fontWeight: '800', letterSpacing: -0.3 },
+    certSubtitle: { color: tokens.text.muted, fontSize: 12, marginTop: 2 },
     certDivider: {
         height: 1,
-        backgroundColor: 'rgba(192, 132, 252, 0.18)',
+        backgroundColor: tokens.accent.purpleSoft,
         marginVertical: 18,
     },
-    certRecipientLabel: { color: '#c084fc', fontSize: 10, fontWeight: '700', letterSpacing: 1.8, marginBottom: 6 },
-    certRecipientName: { color: '#FFFFFF', fontSize: 20, fontWeight: '700', marginBottom: 2 },
-    certRecipientEmail: { color: '#94a3b8', fontSize: 13 },
+    certRecipientLabel: { color: tokens.accent.purple, fontSize: 10, fontWeight: '700', letterSpacing: 1.8, marginBottom: 6 },
+    certRecipientName: { color: tokens.text.primary, fontSize: 20, fontWeight: '700', marginBottom: 2 },
+    certRecipientEmail: { color: tokens.text.muted, fontSize: 13 },
     certMetaRow: {
         flexDirection: 'row',
         gap: 16,
@@ -416,23 +420,23 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         paddingTop: 16,
         borderTopWidth: 1,
-        borderTopColor: 'rgba(255, 255, 255, 0.05)',
+        borderTopColor: tokens.border.subtle,
     },
-    certMetaLabel: { color: '#64748b', fontSize: 9, fontWeight: '700', letterSpacing: 1.2, marginBottom: 4 },
-    certMetaValue: { color: '#cbd5e1', fontSize: 12, fontWeight: '600' },
+    certMetaLabel: { color: tokens.text.muted, fontSize: 9, fontWeight: '700', letterSpacing: 1.2, marginBottom: 4 },
+    certMetaValue: { color: tokens.text.secondary, fontSize: 12, fontWeight: '600' },
     certBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        backgroundColor: '#c084fc',
+        backgroundColor: tokens.accent.purple,
         paddingVertical: 14,
         borderRadius: 12,
     },
     certBtnDisabled: { opacity: 0.6 },
-    certBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700', letterSpacing: 0.3 },
+    certBtnText: { color: tokens.text.onAccent, fontSize: 14, fontWeight: '700', letterSpacing: 0.3 },
     certFooterNote: {
-        color: '#64748b',
+        color: tokens.text.muted,
         fontSize: 11,
         textAlign: 'center',
         marginTop: 12,

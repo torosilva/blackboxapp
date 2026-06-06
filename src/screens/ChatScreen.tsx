@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
     View, Text, StyleSheet, TextInput,
     TouchableOpacity, ScrollView, KeyboardAvoidingView,
@@ -15,8 +15,12 @@ import { aiService } from '../services/ai';
 import { voiceService } from '../services/voice';
 import { useSubscription } from '../hooks/useSubscription';
 import { Crown } from 'lucide-react-native';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeTokens } from '../theme/tokens';
 
 const ChatScreen = () => {
+    const { tokens } = useTheme();
+    const styles = useMemo(() => makeStyles(tokens), [tokens]);
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const { threadId, category, title, isTherapyMode, entryContext, initialMessage, initialImage } = route.params || {};
@@ -479,23 +483,23 @@ const ChatScreen = () => {
     if (isLimitReached) {
         return (
             <SAV style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 30 }]}>
-                <View style={{ backgroundColor: '#1e293b', padding: 30, borderRadius: 30, width: '100%', borderWidth: 1, borderColor: '#6366f1' }}>
-                    <Cr size={60} color="#facc15" style={{ alignSelf: 'center', marginBottom: 20 }} />
-                    <Text style={{ color: 'white', fontSize: 26, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 }}>
+                <View style={{ backgroundColor: tokens.bg.input, padding: 30, borderRadius: 30, width: '100%', borderWidth: 1, borderColor: tokens.accent.indigo }}>
+                    <Cr size={60} color={tokens.accent.yellow} style={{ alignSelf: 'center', marginBottom: 20 }} />
+                    <Text style={{ color: tokens.text.primary, fontSize: 26, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 }}>
                         Función PRO
                     </Text>
-                    <Text style={{ color: '#94a3b8', fontSize: 16, textAlign: 'center', marginBottom: 30, lineHeight: 24 }}>
-                        El <Text style={{ color: '#6366f1', fontWeight: 'bold' }}>Chat Estratégico BlackBoxMind.ai</Text> es exclusivo de usuarios PRO.{"\n\n"}
+                    <Text style={{ color: tokens.text.muted, fontSize: 16, textAlign: 'center', marginBottom: 30, lineHeight: 24 }}>
+                        El <Text style={{ color: tokens.accent.indigo, fontWeight: 'bold' }}>Chat Estratégico BlackBoxMind.ai</Text> es exclusivo de usuarios PRO.{"\n\n"}
                         Accede a consultas ilimitadas con tu asesor de IA.
                     </Text>
                     <TouchableOpacity
-                        style={{ backgroundColor: '#6366f1', height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}
+                        style={{ backgroundColor: tokens.accent.indigo, height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}
                         onPress={() => navigation.navigate('Paywall')}
                     >
-                        <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>VER PLANES PRO</Text>
+                        <Text style={{ color: tokens.text.onAccent, fontWeight: 'bold', fontSize: 16 }}>VER PLANES PRO</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={{ alignSelf: 'center', paddingTop: 10 }}>
-                        <Text style={{ color: '#475569', fontSize: 14 }}>Volver</Text>
+                        <Text style={{ color: tokens.text.disabled, fontSize: 14 }}>Volver</Text>
                     </TouchableOpacity>
                 </View>
             </SAV>
@@ -505,7 +509,7 @@ const ChatScreen = () => {
     if (fetchingHistory) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#6366f1" />
+                <ActivityIndicator size="large" color={tokens.accent.indigo} />
             </View>
         );
     }
@@ -517,17 +521,17 @@ const ChatScreen = () => {
 
     return (
         <SAV style={styles.container}>
-            <StatusBar barStyle="light-content" />
+            <StatusBar barStyle={tokens.statusBar} />
 
             {/* Header */}
             <View style={styles.header}>
                 <TO onPress={() => isTherapyMode ? navigation.navigate('Home') : navigation.goBack()} style={styles.backBtn}>
-                    <CL color="white" size={28} />
+                    <CL color={tokens.text.primary} size={28} />
                 </TO>
                 <View style={styles.headerTitleContainer}>
                     <Text style={styles.headerTitle} numberOfLines={1}>{title?.toUpperCase() || 'SESIÓN'}</Text>
                     {isTherapyMode ? (
-                        <Text style={[styles.categoryLabel, { color: '#a855f7' }]}>🧠 SESIÓN ESTRATÉGICA</Text>
+                        <Text style={[styles.categoryLabel, { color: tokens.accent.purple }]}>🧠 SESIÓN ESTRATÉGICA</Text>
                     ) : (
                         <Text style={styles.categoryLabel}>{category}</Text>
                     )}
@@ -538,7 +542,7 @@ const ChatScreen = () => {
             {memoryState !== 'none' && (
                 <View style={styles.memoryBanner}>
                     {(memoryState === 'saving' || memoryState === 'updating' || memoryState === 'classifying') && (
-                        <ActivityIndicator size="small" color="#a855f7" style={{ marginRight: 8 }} />
+                        <ActivityIndicator size="small" color={tokens.accent.purple} style={{ marginRight: 8 }} />
                     )}
                     <Text style={styles.memoryBannerText}>
                         {memoryState === 'classifying' && 'Analizando…'}
@@ -612,7 +616,7 @@ const ChatScreen = () => {
                     {loading && (
                         <View style={styles.aiWrapper}>
                             <View style={[styles.messageBubble, styles.aiBubble, { paddingVertical: 12 }]}>
-                                <ActivityIndicator size="small" color="#818cf8" />
+                                <ActivityIndicator size="small" color={tokens.text.link} />
                             </View>
                         </View>
                     )}
@@ -645,7 +649,7 @@ const ChatScreen = () => {
                         <Animated.View
                             style={[
                                 styles.recordingDot,
-                                isTranscribing && { backgroundColor: '#6366f1' },
+                                isTranscribing && { backgroundColor: tokens.accent.indigo },
                                 { transform: [{ scale: dotAnim }] },
                             ]}
                         />
@@ -673,7 +677,7 @@ const ChatScreen = () => {
                             style={styles.attachmentRemove}
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         >
-                            <Xx size={18} color="#94a3b8" />
+                            <Xx size={18} color={tokens.text.muted} />
                         </TO>
                     </View>
                 )}
@@ -686,7 +690,7 @@ const ChatScreen = () => {
                         disabled={loading || isRecording || isTranscribing}
                         hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                     >
-                        <IP size={22} color="#94a3b8" strokeWidth={2} />
+                        <IP size={22} color={tokens.text.muted} strokeWidth={2} />
                     </TO>
                     <TI
                         style={styles.input}
@@ -697,7 +701,7 @@ const ChatScreen = () => {
                                     ? 'Transcribiendo tu audio…'
                                     : isTherapyMode ? '¿Cómo te hace sentir eso?' : 'Escribe o dicta un mensaje…'
                         }
-                        placeholderTextColor="#64748b"
+                        placeholderTextColor={tokens.text.muted}
                         value={inputText}
                         onChangeText={setInputText}
                         editable={!isRecording && !isTranscribing}
@@ -711,9 +715,9 @@ const ChatScreen = () => {
                         {isTranscribing ? (
                             <ActivityIndicator size="small" color="#818cf8" />
                         ) : isRecording ? (
-                            <MO size={20} color="white" />
+                            <MO size={20} color={tokens.text.onAccent} />
                         ) : (
-                            <Mi size={20} color="#94a3b8" />
+                            <Mi size={20} color={tokens.text.muted} />
                         )}
                     </TO>
                     <TO
@@ -724,7 +728,7 @@ const ChatScreen = () => {
                         onPress={() => handleSend()}
                         disabled={(!inputText.trim() && !attachedImage) || loading || isRecording || isTranscribing}
                     >
-                        <Sn size={20} color="white" />
+                        <Sn size={20} color={tokens.text.onAccent} />
                     </TO>
                 </View>
             </KeyboardAvoidingView>
@@ -732,9 +736,9 @@ const ChatScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#020617' },
-    loadingContainer: { flex: 1, backgroundColor: '#020617', justifyContent: 'center', alignItems: 'center' },
+const makeStyles = (tokens: ThemeTokens) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: tokens.bg.page },
+    loadingContainer: { flex: 1, backgroundColor: tokens.bg.page, justifyContent: 'center', alignItems: 'center' },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -742,30 +746,30 @@ const styles = StyleSheet.create({
         paddingHorizontal: 15,
         paddingVertical: 15,
         borderBottomWidth: 1,
-        borderColor: '#1e293b'
+        borderColor: tokens.border.default
     },
     headerTitleContainer: { flex: 1, alignItems: 'center' },
-    headerTitle: { color: 'white', fontWeight: 'bold', letterSpacing: 2, fontSize: 13 },
-    categoryLabel: { color: '#6366f1', fontSize: 10, fontWeight: '900', marginTop: 2 },
+    headerTitle: { color: tokens.text.primary, fontWeight: 'bold', letterSpacing: 2, fontSize: 13 },
+    categoryLabel: { color: tokens.accent.indigo, fontSize: 10, fontWeight: '900', marginTop: 2 },
     backBtn: { padding: 8 },
     memoryBanner: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(168, 85, 247, 0.12)',
+        backgroundColor: tokens.accent.purpleSoft,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(168, 85, 247, 0.25)',
+        borderBottomColor: tokens.accent.purple,
         paddingHorizontal: 16,
         paddingVertical: 8,
     },
     memoryBannerText: { color: '#c4b5fd', fontSize: 12, fontWeight: '700', flex: 1 },
     memoryBannerBtn: {
-        backgroundColor: '#a855f7',
+        backgroundColor: tokens.accent.purple,
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 8,
         marginLeft: 8,
     },
-    memoryBannerBtnText: { color: 'white', fontSize: 12, fontWeight: '900' },
+    memoryBannerBtnText: { color: tokens.text.onAccent, fontSize: 12, fontWeight: '900' },
     memoryBannerBtnGhost: {
         paddingHorizontal: 10,
         paddingVertical: 6,
@@ -781,16 +785,16 @@ const styles = StyleSheet.create({
     userWrapper: { justifyContent: 'flex-end' },
     aiWrapper: { justifyContent: 'flex-start' },
     messageBubble: { padding: 18, borderRadius: 20, maxWidth: '88%' },
-    userBubble: { backgroundColor: '#4f46e5', borderBottomRightRadius: 4 },
-    aiBubble: { backgroundColor: '#1e293b', borderBottomLeftRadius: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+    userBubble: { backgroundColor: tokens.accent.indigoStrong, borderBottomRightRadius: 4 },
+    aiBubble: { backgroundColor: tokens.bg.input, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: tokens.border.subtle },
     messageText: { fontSize: 16, lineHeight: 24 },
-    userText: { color: 'white' },
-    aiText: { color: '#f8fafc' },
+    userText: { color: tokens.text.onAccent },
+    aiText: { color: tokens.text.primary },
     suggestions: { paddingVertical: 10, backgroundColor: 'rgba(0,0,0,0.2)' },
     suggestionBtn: {
-        backgroundColor: 'rgba(99, 102, 241, 0.15)',
+        backgroundColor: tokens.accent.indigoSoft,
         borderWidth: 1,
-        borderColor: 'rgba(99, 102, 241, 0.4)',
+        borderColor: tokens.accent.indigo,
         borderRadius: 20,
         paddingHorizontal: 18,
         paddingVertical: 10,
@@ -804,9 +808,9 @@ const styles = StyleSheet.create({
         alignItems: 'flex-end',
         padding: 15,
         paddingBottom: Platform.OS === 'ios' ? 20 : 15,
-        backgroundColor: '#020617',
+        backgroundColor: tokens.bg.page,
         borderTopWidth: 1,
-        borderColor: '#1e293b'
+        borderColor: tokens.border.default
     },
     recordingBar: {
         flexDirection: 'row',
@@ -816,8 +820,8 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         marginHorizontal: 15,
         marginBottom: 4,
-        backgroundColor: 'rgba(239, 68, 68, 0.08)',
-        borderColor: 'rgba(239, 68, 68, 0.25)',
+        backgroundColor: tokens.accent.redSoft,
+        borderColor: tokens.accent.red,
         borderWidth: 1,
         borderRadius: 12,
     },
@@ -825,45 +829,45 @@ const styles = StyleSheet.create({
         width: 10,
         height: 10,
         borderRadius: 5,
-        backgroundColor: '#ef4444',
+        backgroundColor: tokens.accent.red,
     },
     recordingText: {
-        color: '#fca5a5',
+        color: tokens.accent.red,
         fontSize: 13,
         fontWeight: '600',
         flex: 1,
     },
     input: {
         flex: 1,
-        backgroundColor: '#0f172a',
+        backgroundColor: tokens.bg.page,
         borderRadius: 20,
         paddingHorizontal: 15,
         paddingTop: 10,
         paddingBottom: 10,
-        color: 'white',
+        color: tokens.text.primary,
         maxHeight: 200,
         borderWidth: 1,
-        borderColor: '#1e293b'
+        borderColor: tokens.border.default
     },
     micBtn: {
         width: 44,
         height: 44,
-        backgroundColor: '#0f172a',
+        backgroundColor: tokens.bg.page,
         borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
         marginLeft: 10,
         borderWidth: 1,
-        borderColor: '#1e293b',
+        borderColor: tokens.border.default,
     },
     micBtnActive: {
-        backgroundColor: '#ef4444',
-        borderColor: '#ef4444',
+        backgroundColor: tokens.accent.red,
+        borderColor: tokens.accent.red,
     },
     sendBtn: {
         width: 44,
         height: 44,
-        backgroundColor: '#6366f1',
+        backgroundColor: tokens.accent.indigo,
         borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
@@ -880,8 +884,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        backgroundColor: '#151B2C',
-        borderTopColor: '#1E293B',
+        backgroundColor: tokens.bg.card,
+        borderTopColor: tokens.border.default,
         borderTopWidth: 1,
         paddingHorizontal: 14,
         paddingVertical: 10,
@@ -892,8 +896,8 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     attachmentInfo: { flex: 1 },
-    attachmentLabel: { color: '#f1f5f9', fontSize: 13, fontWeight: '600' },
-    attachmentHint: { color: '#94a3b8', fontSize: 11, marginTop: 2 },
+    attachmentLabel: { color: tokens.text.primary, fontSize: 13, fontWeight: '600' },
+    attachmentHint: { color: tokens.text.muted, fontSize: 11, marginTop: 2 },
     attachmentRemove: { padding: 6 },
     messageImage: {
         width: 200,

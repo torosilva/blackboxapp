@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList,
     ActivityIndicator, StatusBar, Keyboard,
@@ -8,6 +8,8 @@ import { useNavigation } from '@react-navigation/native';
 import { ChevronLeft, X } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { SupabaseService } from '../services/SupabaseService';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeTokens } from '../theme/tokens';
 
 type SearchResult = {
     id: string;
@@ -24,6 +26,8 @@ type SearchResult = {
 const SearchScreen = () => {
     const navigation = useNavigation<any>();
     const { user } = useAuth();
+    const { tokens } = useTheme();
+    const styles = useMemo(() => makeStyles(tokens), [tokens]);
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<SearchResult[]>([]);
     const [loading, setLoading] = useState(false);
@@ -124,11 +128,11 @@ const SearchScreen = () => {
 
     return (
         <SAV style={styles.container}>
-            <StatusBar barStyle="light-content" />
+            <StatusBar barStyle={tokens.statusBar} />
 
             <View style={styles.header}>
                 <TO onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-                    <CL size={24} color="#e2e8f0" />
+                    <CL size={24} color={tokens.text.primary} />
                 </TO>
                 <Text style={styles.headerTitle}>Buscar memorias</Text>
                 <View style={{ width: 40 }} />
@@ -140,15 +144,15 @@ const SearchScreen = () => {
                     value={query}
                     onChangeText={setQuery}
                     placeholder="Busca por significado, no por palabras..."
-                    placeholderTextColor="#475569"
+                    placeholderTextColor={tokens.text.disabled}
                     autoFocus
                     returnKeyType="search"
                     onSubmitEditing={() => { Keyboard.dismiss(); runSearch(query); }}
-                    selectionColor="#c084fc"
+                    selectionColor={tokens.accent.purple}
                 />
                 {!!query && (
                     <TO onPress={() => setQuery('')} style={styles.clearBtn} activeOpacity={0.7}>
-                        <XI size={18} color="#64748b" />
+                        <XI size={18} color={tokens.text.muted} />
                     </TO>
                 )}
             </View>
@@ -156,7 +160,7 @@ const SearchScreen = () => {
             <View style={styles.body}>
                 {loading ? (
                     <View style={styles.center}>
-                        <ActivityIndicator color="#c084fc" />
+                        <ActivityIndicator color={tokens.accent.purple} />
                     </View>
                 ) : error ? (
                     <TO style={styles.center} onPress={() => runSearch(query)} activeOpacity={0.7}>
@@ -189,8 +193,8 @@ const SearchScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#0A0E1A' },
+const makeStyles = (tokens: ThemeTokens) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: tokens.bg.page },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -199,14 +203,14 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
     },
     backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-    headerTitle: { color: '#f1f5f9', fontSize: 17, fontWeight: '700' },
+    headerTitle: { color: tokens.text.primary, fontSize: 17, fontWeight: '700' },
 
     searchBox: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#151B2C',
+        backgroundColor: tokens.bg.card,
         borderWidth: 1,
-        borderColor: '#1E293B',
+        borderColor: tokens.border.default,
         borderRadius: 12,
         marginHorizontal: 20,
         marginTop: 4,
@@ -215,7 +219,7 @@ const styles = StyleSheet.create({
     },
     input: {
         flex: 1,
-        color: '#FFFFFF',
+        color: tokens.text.primary,
         fontSize: 15,
         paddingVertical: 12,
     },
@@ -223,36 +227,36 @@ const styles = StyleSheet.create({
 
     body: { flex: 1 },
     center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
-    emptyText: { color: '#64748b', fontSize: 14, textAlign: 'center', lineHeight: 21 },
-    errorText: { color: '#f87171', fontSize: 14, textAlign: 'center', fontWeight: '600' },
+    emptyText: { color: tokens.text.muted, fontSize: 14, textAlign: 'center', lineHeight: 21 },
+    errorText: { color: tokens.accent.red, fontSize: 14, textAlign: 'center', fontWeight: '600' },
 
     list: { paddingHorizontal: 20, paddingBottom: 40 },
     card: {
-        backgroundColor: '#151B2C',
+        backgroundColor: tokens.bg.card,
         borderWidth: 1,
-        borderColor: '#1E293B',
+        borderColor: tokens.border.default,
         borderRadius: 14,
         padding: 16,
         marginBottom: 10,
     },
-    cardTitle: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-    cardSummary: { color: '#94a3b8', fontSize: 13, lineHeight: 19, marginTop: 6 },
+    cardTitle: { color: tokens.text.primary, fontSize: 16, fontWeight: '700' },
+    cardSummary: { color: tokens.text.muted, fontSize: 13, lineHeight: 19, marginTop: 6 },
     cardFooter: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         marginTop: 10,
     },
-    cardMeta: { flex: 1, color: '#64748b', fontSize: 12, fontWeight: '600', textTransform: 'capitalize', marginRight: 8 },
+    cardMeta: { flex: 1, color: tokens.text.muted, fontSize: 12, fontWeight: '600', textTransform: 'capitalize', marginRight: 8 },
     simPill: {
-        backgroundColor: 'rgba(192,132,252,0.12)',
+        backgroundColor: tokens.accent.purpleSoft,
         borderWidth: 1,
-        borderColor: 'rgba(192,132,252,0.30)',
+        borderColor: tokens.accent.purpleSoft,
         paddingHorizontal: 8,
         paddingVertical: 2,
         borderRadius: 8,
     },
-    simPillText: { color: '#c084fc', fontSize: 11, fontWeight: '800' },
+    simPillText: { color: tokens.accent.purple, fontSize: 11, fontWeight: '800' },
 });
 
 export default SearchScreen;

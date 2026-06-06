@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Animated, Easing, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -11,11 +11,13 @@ import { useAuth } from '../context/AuthContext';
 import AILoadingOverlay from '../components/AILoadingOverlay';
 import { NotificationService } from '../services/notificationService';
 import { useSubscription } from '../hooks/useSubscription';
+import { useTheme } from '../theme/ThemeContext';
 
 export const QuickCaptureScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const { user } = useAuth();
     const { canCreateAudit, refresh } = useSubscription();
+    const { tokens } = useTheme();
     const [isRecording, setIsRecording] = useState(false);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [duration, setDuration] = useState(0);
@@ -215,10 +217,10 @@ export const QuickCaptureScreen = () => {
                     {isAnalyzing ? (
                         <View /> // Handled by overlay
                     ) : (
-                        <Ionicons 
-                            name={isRecording ? "stop" : "mic"} 
-                            size={48} 
-                            color="white" 
+                        <Ionicons
+                            name={isRecording ? "stop" : "mic"}
+                            size={48}
+                            color={tokens.text.onAccent}
                         />
                     )}
                 </TouchableOpacity>
@@ -249,7 +251,7 @@ export const QuickCaptureScreen = () => {
                 onPress={() => navigation.navigate('Home')}
                 className="absolute bottom-16"
               >
-                  <Ionicons name="close-circle-outline" size={32} color="#475569" />
+                  <Ionicons name="close-circle-outline" size={32} color={tokens.text.disabled} />
               </TouchableOpacity>
             )}
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -28,11 +28,15 @@ import AILoadingOverlay from '../components/AILoadingOverlay';
 import { useSubscription, FREE_ENTRY_LIMIT } from '../hooks/useSubscription';
 import { Crown, Lock } from 'lucide-react-native';
 import { NotificationService } from '../services/notificationService';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeTokens } from '../theme/tokens';
 
 const NewEntryScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user, profile, refreshProfile } = useAuth();
   const { isPro, monthlyEntryCount, entryLimitReached } = useSubscription();
+  const { tokens } = useTheme();
+  const styles = useMemo(() => makeStyles(tokens), [tokens]);
 
   const SAV = SafeAreaView as any;
   const TO = TouchableOpacity as any;
@@ -184,26 +188,26 @@ const NewEntryScreen = () => {
   if (entryLimitReached) {
     return (
       <SAV style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 30 }]}>
-        <View style={{ backgroundColor: '#1e293b', padding: 30, borderRadius: 30, width: '100%', borderWidth: 1, borderColor: '#6366f1' }}>
-          <Cr size={60} color="#facc15" style={{ alignSelf: 'center', marginBottom: 20 }} />
-          <Text style={{ color: 'white', fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 }}>
+        <View style={{ backgroundColor: tokens.bg.input, padding: 30, borderRadius: 30, width: '100%', borderWidth: 1, borderColor: tokens.accent.indigo }}>
+          <Cr size={60} color={tokens.accent.yellow} style={{ alignSelf: 'center', marginBottom: 20 }} />
+          <Text style={{ color: tokens.text.primary, fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 }}>
             Límite Mensual Alcanzado
           </Text>
-          <Text style={{ color: '#94a3b8', fontSize: 16, textAlign: 'center', marginBottom: 8, lineHeight: 24 }}>
+          <Text style={{ color: tokens.text.muted, fontSize: 16, textAlign: 'center', marginBottom: 8, lineHeight: 24 }}>
             Has usado {monthlyEntryCount}/{FREE_ENTRY_LIMIT} registros este mes como usuario{' '}
-            <Text style={{ color: '#6366f1', fontWeight: 'bold' }}>FREE</Text>.
+            <Text style={{ color: tokens.accent.indigo, fontWeight: 'bold' }}>FREE</Text>.
           </Text>
-          <Text style={{ color: '#94a3b8', fontSize: 16, textAlign: 'center', marginBottom: 30, lineHeight: 24 }}>
-            Hazte <Text style={{ color: '#a855f7', fontWeight: 'bold' }}>PRO</Text> para registros ilimitados, chat estratégico y reportes semanales.
+          <Text style={{ color: tokens.text.muted, fontSize: 16, textAlign: 'center', marginBottom: 30, lineHeight: 24 }}>
+            Hazte <Text style={{ color: tokens.accent.purple, fontWeight: 'bold' }}>PRO</Text> para registros ilimitados, chat estratégico y reportes semanales.
           </Text>
           <TO
-            style={{ backgroundColor: '#6366f1', height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}
+            style={{ backgroundColor: tokens.accent.indigo, height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}
             onPress={() => navigation.navigate('Paywall')}
           >
-            <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>VER PLANES PRO</Text>
+            <Text style={{ color: tokens.text.onAccent, fontWeight: 'bold', fontSize: 16 }}>VER PLANES PRO</Text>
           </TO>
           <TO onPress={() => navigation.goBack()} style={{ alignSelf: 'center' }}>
-            <Text style={{ color: '#475569', fontSize: 14, fontWeight: '500' }}>Volver al inicio</Text>
+            <Text style={{ color: tokens.text.disabled, fontSize: 14, fontWeight: '500' }}>Volver al inicio</Text>
           </TO>
         </View>
       </SAV>
@@ -212,10 +216,10 @@ const NewEntryScreen = () => {
 
   return (
     <SAV style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle={tokens.statusBar} />
       <View style={styles.header}>
         <TO onPress={() => navigation.goBack()}>
-          <Xi color="white" size={24} />
+          <Xi color={tokens.text.primary} size={24} />
         </TO>
         <Text style={styles.headerTitle}>NUEVO REGISTRO</Text>
         {content.trim() ? (
@@ -254,7 +258,7 @@ const NewEntryScreen = () => {
                 style={[styles.heroRecordBtn, isRecording && styles.recordBtnActive]}
               >
                 <View style={[styles.heroInnerRecord, isRecording && styles.innerRecordActive]}>
-                  {isRecording ? <View style={styles.stopIconLg} /> : <Mi size={46} color="white" />}
+                  {isRecording ? <View style={styles.stopIconLg} /> : <Mi size={46} color={tokens.text.onAccent} />}
                 </View>
               </TO>
             </Animated.View>
@@ -285,7 +289,7 @@ const NewEntryScreen = () => {
                 multiline
                 style={styles.contentInput}
                 placeholder={"Suéltalo sin filtro. Ej: \"Cerré el trato grande pero arrastro 3 pendientes, choqué con mi socio y otra vez no avancé en lo de mi hija.\""}
-                placeholderTextColor="#475569"
+                placeholderTextColor={tokens.text.disabled}
                 autoFocus
                 value={content}
                 onChangeText={setContent}
@@ -298,7 +302,7 @@ const NewEntryScreen = () => {
 
             <View style={styles.toolbar}>
               <TO style={styles.toolBtn}>
-                <Ca size={24} color="#94a3b8" />
+                <Ca size={24} color={tokens.text.muted} />
               </TO>
 
               <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
@@ -307,13 +311,13 @@ const NewEntryScreen = () => {
                   style={[styles.recordBtn, isRecording && styles.recordBtnActive]}
                 >
                   <View style={[styles.innerRecord, isRecording && styles.innerRecordActive]}>
-                    {isRecording ? <View style={styles.stopIcon} /> : <Mi size={28} color="white" />}
+                    {isRecording ? <View style={styles.stopIcon} /> : <Mi size={28} color={tokens.text.onAccent} />}
                   </View>
                 </TO>
               </Animated.View>
 
               <TO style={styles.toolBtn}>
-                <II size={24} color="#94a3b8" />
+                <II size={24} color={tokens.text.muted} />
               </TO>
             </View>
           </>
@@ -325,8 +329,8 @@ const NewEntryScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#020617' },
+const makeStyles = (tokens: ThemeTokens) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: tokens.bg.page },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -335,15 +339,15 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 10 : 15,
     paddingBottom: 15,
     borderBottomWidth: 1,
-    borderColor: '#1e293b'
+    borderColor: tokens.border.default
   },
-  headerTitle: { color: 'white', fontWeight: 'bold', fontSize: 16, letterSpacing: 1 },
-  publishBtn: { backgroundColor: '#6366f1', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
-  publishBtnText: { color: 'white', fontWeight: 'bold', fontSize: 13 },
+  headerTitle: { color: tokens.text.primary, fontWeight: 'bold', fontSize: 16, letterSpacing: 1 },
+  publishBtn: { backgroundColor: tokens.accent.indigo, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
+  publishBtnText: { color: tokens.text.onAccent, fontWeight: 'bold', fontSize: 13 },
   content: { flex: 1 },
   scrollContent: { padding: 24 },
-  titleInput: { color: 'white', fontSize: 28, fontWeight: 'bold', marginBottom: 20 },
-  contentInput: { color: '#cbd5e1', fontSize: 18, lineHeight: 28, minHeight: 300, textAlignVertical: 'top' },
+  titleInput: { color: tokens.text.primary, fontSize: 28, fontWeight: 'bold', marginBottom: 20 },
+  contentInput: { color: tokens.text.secondary, fontSize: 18, lineHeight: 28, minHeight: 300, textAlignVertical: 'top' },
   visualizerContainer: {
     height: 80,
     justifyContent: 'center',
@@ -356,22 +360,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: Platform.OS === 'ios' ? 40 : 25,
     paddingTop: 20,
-    backgroundColor: '#0f172a',
+    backgroundColor: tokens.bg.card,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30
   },
   toolBtn: { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' },
   recordBtn: {
     width: 80, height: 80, borderRadius: 40,
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    backgroundColor: tokens.accent.indigoSoft,
     justifyContent: 'center', alignItems: 'center',
     marginTop: -50
   },
-  recordBtnActive: { backgroundColor: 'rgba(239, 68, 68, 0.1)' },
-  innerRecord: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#6366f1', justifyContent: 'center', alignItems: 'center' },
-  innerRecordActive: { backgroundColor: '#ef4444' },
-  stopIcon: { width: 22, height: 22, backgroundColor: 'white', borderRadius: 4 },
-  stopIconLg: { width: 34, height: 34, backgroundColor: 'white', borderRadius: 6 },
+  recordBtnActive: { backgroundColor: tokens.accent.redSoft },
+  innerRecord: { width: 64, height: 64, borderRadius: 32, backgroundColor: tokens.accent.indigo, justifyContent: 'center', alignItems: 'center' },
+  innerRecordActive: { backgroundColor: tokens.accent.red },
+  stopIcon: { width: 22, height: 22, backgroundColor: tokens.text.onAccent, borderRadius: 4 },
+  stopIconLg: { width: 34, height: 34, backgroundColor: tokens.text.onAccent, borderRadius: 6 },
   voiceHero: {
     flex: 1,
     justifyContent: 'center',
@@ -379,14 +383,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   voiceTitle: {
-    color: 'white',
+    color: tokens.text.primary,
     fontSize: 30,
     fontWeight: 'bold',
     textAlign: 'center',
     letterSpacing: 0.5,
   },
   voiceSub: {
-    color: '#94a3b8',
+    color: tokens.text.muted,
     fontSize: 15,
     lineHeight: 22,
     textAlign: 'center',
@@ -395,23 +399,23 @@ const styles = StyleSheet.create({
   },
   heroRecordBtn: {
     width: 132, height: 132, borderRadius: 66,
-    backgroundColor: 'rgba(99, 102, 241, 0.12)',
+    backgroundColor: tokens.accent.indigoSoft,
     justifyContent: 'center', alignItems: 'center',
   },
   heroInnerRecord: {
     width: 104, height: 104, borderRadius: 52,
-    backgroundColor: '#6366f1',
+    backgroundColor: tokens.accent.indigo,
     justifyContent: 'center', alignItems: 'center',
   },
   recordHint: {
-    color: '#64748b',
+    color: tokens.text.muted,
     fontSize: 13,
     fontWeight: '600',
     letterSpacing: 1,
     marginTop: 8,
   },
   writeLink: {
-    color: '#818cf8',
+    color: tokens.text.link,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -421,12 +425,12 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(2, 6, 23, 0.8)',
+    backgroundColor: tokens.bg.overlay,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 100
   },
-  overlayText: { color: 'white', marginTop: 16, fontWeight: 'bold', letterSpacing: 1 }
+  overlayText: { color: tokens.text.primary, marginTop: 16, fontWeight: 'bold', letterSpacing: 1 }
 });
 
 export default NewEntryScreen;

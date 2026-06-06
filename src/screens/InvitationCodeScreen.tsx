@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     View,
     Text,
@@ -18,10 +18,14 @@ import { SupabaseService } from '../services/SupabaseService';
 import { useAuth } from '../context/AuthContext';
 import { ChevronLeft, Ticket, Sparkles } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeTokens } from '../theme/tokens';
 
 const InvitationCodeScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const { user, profile, refreshProfile } = useAuth();
+    const { tokens } = useTheme();
+    const styles = useMemo(() => makeStyles(tokens), [tokens]);
     const [code, setCode] = useState('');
     const [loading, setLoading] = useState(false);
     const [inviteEmail, setInviteEmail] = useState('');
@@ -83,7 +87,7 @@ const InvitationCodeScreen = () => {
             >
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <ChevronLeft size={28} color="#ffffff" />
+                        <ChevronLeft size={28} color={tokens.text.primary} />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>CÓDIGO DE INVITACIÓN</Text>
                     <View style={{ width: 28 }} />
@@ -92,7 +96,7 @@ const InvitationCodeScreen = () => {
                 <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
                     <View style={styles.content}>
                         <View style={styles.iconContainer}>
-                            <Ticket size={80} color="#6366f1" />
+                            <Ticket size={80} color={tokens.accent.indigo} />
                         </View>
                         
                         <Text style={styles.title}>Desbloquea tu potencial</Text>
@@ -105,7 +109,7 @@ const InvitationCodeScreen = () => {
                             <TextInput
                                 style={styles.input}
                                 placeholder="XXXXXX"
-                                placeholderTextColor="#475569"
+                                placeholderTextColor={tokens.text.disabled}
                                 autoCapitalize="characters"
                                 value={code}
                                 onChangeText={setCode}
@@ -118,10 +122,10 @@ const InvitationCodeScreen = () => {
                             disabled={loading || !code.trim()}
                         >
                             {loading ? (
-                                <ActivityIndicator color="white" />
+                                <ActivityIndicator color={tokens.text.onAccent} />
                             ) : (
                                 <>
-                                    <Sparkles size={20} color="white" style={{ marginRight: 10 }} />
+                                    <Sparkles size={20} color={tokens.text.onAccent} style={{ marginRight: 10 }} />
                                     <Text style={styles.applyButtonText}>ACTIVAR SUSCRIPCIÓN PRO</Text>
                                 </>
                             )}
@@ -141,7 +145,7 @@ const InvitationCodeScreen = () => {
                                     <TextInput
                                         style={styles.input}
                                         placeholder="correo@ejemplo.com"
-                                        placeholderTextColor="#475569"
+                                        placeholderTextColor={tokens.text.disabled}
                                         keyboardType="email-address"
                                         autoCapitalize="none"
                                         value={inviteEmail}
@@ -150,12 +154,12 @@ const InvitationCodeScreen = () => {
                                 </View>
 
                                 <TouchableOpacity 
-                                    style={[styles.applyButton, { backgroundColor: '#10b981' }, (!inviteEmail.trim() || sendingInvite) && styles.disabledButton]} 
+                                    style={[styles.applyButton, { backgroundColor: tokens.accent.green }, (!inviteEmail.trim() || sendingInvite) && styles.disabledButton]}
                                     onPress={handleSendInvite}
                                     disabled={sendingInvite || !inviteEmail.trim()}
                                 >
                                     {sendingInvite ? (
-                                        <ActivityIndicator color="white" />
+                                        <ActivityIndicator color={tokens.text.onAccent} />
                                     ) : (
                                         <Text style={styles.applyButtonText}>GENERAR Y ENVIAR</Text>
                                     )}
@@ -169,8 +173,8 @@ const InvitationCodeScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#020617' },
+const makeStyles = (tokens: ThemeTokens) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: tokens.bg.page },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -179,7 +183,7 @@ const styles = StyleSheet.create({
         paddingTop: 10,
     },
     backButton: { padding: 8 },
-    headerTitle: { color: 'white', fontSize: 14, fontWeight: 'bold', letterSpacing: 1.5 },
+    headerTitle: { color: tokens.text.primary, fontSize: 14, fontWeight: 'bold', letterSpacing: 1.5 },
     content: {
         flex: 1,
         paddingHorizontal: 30,
@@ -190,33 +194,33 @@ const styles = StyleSheet.create({
         width: 140,
         height: 140,
         borderRadius: 70,
-        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+        backgroundColor: tokens.accent.indigoSoft,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 30,
     },
-    title: { color: 'white', fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 12 },
-    subtitle: { color: '#94a3b8', fontSize: 16, textAlign: 'center', lineHeight: 24, marginBottom: 40 },
+    title: { color: tokens.text.primary, fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 12 },
+    subtitle: { color: tokens.text.muted, fontSize: 16, textAlign: 'center', lineHeight: 24, marginBottom: 40 },
     inputWrapper: {
         width: '100%',
-        backgroundColor: '#1e293b',
+        backgroundColor: tokens.bg.input,
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderColor: tokens.border.subtle,
         marginBottom: 24,
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 20
     },
     prefix: {
-        color: '#6366f1',
+        color: tokens.accent.indigo,
         fontSize: 18,
         fontWeight: '900',
         letterSpacing: 2,
     },
     input: {
         flex: 1,
-        color: 'white',
+        color: tokens.text.primary,
         fontSize: 18,
         fontWeight: 'bold',
         paddingVertical: 18,
@@ -227,24 +231,24 @@ const styles = StyleSheet.create({
     applyButton: {
         width: '100%',
         height: 56,
-        backgroundColor: '#6366f1',
+        backgroundColor: tokens.accent.indigo,
         borderRadius: 16,
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: "#6366f1",
+        shadowColor: tokens.accent.indigo,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 5,
         elevation: 8,
     },
-    disabledButton: { backgroundColor: '#334155', elevation: 0 },
-    applyButtonText: { color: 'white', fontSize: 15, fontWeight: 'bold' },
-    footerText: { color: '#475569', fontSize: 13, marginTop: 40, textAlign: 'center' },
+    disabledButton: { backgroundColor: tokens.border.strong, elevation: 0 },
+    applyButtonText: { color: tokens.text.onAccent, fontSize: 15, fontWeight: 'bold' },
+    footerText: { color: tokens.text.disabled, fontSize: 13, marginTop: 40, textAlign: 'center' },
     adminSection: { marginTop: 40, width: '100%' },
-    separator: { height: 1, backgroundColor: 'rgba(255,255,255,0.05)', marginBottom: 30, width: '100%' },
-    adminTitle: { color: '#10b981', fontSize: 13, fontWeight: '900', textAlign: 'center', letterSpacing: 2, marginBottom: 10 },
-    adminSubtitle: { color: '#64748b', fontSize: 12, textAlign: 'center', marginBottom: 20, paddingHorizontal: 10 }
+    separator: { height: 1, backgroundColor: tokens.border.subtle, marginBottom: 30, width: '100%' },
+    adminTitle: { color: tokens.accent.green, fontSize: 13, fontWeight: '900', textAlign: 'center', letterSpacing: 2, marginBottom: 10 },
+    adminSubtitle: { color: tokens.text.muted, fontSize: 12, textAlign: 'center', marginBottom: 20, paddingHorizontal: 10 }
 });
 
 export default InvitationCodeScreen;

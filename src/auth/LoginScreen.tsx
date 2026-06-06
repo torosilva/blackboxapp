@@ -23,9 +23,11 @@ import Animated, {
     withRepeat,
     withTiming
 } from 'react-native-reanimated';
+import { useTheme } from '../theme/ThemeContext';
 
 export default function LoginScreen() {
     const navigation = useNavigation<any>();
+    const { tokens } = useTheme();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -108,7 +110,7 @@ export default function LoginScreen() {
 
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View className="flex-1 bg-[#0B1021]">
+            <View className="flex-1" style={{ backgroundColor: tokens.bg.page }}>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     style={{ flex: 1 }}
@@ -128,28 +130,30 @@ export default function LoginScreen() {
                                     resizeMode="contain"
                                 />
                             </Animated.View>
-                            <Text className="text-gray-500 text-sm tracking-widest uppercase mt-2 text-center">Strategic Mind Recorder</Text>
+                            <Text className="text-sm tracking-widest uppercase mt-2 text-center" style={{ color: tokens.text.muted }}>Strategic Mind Recorder</Text>
                         </View>
                         {/* INPUTS */}
                         <View className="space-y-4">
-                            <View className="bg-[#151B33] rounded-xl border border-white/10 px-4 py-3 flex-row items-center">
-                                <Icon name="mail-outline" size={20} color="#64748b" />
+                            <View className="rounded-xl px-4 py-3 flex-row items-center" style={{ backgroundColor: tokens.bg.card, borderWidth: 1, borderColor: tokens.border.subtle }}>
+                                <Icon name="mail-outline" size={20} color={tokens.text.muted} />
                                 <TextInput
                                     placeholder="Email"
-                                    placeholderTextColor="#64748b"
-                                    className="flex-1 ml-3 text-white"
+                                    placeholderTextColor={tokens.text.muted}
+                                    className="flex-1 ml-3"
+                                    style={{ color: tokens.text.primary }}
                                     autoCapitalize="none"
                                     value={email}
                                     onChangeText={setEmail}
                                 />
                             </View>
 
-                            <View className="bg-[#151B33] rounded-xl border border-white/10 px-4 py-3 flex-row items-center">
-                                <Icon name="lock-closed-outline" size={20} color="#64748b" />
+                            <View className="rounded-xl px-4 py-3 flex-row items-center" style={{ backgroundColor: tokens.bg.card, borderWidth: 1, borderColor: tokens.border.subtle }}>
+                                <Icon name="lock-closed-outline" size={20} color={tokens.text.muted} />
                                 <TextInput
                                     placeholder="Contraseña"
-                                    placeholderTextColor="#64748b"
-                                    className="flex-1 ml-3 text-white"
+                                    placeholderTextColor={tokens.text.muted}
+                                    className="flex-1 ml-3"
+                                    style={{ color: tokens.text.primary }}
                                     secureTextEntry
                                     value={password}
                                     onChangeText={setPassword}
@@ -161,52 +165,54 @@ export default function LoginScreen() {
                             onPress={() => navigation.navigate('ForgotPassword')}
                             className="mt-4 self-end"
                         >
-                            <Text className="text-gray-400 text-sm">¿Olvidaste tu contraseña?</Text>
+                            <Text className="text-sm" style={{ color: tokens.text.muted }}>¿Olvidaste tu contraseña?</Text>
                         </TO>
 
                         {/* ACTION BUTTON */}
                         <TO
                             onPress={handleLogin}
                             disabled={loading}
-                            className="bg-indigo-600 mt-8 py-4 rounded-xl items-center shadow-lg shadow-indigo-500/30"
+                            className="mt-8 py-4 rounded-xl items-center shadow-lg"
+                            style={{ backgroundColor: tokens.accent.indigoStrong }}
                         >
                             {loading ? (
-                                <ActivityIndicator color="white" />
+                                <ActivityIndicator color={tokens.text.onAccent} />
                             ) : (
-                                <Text className="text-white font-bold text-lg">Entrar a la Caja</Text>
+                                <Text className="font-bold text-lg" style={{ color: tokens.text.onAccent }}>Entrar a la Caja</Text>
                             )}
                         </TO>
 
                         {/* SOCIAL LOGINS */}
                         <View className="mt-8 flex-row items-center space-x-4">
-                            <View className="flex-1 h-[1px] bg-white/10" />
-                            <Text className="text-gray-500 text-xs uppercase font-bold tracking-widest">O continúa con</Text>
-                            <View className="flex-1 h-[1px] bg-white/10" />
+                            <View className="flex-1 h-[1px]" style={{ backgroundColor: tokens.border.subtle }} />
+                            <Text className="text-xs uppercase font-bold tracking-widest" style={{ color: tokens.text.muted }}>O continúa con</Text>
+                            <View className="flex-1 h-[1px]" style={{ backgroundColor: tokens.border.subtle }} />
                         </View>
 
                         <View className="mt-6">
                             <TO
                                 onPress={handleGoogleLogin}
                                 disabled={loading}
-                                className="bg-white/5 border border-white/10 py-4 rounded-xl flex-row items-center justify-center space-x-3"
+                                className="py-4 rounded-xl flex-row items-center justify-center space-x-3"
+                                style={{ backgroundColor: tokens.bg.scrim, borderWidth: 1, borderColor: tokens.border.subtle }}
                             >
-                                <FA name="google" size={18} color="white" />
-                                <Text className="text-white font-semibold">Continuar con Google</Text>
+                                <FA name="google" size={18} color={tokens.text.primary} />
+                                <Text className="font-semibold" style={{ color: tokens.text.primary }}>Continuar con Google</Text>
                             </TO>
                         </View>
 
                         {/* FOOTER */}
                         <View className="mt-6 items-center">
                             <TO onPress={() => navigation.navigate('SignUp')} className="mb-4">
-                                <Text className="text-gray-400">
-                                    ¿Nuevo aquí? <Text className="text-indigo-400 font-bold">Crear cuenta</Text>
+                                <Text style={{ color: tokens.text.muted }}>
+                                    ¿Nuevo aquí? <Text className="font-bold" style={{ color: tokens.text.link }}>Crear cuenta</Text>
                                 </Text>
                             </TO>
 
                             <TO onPress={() => navigation.navigate('Terms')} className="opacity-60">
-                                <Text className="text-gray-500 text-xs text-center px-4">
+                                <Text className="text-xs text-center px-4" style={{ color: tokens.text.muted }}>
                                     Al continuar, aceptas nuestros{"\n"}
-                                    <Text className="text-indigo-400 underline">Términos y Condiciones</Text>
+                                    <Text className="underline" style={{ color: tokens.text.link }}>Términos y Condiciones</Text>
                                 </Text>
                             </TO>
                         </View>

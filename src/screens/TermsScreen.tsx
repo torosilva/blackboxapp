@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     View,
     Text,
@@ -14,11 +14,15 @@ import { Shield, ChevronLeft } from 'lucide-react-native';
 import { useNavigation, NavigationRouteContext } from '@react-navigation/native';
 import { SupabaseService } from '../services/SupabaseService';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeTokens } from '../theme/tokens';
 
 const TermsScreen = ({ isMandatory: propIsMandatory }: { isMandatory?: boolean }) => {
     const navigation = useNavigation<any>();
     const route: any = React.useContext(NavigationRouteContext);
     const { user, refreshProfile } = useAuth();
+    const { tokens } = useTheme();
+    const styles = useMemo(() => makeStyles(tokens), [tokens]);
 
     const SAV = SafeAreaView as any;
     const TO = TouchableOpacity as any;
@@ -56,11 +60,11 @@ const TermsScreen = ({ isMandatory: propIsMandatory }: { isMandatory?: boolean }
             <View style={styles.header}>
                 {!isMandatory && (
                     <TO onPress={() => navigation.goBack()} style={styles.backBtn}>
-                        <CL color="white" size={28} />
+                        <CL color={tokens.text.primary} size={28} />
                     </TO>
                 )}
                 <View style={styles.titleContainer}>
-                    <Sh size={20} color="#6366f1" />
+                    <Sh size={20} color={tokens.accent.indigo} />
                     <Text style={styles.headerTitle}>TÉRMINOS Y CONDICIONES</Text>
                 </View>
                 {!isMandatory && <View style={{ width: 44 }} />}
@@ -152,7 +156,7 @@ const TermsScreen = ({ isMandatory: propIsMandatory }: { isMandatory?: boolean }
                         disabled={loading}
                     >
                         {loading ? (
-                            <ActivityIndicator color="white" />
+                            <ActivityIndicator color={tokens.text.onAccent} />
                         ) : (
                             <Text style={styles.acceptBtnText}>ACEPTO LOS TÉRMINOS Y CONDICIONES</Text>
                         )}
@@ -163,8 +167,8 @@ const TermsScreen = ({ isMandatory: propIsMandatory }: { isMandatory?: boolean }
     );
 };
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#020617' },
+const makeStyles = (tokens: ThemeTokens) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: tokens.bg.page },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -173,32 +177,32 @@ const styles = StyleSheet.create({
         paddingTop: Platform.OS === 'ios' ? 10 : 15,
         paddingBottom: 15,
         borderBottomWidth: 1,
-        borderColor: '#1e293b'
+        borderColor: tokens.border.default
     },
     titleContainer: { flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'center' },
-    headerTitle: { color: 'white', fontWeight: 'bold', fontSize: 13, letterSpacing: 2, marginLeft: 10 },
+    headerTitle: { color: tokens.text.primary, fontWeight: 'bold', fontSize: 13, letterSpacing: 2, marginLeft: 10 },
     backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
     content: { flex: 1 },
     scrollContent: { padding: 20 },
-    lastUpdate: { color: '#94a3b8', fontSize: 12, marginBottom: 20, fontStyle: 'italic' },
-    sectionTitle: { color: 'white', fontWeight: 'bold', fontSize: 16, marginTop: 25, marginBottom: 10 },
-    subSectionTitle: { color: '#818cf8', fontWeight: '600', fontSize: 14, marginTop: 15, marginBottom: 5 },
-    bodyText: { color: '#cbd5e1', fontSize: 14, lineHeight: 22, marginBottom: 10 },
-    bold: { fontWeight: 'bold', color: 'white' },
+    lastUpdate: { color: tokens.text.muted, fontSize: 12, marginBottom: 20, fontStyle: 'italic' },
+    sectionTitle: { color: tokens.text.primary, fontWeight: 'bold', fontSize: 16, marginTop: 25, marginBottom: 10 },
+    subSectionTitle: { color: tokens.text.link, fontWeight: '600', fontSize: 14, marginTop: 15, marginBottom: 5 },
+    bodyText: { color: tokens.text.secondary, fontSize: 14, lineHeight: 22, marginBottom: 10 },
+    bold: { fontWeight: 'bold', color: tokens.text.primary },
     footer: {
         padding: 20,
         borderTopWidth: 1,
-        borderColor: '#1e293b',
-        backgroundColor: '#0f172a'
+        borderColor: tokens.border.default,
+        backgroundColor: tokens.bg.card
     },
-    footerNote: { color: '#94a3b8', fontSize: 12, textAlign: 'center', marginBottom: 15 },
+    footerNote: { color: tokens.text.muted, fontSize: 12, textAlign: 'center', marginBottom: 15 },
     acceptBtn: {
-        backgroundColor: '#6366f1',
+        backgroundColor: tokens.accent.indigo,
         paddingVertical: 16,
         borderRadius: 12,
         alignItems: 'center'
     },
-    acceptBtnText: { color: 'white', fontWeight: 'bold', fontSize: 14, letterSpacing: 1 },
+    acceptBtnText: { color: tokens.text.onAccent, fontWeight: 'bold', fontSize: 14, letterSpacing: 1 },
     disabledBtn: { opacity: 0.5 }
 });
 

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Animated, {
     useAnimatedStyle,
@@ -10,6 +10,8 @@ import Animated, {
     Extrapolate,
     SharedValue
 } from 'react-native-reanimated';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeTokens } from '../theme/tokens';
 
 interface VoiceVisualizerProps {
     isActive: boolean;
@@ -19,6 +21,8 @@ interface VoiceVisualizerProps {
 const BAR_COUNT = 9;
 
 const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({ isActive, metering }) => {
+    const { tokens } = useTheme();
+    const styles = useMemo(() => makeStyles(tokens), [tokens]);
     const pulse = useSharedValue(1);
     const volume = useSharedValue(-160);
 
@@ -47,14 +51,14 @@ const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({ isActive, metering })
             )}
             <View style={styles.barsContainer}>
                 {[...Array(BAR_COUNT)].map((_, i) => (
-                    <Bar key={i} index={i} volume={volume} isActive={isActive} />
+                    <Bar key={i} index={i} volume={volume} isActive={isActive} styles={styles} />
                 ))}
             </View>
         </View>
     );
 };
 
-const Bar = ({ index, volume, isActive }: { index: number; volume: SharedValue<number>; isActive: boolean }) => {
+const Bar = ({ index, volume, isActive, styles }: { index: number; volume: SharedValue<number>; isActive: boolean; styles: ReturnType<typeof makeStyles> }) => {
     const barHeight = useAnimatedStyle(() => {
         // Map -160..0 to 4..40
         const baseHeight = interpolate(volume.value, [-160, -60, 0], [4, 15, 45], Extrapolate.CLAMP);
@@ -70,7 +74,7 @@ const Bar = ({ index, volume, isActive }: { index: number; volume: SharedValue<n
     return <Animated.View style={[styles.bar, barHeight]} />;
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (tokens: ThemeTokens) => StyleSheet.create({
     container: {
         alignItems: 'center',
         justifyContent: 'center',
@@ -83,7 +87,7 @@ const styles = StyleSheet.create({
         width: 100,
         height: 100,
         borderRadius: 50,
-        backgroundColor: '#6366f1',
+        backgroundColor: tokens.accent.indigo,
         zIndex: -1
     },
     barsContainer: {
@@ -94,7 +98,7 @@ const styles = StyleSheet.create({
     },
     bar: {
         width: 4,
-        backgroundColor: '#6366f1',
+        backgroundColor: tokens.accent.indigo,
         marginHorizontal: 2,
         borderRadius: 2,
     }

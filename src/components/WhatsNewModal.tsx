@@ -1,45 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     Modal, View, Text, TouchableOpacity, ScrollView,
     StyleSheet, StatusBar
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Sparkles, MessageSquare, Shield, Zap, Crown, X } from 'lucide-react-native';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeTokens } from '../theme/tokens';
 
 const STORAGE_KEY = 'BLACKBOX_WHATS_NEW_V2_SEEN';
-
-const changes = [
-    {
-        icon: MessageSquare,
-        color: '#a855f7',
-        title: 'Sesión Estratégica Post-Entrada',
-        description: 'Después de registrar tu memoria, BlackBoxMind abre una conversación profunda contigo — como una sesión con tu coach personal.',
-    },
-    {
-        icon: Crown,
-        color: '#facc15',
-        title: 'Modelo FREE / PRO',
-        description: '5 registros/mes gratis. PRO desbloquea chat estratégico, reportes semanales, voz ilimitada y registros sin límite. Planes mensual y anual.',
-    },
-    {
-        icon: Zap,
-        color: '#6366f1',
-        title: 'Motor de IA Actualizado',
-        description: 'Ahora usamos Gemini 3.1 Flash-Lite — más rápido, más preciso y con capacidad de razonamiento avanzado.',
-    },
-    {
-        icon: Shield,
-        color: '#10b981',
-        title: 'Seguridad Mejorada',
-        description: 'Todas las llamadas a IA ahora pasan por Edge Functions seguras. Tu API key nunca sale del servidor.',
-    },
-    {
-        icon: Sparkles,
-        color: '#38bdf8',
-        title: 'UX de Fallos Resiliente',
-        description: 'Si el micrófono o Face ID fallan, el sistema te guía con pasos claros en lugar de bloquearte.',
-    },
-];
 
 interface WhatsNewModalProps {
     forceShow?: boolean;
@@ -47,7 +16,42 @@ interface WhatsNewModalProps {
 }
 
 const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ forceShow, onClose }) => {
+    const { tokens } = useTheme();
+    const styles = useMemo(() => makeStyles(tokens), [tokens]);
     const [visible, setVisible] = useState(false);
+
+    const changes = useMemo(() => ([
+        {
+            icon: MessageSquare,
+            color: tokens.accent.purple,
+            title: 'Sesión Estratégica Post-Entrada',
+            description: 'Después de registrar tu memoria, BlackBoxMind abre una conversación profunda contigo — como una sesión con tu coach personal.',
+        },
+        {
+            icon: Crown,
+            color: tokens.accent.yellow,
+            title: 'Modelo FREE / PRO',
+            description: '5 registros/mes gratis. PRO desbloquea chat estratégico, reportes semanales, voz ilimitada y registros sin límite. Planes mensual y anual.',
+        },
+        {
+            icon: Zap,
+            color: tokens.accent.indigo,
+            title: 'Motor de IA Actualizado',
+            description: 'Ahora usamos Gemini 3.1 Flash-Lite — más rápido, más preciso y con capacidad de razonamiento avanzado.',
+        },
+        {
+            icon: Shield,
+            color: tokens.accent.green,
+            title: 'Seguridad Mejorada',
+            description: 'Todas las llamadas a IA ahora pasan por Edge Functions seguras. Tu API key nunca sale del servidor.',
+        },
+        {
+            icon: Sparkles,
+            color: tokens.accent.sky,
+            title: 'UX de Fallos Resiliente',
+            description: 'Si el micrófono o Face ID fallan, el sistema te guía con pasos claros en lugar de bloquearte.',
+        },
+    ]), [tokens]);
 
     useEffect(() => {
         if (forceShow) {
@@ -87,7 +91,7 @@ const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ forceShow, onClose }) => 
                             <Text style={styles.subtitle}>Todo lo que pediste, implementado.</Text>
                         </View>
                         <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
-                            <X size={20} color="#64748b" />
+                            <X size={20} color={tokens.text.muted} />
                         </TouchableOpacity>
                     </View>
 
@@ -123,25 +127,25 @@ const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ forceShow, onClose }) => 
     );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (tokens: ThemeTokens) => StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.7)',
+        backgroundColor: tokens.bg.overlay,
         justifyContent: 'flex-end',
     },
     sheet: {
-        backgroundColor: '#0f172a',
+        backgroundColor: tokens.bg.page,
         borderTopLeftRadius: 32,
         borderTopRightRadius: 32,
         padding: 24,
         maxHeight: '88%',
         borderTopWidth: 1,
-        borderColor: 'rgba(99,102,241,0.3)',
+        borderColor: tokens.accent.indigo,
     },
     handle: {
         width: 40,
         height: 4,
-        backgroundColor: '#334155',
+        backgroundColor: tokens.border.strong,
         borderRadius: 2,
         alignSelf: 'center',
         marginBottom: 24,
@@ -153,25 +157,25 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     badge: {
-        color: '#6366f1',
+        color: tokens.accent.indigo,
         fontSize: 11,
         fontWeight: '900',
         letterSpacing: 2,
         marginBottom: 4,
     },
     title: {
-        color: 'white',
+        color: tokens.text.primary,
         fontSize: 26,
         fontWeight: 'bold',
         marginBottom: 4,
     },
     subtitle: {
-        color: '#64748b',
+        color: tokens.text.muted,
         fontSize: 14,
     },
     closeBtn: {
         padding: 8,
-        backgroundColor: '#1e293b',
+        backgroundColor: tokens.bg.input,
         borderRadius: 12,
     },
     list: {
@@ -193,30 +197,30 @@ const styles = StyleSheet.create({
     },
     itemText: { flex: 1 },
     itemTitle: {
-        color: 'white',
+        color: tokens.text.primary,
         fontWeight: 'bold',
         fontSize: 15,
         marginBottom: 4,
     },
     itemDesc: {
-        color: '#64748b',
+        color: tokens.text.muted,
         fontSize: 13,
         lineHeight: 19,
     },
     cta: {
-        backgroundColor: '#6366f1',
+        backgroundColor: tokens.accent.indigo,
         paddingVertical: 18,
         borderRadius: 20,
         alignItems: 'center',
         marginTop: 20,
-        shadowColor: '#6366f1',
+        shadowColor: tokens.accent.indigo,
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.4,
         shadowRadius: 12,
         elevation: 8,
     },
     ctaText: {
-        color: 'white',
+        color: tokens.text.onAccent,
         fontWeight: 'bold',
         fontSize: 17,
         letterSpacing: 0.3,

@@ -526,10 +526,10 @@ const EntryDetailScreen = () => {
   );
 };
 
-const makeStyles = (t: ThemeTokens) => StyleSheet.create({
+const makeStyles = (tokens: ThemeTokens) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: t.bg.page
+    backgroundColor: tokens.bg.page
   },
   header: {
     flexDirection: 'row',
@@ -551,7 +551,7 @@ const makeStyles = (t: ThemeTokens) => StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: t.border.subtle,
+    backgroundColor: tokens.border.subtle,
     justifyContent: 'center',
     alignItems: 'center'
   },
@@ -572,18 +572,18 @@ const makeStyles = (t: ThemeTokens) => StyleSheet.create({
   metaBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: t.accent.indigoSoft,
+    backgroundColor: tokens.accent.indigoSoft,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8
   },
   metaText: {
-    color: t.text.muted,
+    color: tokens.text.muted,
     fontSize: 13,
     fontWeight: '600'
   },
   title: {
-    color: t.text.primary,
+    color: tokens.text.primary,
     fontSize: 28,
     fontWeight: '800',
     lineHeight: 36,
@@ -592,19 +592,19 @@ const makeStyles = (t: ThemeTokens) => StyleSheet.create({
   moodBadgeDetail: {
     width: 44,
     height: 44,
-    backgroundColor: t.bg.scrim,
+    backgroundColor: tokens.bg.scrim,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center'
   },
   titleInput: {
-    backgroundColor: t.border.subtle,
+    backgroundColor: tokens.border.subtle,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   contentInput: {
-    backgroundColor: t.bg.scrim,
+    backgroundColor: tokens.bg.scrim,
     borderRadius: 16,
     padding: 20,
     minHeight: 200,
@@ -613,27 +613,27 @@ const makeStyles = (t: ThemeTokens) => StyleSheet.create({
   divider: {
     height: 4,
     width: 40,
-    backgroundColor: t.accent.indigo,
+    backgroundColor: tokens.accent.indigo,
     borderRadius: 2,
     marginBottom: 30
   },
   bodyText: {
-    color: t.text.secondary,
+    color: tokens.text.secondary,
     fontSize: 18,
     lineHeight: 28,
     fontWeight: '400',
     marginBottom: 40
   },
   counterText: {
-    color: t.accent.green,
+    color: tokens.accent.green,
     fontSize: 13,
     lineHeight: 18
   },
   audioPlayer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: t.accent.indigoSoft,
-    borderColor: t.accent.indigo,
+    backgroundColor: tokens.accent.indigoSoft,
+    borderColor: tokens.accent.indigo,
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -645,12 +645,12 @@ const makeStyles = (t: ThemeTokens) => StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: t.accent.indigo,
+    backgroundColor: tokens.accent.indigo,
     justifyContent: 'center',
     alignItems: 'center',
   },
   audioPlayerLabel: {
-    color: t.text.secondary,
+    color: tokens.text.secondary,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1.4,
@@ -658,7 +658,7 @@ const makeStyles = (t: ThemeTokens) => StyleSheet.create({
     marginBottom: 2,
   },
   audioPlayerTime: {
-    color: t.text.primary,
+    color: tokens.text.primary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -670,10 +670,10 @@ const makeStyles = (t: ThemeTokens) => StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: t.accent.red
+    borderColor: tokens.accent.red
   },
   deleteText: {
-    color: t.accent.red,
+    color: tokens.accent.red,
     fontWeight: 'bold',
     fontSize: 16
   },
@@ -682,7 +682,7 @@ const makeStyles = (t: ThemeTokens) => StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     elevation: 4,
-    shadowColor: t.accent.indigo,
+    shadowColor: tokens.accent.indigo,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8
@@ -694,17 +694,17 @@ const makeStyles = (t: ThemeTokens) => StyleSheet.create({
     paddingVertical: 18,
   },
   chatBtnText: {
-    color: t.text.onAccent,
+    color: tokens.text.onAccent,
     fontSize: 16,
     fontWeight: 'bold',
     letterSpacing: 0.5
   },
   relatedSection: { marginTop: 32, marginBottom: 16 },
   relatedHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  relatedTitle: { color: t.accent.purple, fontSize: 11, fontWeight: '700', letterSpacing: 1.8 },
+  relatedTitle: { color: tokens.accent.purple, fontSize: 11, fontWeight: '700', letterSpacing: 1.8 },
   relatedCard: {
-    backgroundColor: t.bg.card,
-    borderColor: t.border.default,
+    backgroundColor: tokens.bg.card,
+    borderColor: tokens.border.default,
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 12,
     padding: 14,
@@ -712,12 +712,12 @@ const makeStyles = (t: ThemeTokens) => StyleSheet.create({
   },
   relatedCardHead: { flexDirection: 'row', justifyContent: 'space-between',
                      alignItems: 'flex-start', marginBottom: 6, gap: 8 },
-  relatedCardTitle: { color: t.text.primary, fontSize: 14, fontWeight: '700', flex: 1 },
-  relatedScorePill: { backgroundColor: t.accent.purpleSoft,
+  relatedCardTitle: { color: tokens.text.primary, fontSize: 14, fontWeight: '700', flex: 1 },
+  relatedScorePill: { backgroundColor: tokens.accent.purpleSoft,
                       paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
-  relatedScoreText: { color: t.accent.purple, fontSize: 11, fontWeight: '700' },
-  relatedCardSnippet: { color: t.text.muted, fontSize: 12, lineHeight: 18, marginBottom: 6 },
-  relatedCardMeta: { color: t.text.muted, fontSize: 10, letterSpacing: 0.5 },
+  relatedScoreText: { color: tokens.accent.purple, fontSize: 11, fontWeight: '700' },
+  relatedCardSnippet: { color: tokens.text.muted, fontSize: 12, lineHeight: 18, marginBottom: 6 },
+  relatedCardMeta: { color: tokens.text.muted, fontSize: 10, letterSpacing: 0.5 },
 });
 
 const LG = LinearGradient as any;

@@ -23,6 +23,8 @@ import { useAuth } from '../context/AuthContext';
 import { SupabaseService } from '../services/SupabaseService';
 import { aiService } from '../services/ai';
 import { voiceService } from '../services/voice';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeTokens } from '../theme/tokens';
 
 // ─── Config ────────────────────────────────────────────────────────────────
 
@@ -82,6 +84,8 @@ interface Pattern {
 // ─── Subcomponents ─────────────────────────────────────────────────────────
 
 const ProgressDots: React.FC<{ active: number; total: number }> = ({ active, total }) => {
+    const { tokens } = useTheme();
+    const styles = useMemo(() => makeStyles(tokens), [tokens]);
     return (
         <View style={styles.progressDots}>
             {Array.from({ length: total }).map((_, i) => (
@@ -89,7 +93,7 @@ const ProgressDots: React.FC<{ active: number; total: number }> = ({ active, tot
                     key={i}
                     style={[
                         styles.progressDot,
-                        { backgroundColor: i < active ? '#c084fc' : '#334155' },
+                        { backgroundColor: i < active ? tokens.text.link : tokens.border.strong },
                     ]}
                 />
             ))}
@@ -101,6 +105,8 @@ const PulseLogo: React.FC<{ size?: number; intensity?: 'subtle' | 'strong' }> = 
     size = 96,
     intensity = 'subtle',
 }) => {
+    const { tokens } = useTheme();
+    const styles = useMemo(() => makeStyles(tokens), [tokens]);
     const scale = useRef(new Animated.Value(1)).current;
     const BrainIcon = Brain as any;
 
@@ -128,7 +134,7 @@ const PulseLogo: React.FC<{ size?: number; intensity?: 'subtle' | 'strong' }> = 
     return (
         <Animated.View style={{ transform: [{ scale }] }}>
             <View style={[styles.logoCircle, { width: size, height: size, borderRadius: size / 2 }]}>
-                <BrainIcon size={size * 0.45} color="#c084fc" strokeWidth={1.4} />
+                <BrainIcon size={size * 0.45} color={tokens.text.link} strokeWidth={1.4} />
             </View>
         </Animated.View>
     );
@@ -161,6 +167,8 @@ const TypewriterText: React.FC<{ text: string; durationMs?: number; style?: any 
 };
 
 const PatternCard: React.FC<{ pattern: Pattern; delay: number }> = ({ pattern, delay }) => {
+    const { tokens } = useTheme();
+    const styles = useMemo(() => makeStyles(tokens), [tokens]);
     const opacity = useRef(new Animated.Value(0)).current;
     const translateY = useRef(new Animated.Value(16)).current;
 
@@ -193,6 +201,8 @@ const PatternCard: React.FC<{ pattern: Pattern; delay: number }> = ({ pattern, d
 // ─── Main Screen ───────────────────────────────────────────────────────────
 
 const OnboardingScreen: React.FC = () => {
+    const { tokens } = useTheme();
+    const styles = useMemo(() => makeStyles(tokens), [tokens]);
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const { user, refreshProfile } = useAuth();
@@ -446,7 +456,7 @@ const OnboardingScreen: React.FC = () => {
 
             <TO style={styles.primaryButton} onPress={handleStart} activeOpacity={0.85}>
                 <Text style={styles.primaryButtonText}>Empezar</Text>
-                <AR size={18} color="#fff" style={{ marginLeft: 8 }} />
+                <AR size={18} color={tokens.text.onAccent} style={{ marginLeft: 8 }} />
             </TO>
         </Animated.View>
     );
@@ -480,7 +490,7 @@ const OnboardingScreen: React.FC = () => {
                                 value={currentInput}
                                 onChangeText={setCurrentInput}
                                 placeholder="Empieza a escribir..."
-                                placeholderTextColor="#64748b"
+                                placeholderTextColor={tokens.text.muted}
                                 multiline
                                 autoFocus
                                 editable={!isSaving}
@@ -491,9 +501,9 @@ const OnboardingScreen: React.FC = () => {
                                 disabled={isTranscribing}
                             >
                                 {isTranscribing ? (
-                                    <ActivityIndicator size="small" color="#c084fc" />
+                                    <ActivityIndicator size="small" color={tokens.text.link} />
                                 ) : (
-                                    <M size={20} color={isRecording ? '#fff' : '#c084fc'} />
+                                    <M size={20} color={isRecording ? tokens.text.onAccent : tokens.text.link} />
                                 )}
                             </TO>
                         </View>
@@ -507,11 +517,11 @@ const OnboardingScreen: React.FC = () => {
                             activeOpacity={0.85}
                         >
                             {isSaving ? (
-                                <ActivityIndicator color="#fff" />
+                                <ActivityIndicator color={tokens.text.onAccent} />
                             ) : (
                                 <>
                                     <Text style={styles.primaryButtonText}>Continuar</Text>
-                                    <AR size={18} color="#fff" style={{ marginLeft: 8 }} />
+                                    <AR size={18} color={tokens.text.onAccent} style={{ marginLeft: 8 }} />
                                 </>
                             )}
                         </TO>
@@ -564,7 +574,7 @@ const OnboardingScreen: React.FC = () => {
             {patterns.length > 0 && (
                 <>
                     <View style={styles.patternsLabelRow}>
-                        <Sp size={14} color="#c084fc" />
+                        <Sp size={14} color={tokens.text.link} />
                         <Text style={styles.patternsLabel}>Patrones detectados</Text>
                     </View>
 
@@ -592,7 +602,7 @@ const OnboardingScreen: React.FC = () => {
             ) : (
                 <TO style={[styles.primaryButton, { marginTop: 36 }]} onPress={handleFinishToHome}>
                     <Text style={styles.primaryButtonText}>Entrar al home</Text>
-                    <AR size={18} color="#fff" style={{ marginLeft: 8 }} />
+                    <AR size={18} color={tokens.text.onAccent} style={{ marginLeft: 8 }} />
                 </TO>
             )}
         </ScrollView>
@@ -602,7 +612,7 @@ const OnboardingScreen: React.FC = () => {
 
     return (
         <View style={styles.root}>
-            <StatusBar barStyle="light-content" backgroundColor="#0A0E1A" />
+            <StatusBar barStyle={tokens.statusBar} backgroundColor={tokens.bg.page} />
             <LinearGradient
                 colors={['rgba(124, 58, 237, 0.08)', 'transparent']}
                 start={{ x: 0, y: 0 }}
@@ -621,8 +631,8 @@ const OnboardingScreen: React.FC = () => {
 
 // ─── Styles ────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-    root: { flex: 1, backgroundColor: '#0A0E1A' },
+function makeStyles(tokens: ThemeTokens) { return StyleSheet.create({
+    root: { flex: 1, backgroundColor: tokens.bg.page },
     safeArea: { flex: 1 },
     fillCenter: {
         flex: 1,
@@ -638,25 +648,25 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         paddingVertical: 6,
         borderRadius: 999,
-        backgroundColor: 'rgba(192, 132, 252, 0.1)',
+        backgroundColor: tokens.accent.purpleSoft,
         borderWidth: 1,
-        borderColor: 'rgba(192, 132, 252, 0.3)',
+        borderColor: tokens.accent.purple,
     },
     previewPillText: {
-        color: '#c084fc',
+        color: tokens.text.link,
         fontSize: 11,
         fontWeight: '700',
         letterSpacing: 1,
     },
     logoCircle: {
-        backgroundColor: 'rgba(124, 58, 237, 0.08)',
+        backgroundColor: tokens.accent.purpleSoft,
         borderWidth: 1,
-        borderColor: 'rgba(192, 132, 252, 0.3)',
+        borderColor: tokens.accent.purple,
         justifyContent: 'center',
         alignItems: 'center',
     },
     welcomeHeadline: {
-        color: '#FFFFFF',
+        color: tokens.text.primary,
         fontSize: 28,
         fontWeight: '700',
         lineHeight: 34,
@@ -664,7 +674,7 @@ const styles = StyleSheet.create({
         marginBottom: 14,
     },
     welcomeSubhead: {
-        color: '#cbd5e1',
+        color: tokens.text.secondary,
         fontSize: 15,
         lineHeight: 23,
         textAlign: 'center',
@@ -675,14 +685,14 @@ const styles = StyleSheet.create({
     // Buttons
     primaryButton: {
         flexDirection: 'row',
-        backgroundColor: '#7C3AED',
+        backgroundColor: tokens.accent.purpleStrong,
         height: 56,
         paddingHorizontal: 32,
         borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center',
         marginTop: 16,
-        shadowColor: '#000',
+        shadowColor: tokens.shadow.color,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -692,7 +702,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#3b2f5e',
     },
     primaryButtonText: {
-        color: '#FFFFFF',
+        color: tokens.text.onAccent,
         fontSize: 16,
         fontWeight: '700',
     },
@@ -702,12 +712,12 @@ const styles = StyleSheet.create({
         borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.04)',
+        backgroundColor: tokens.bg.scrim,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.08)',
+        borderColor: tokens.border.subtle,
     },
     secondaryButtonText: {
-        color: '#cbd5e1',
+        color: tokens.text.secondary,
         fontSize: 15,
         fontWeight: '600',
     },
@@ -737,7 +747,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     questionText: {
-        color: '#FFFFFF',
+        color: tokens.text.primary,
         fontSize: 27,
         fontWeight: '700',
         lineHeight: 34,
@@ -745,7 +755,7 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     questionHint: {
-        color: '#94a3b8',
+        color: tokens.text.muted,
         fontSize: 13,
         fontStyle: 'italic',
         lineHeight: 19,
@@ -758,13 +768,13 @@ const styles = StyleSheet.create({
     },
     input: {
         flex: 1,
-        backgroundColor: '#1A2236',
+        backgroundColor: tokens.bg.cardElevated,
         borderWidth: 1.5,
-        borderColor: 'rgba(192, 132, 252, 0.3)',
+        borderColor: tokens.accent.purple,
         borderRadius: 14,
         paddingVertical: 18,
         paddingHorizontal: 16,
-        color: '#FFFFFF',
+        color: tokens.text.primary,
         fontSize: 16,
         fontWeight: '500',
         minHeight: 110,
@@ -775,20 +785,20 @@ const styles = StyleSheet.create({
         width: 56,
         height: 56,
         borderRadius: 14,
-        backgroundColor: 'rgba(124, 58, 237, 0.08)',
+        backgroundColor: tokens.accent.purpleSoft,
         borderWidth: 1.5,
-        borderColor: 'rgba(192, 132, 252, 0.3)',
+        borderColor: tokens.accent.purple,
         justifyContent: 'center',
         alignItems: 'center',
     },
     micBtnActive: {
-        backgroundColor: '#c084fc',
-        borderColor: '#c084fc',
+        backgroundColor: tokens.text.link,
+        borderColor: tokens.text.link,
     },
 
     // Processing
     processingText: {
-        color: '#cbd5e1',
+        color: tokens.text.secondary,
         fontSize: 16,
         textAlign: 'center',
         marginBottom: 22,
@@ -803,7 +813,7 @@ const styles = StyleSheet.create({
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: '#c084fc',
+        backgroundColor: tokens.text.link,
         opacity: 0.7,
     },
     timeoutBox: {
@@ -812,7 +822,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     timeoutText: {
-        color: '#94a3b8',
+        color: tokens.text.muted,
         fontSize: 14,
         textAlign: 'center',
         lineHeight: 21,
@@ -825,26 +835,26 @@ const styles = StyleSheet.create({
         paddingBottom: 60,
     },
     reflejoHeadline: {
-        color: '#FFFFFF',
+        color: tokens.text.primary,
         fontSize: 20,
         fontWeight: '700',
         lineHeight: 26,
         marginBottom: 20,
     },
     reflejoCard: {
-        backgroundColor: '#1A1730',
+        backgroundColor: tokens.bg.page,
         borderWidth: 1.5,
-        borderColor: '#7C3AED',
+        borderColor: tokens.accent.purpleStrong,
         borderRadius: 16,
         padding: 20,
-        shadowColor: '#000',
+        shadowColor: tokens.shadow.color,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.4,
         shadowRadius: 10,
         elevation: 6,
     },
     reflejoText: {
-        color: '#FFFFFF',
+        color: tokens.text.primary,
         fontSize: 15.5,
         lineHeight: 24,
         fontWeight: '500',
@@ -857,28 +867,28 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     patternsLabel: {
-        color: '#c084fc',
+        color: tokens.text.link,
         fontSize: 11,
         fontWeight: '700',
         letterSpacing: 1.5,
         textTransform: 'uppercase',
     },
     patternCard: {
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        backgroundColor: tokens.bg.scrim,
         borderRadius: 14,
         padding: 16,
         marginBottom: 10,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.06)',
+        borderColor: tokens.border.subtle,
     },
     patternTitle: {
-        color: '#FFFFFF',
+        color: tokens.text.primary,
         fontSize: 15,
         fontWeight: '700',
         marginBottom: 4,
     },
     patternDesc: {
-        color: '#94a3b8',
+        color: tokens.text.muted,
         fontSize: 13,
         lineHeight: 19,
     },
@@ -886,6 +896,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         marginTop: 32,
     },
-});
+}); }
 
 export default OnboardingScreen;

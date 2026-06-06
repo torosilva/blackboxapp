@@ -22,9 +22,11 @@ import Animated, {
     withRepeat,
     withTiming
 } from 'react-native-reanimated';
+import { useTheme } from '../theme/ThemeContext';
 
 export default function SignUpScreen() {
     const navigation = useNavigation<any>();
+    const { tokens } = useTheme();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -90,7 +92,7 @@ export default function SignUpScreen() {
 
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View className="flex-1 bg-[#0B1021]">
+            <View className="flex-1" style={{ backgroundColor: tokens.bg.page }}>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     style={{ flex: 1 }}
@@ -103,10 +105,10 @@ export default function SignUpScreen() {
                     >
                         <TO
                             onPress={() => navigation.goBack()}
-                            style={{ position: 'absolute', top: 50, left: 24, zIndex: 10 }}
-                            className="w-10 h-10 bg-white/5 rounded-full items-center justify-center"
+                            style={{ position: 'absolute', top: 50, left: 24, zIndex: 10, backgroundColor: tokens.bg.scrim }}
+                            className="w-10 h-10 rounded-full items-center justify-center"
                         >
-                            <Icon name="arrow-back" size={24} color="white" />
+                            <Icon name="arrow-back" size={24} color={tokens.text.primary} />
                         </TO>
 
                         <View className="items-center mb-10 pt-16">
@@ -117,28 +119,30 @@ export default function SignUpScreen() {
                                     resizeMode="contain"
                                 />
                             </Animated.View>
-                            <Text className="text-gray-500 text-xs tracking-widest uppercase mt-2 text-center">Strategic Mind Recorder</Text>
+                            <Text className="text-xs tracking-widest uppercase mt-2 text-center" style={{ color: tokens.text.muted }}>Strategic Mind Recorder</Text>
                         </View>
                         {/* INPUTS */}
                         <View className="space-y-4">
-                            <View className="bg-[#151B33] rounded-xl border border-white/10 px-4 py-3 flex-row items-center">
-                                <Icon name="mail-outline" size={20} color="#64748b" />
+                            <View className="rounded-xl px-4 py-3 flex-row items-center" style={{ backgroundColor: tokens.bg.card, borderWidth: 1, borderColor: tokens.border.subtle }}>
+                                <Icon name="mail-outline" size={20} color={tokens.text.muted} />
                                 <TextInput
                                     placeholder="Email"
-                                    placeholderTextColor="#64748b"
-                                    className="flex-1 ml-3 text-white"
+                                    placeholderTextColor={tokens.text.muted}
+                                    className="flex-1 ml-3"
+                                    style={{ color: tokens.text.primary }}
                                     autoCapitalize="none"
                                     value={email}
                                     onChangeText={setEmail}
                                 />
                             </View>
 
-                            <View className="bg-[#151B33] rounded-xl border border-white/10 px-4 py-3 flex-row items-center">
-                                <Icon name="lock-closed-outline" size={20} color="#64748b" />
+                            <View className="rounded-xl px-4 py-3 flex-row items-center" style={{ backgroundColor: tokens.bg.card, borderWidth: 1, borderColor: tokens.border.subtle }}>
+                                <Icon name="lock-closed-outline" size={20} color={tokens.text.muted} />
                                 <TextInput
                                     placeholder="Contraseña segura"
-                                    placeholderTextColor="#64748b"
-                                    className="flex-1 ml-3 text-white"
+                                    placeholderTextColor={tokens.text.muted}
+                                    className="flex-1 ml-3"
+                                    style={{ color: tokens.text.primary }}
                                     secureTextEntry
                                     value={password}
                                     onChangeText={setPassword}
@@ -150,16 +154,21 @@ export default function SignUpScreen() {
                         <View className="mt-6 flex-row items-center px-2">
                             <TO
                                 onPress={() => setPrivacyAccepted(!privacyAccepted)}
-                                className={`w-6 h-6 rounded-md border items-center justify-center ${privacyAccepted ? 'bg-indigo-600 border-indigo-600' : 'bg-white/5 border-white/20'}`}
+                                className="w-6 h-6 rounded-md items-center justify-center"
+                                style={{
+                                    backgroundColor: privacyAccepted ? tokens.accent.indigoStrong : tokens.bg.scrim,
+                                    borderWidth: 1,
+                                    borderColor: privacyAccepted ? tokens.accent.indigoStrong : tokens.border.strong,
+                                }}
                             >
-                                {privacyAccepted && <Icon name="checkmark" size={16} color="white" />}
+                                {privacyAccepted && <Icon name="checkmark" size={16} color={tokens.text.onAccent} />}
                             </TO>
                             <TO
                                 onPress={() => navigation.navigate('Privacy')}
                                 className="ml-3 flex-1"
                             >
-                                <Text className="text-gray-400 text-xs leading-5">
-                                    He leído y acepto el <Text className="text-indigo-400 underline">Aviso de Privacidad Integral</Text> y el tratamiento de mis datos sensibles.
+                                <Text className="text-xs leading-5" style={{ color: tokens.text.muted }}>
+                                    He leído y acepto el <Text className="underline" style={{ color: tokens.text.link }}>Aviso de Privacidad Integral</Text> y el tratamiento de mis datos sensibles.
                                 </Text>
                             </TO>
                         </View>
@@ -168,15 +177,20 @@ export default function SignUpScreen() {
                         <TO
                             onPress={handleSignUp}
                             disabled={loading || !privacyAccepted}
-                            className={`mt-8 py-4 rounded-xl items-center ${loading || !privacyAccepted ? 'bg-white/20' : 'bg-white'}`}
+                            className="mt-8 py-4 rounded-xl items-center"
+                            style={{ backgroundColor: loading || !privacyAccepted ? tokens.border.subtle : tokens.bg.inputInverted }}
                         >
-                            {loading ? <ActivityIndicator color="black" /> : <Text className={`font-bold text-lg ${loading || !privacyAccepted ? 'text-gray-500' : 'text-black'}`}>Registrarme</Text>}
+                            {loading ? (
+                                <ActivityIndicator color={tokens.text.onInverted} />
+                            ) : (
+                                <Text className="font-bold text-lg" style={{ color: loading || !privacyAccepted ? tokens.text.disabled : tokens.text.onInverted }}>Registrarme</Text>
+                            )}
                         </TO>
                         {/* FOOTER */}
                         <TO onPress={() => navigation.navigate('Terms')} className="mt-8 opacity-60">
-                            <Text style={{ color: '#94a3b8', fontSize: 12, textAlign: 'center', paddingHorizontal: 24 }}>
+                            <Text style={{ color: tokens.text.muted, fontSize: 12, textAlign: 'center', paddingHorizontal: 24 }}>
                                 Al registrarte, reconoces haber leído y aceptado nuestros{"\n"}
-                                <Text className="text-indigo-400 underline">Términos y Condiciones</Text>
+                                <Text className="underline" style={{ color: tokens.text.link }}>Términos y Condiciones</Text>
                             </Text>
                         </TO>
                     </ScrollView>
