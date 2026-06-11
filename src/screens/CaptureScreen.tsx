@@ -14,6 +14,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../theme/ThemeContext';
 import { ThemeTokens } from '../theme/tokens';
+import { STALE_DAYS, deriveLoopStats } from '../hooks/useLoopStats';
 import { voiceService } from '../services/voice';
 import { aiService } from '../services/ai';
 import { NotificationService } from '../services/notificationService';
@@ -32,32 +33,7 @@ type Stats = {
 };
 
 const NB = String.fromCharCode(160); // non-breaking space — keeps "354 abiertos" as one unit
-const STALE_DAYS = 14;
 const DAILY_ENTRY_CAP = 50; // hard cap of analyses per user per 24h to protect token cost
-
-// SINGLE SOURCE OF TRUTH for loop counts. Every number on the home derives
-// from here. Note: `stalled` is a SUBSET of `open` (open loops untouched
-// ≥ STALE_DAYS), not an independent total — so open ≥ stalled always holds.
-const deriveLoopStats = (loops: any[], closedThisWeek: number) => {
-    const all = loops || [];
-    const daysOpen = (l: any) =>
-        l?.created_at ? Math.floor((Date.now() - new Date(l.created_at).getTime()) / 86400000) : 0;
-
-    const regresa = all.filter((l: any) => String(l.status) === 'regresa');
-    const stalled = all.filter((l: any) => daysOpen(l) >= STALE_DAYS); // ⊆ open
-    const stalledDays = stalled.length ? Math.max(...stalled.map(daysOpen)) : 0;
-    const high = all.filter((l: any) => String(l.priority).toUpperCase() === 'HIGH' && !regresa.includes(l));
-    const rest = all.filter((l: any) => !regresa.includes(l) && !high.includes(l));
-
-    return {
-        open: all.length,
-        closed: closedThisWeek,
-        regresa: regresa.length,
-        stalled: stalled.length,
-        stalledDays,
-        ordered: [...regresa, ...high, ...rest],
-    };
-};
 
 // Truncate at a sentence boundary (never mid-word). Falls back to the last
 // whole word + ellipsis. Returns whether it was cut so callers can offer a

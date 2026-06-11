@@ -10,10 +10,10 @@ import { SupabaseService } from '../services/SupabaseService';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../theme/ThemeContext';
 import { ThemeTokens } from '../theme/tokens';
+import { STALE_DAYS } from '../hooks/useLoopStats';
 
 type Lane = 'regresa' | 'hoy' | 'rondando';
 type LoopFilter = 'open' | 'stalled' | 'closed';
-const STALE_DAYS = 14;
 
 const laneOf = (it: any): Lane => {
     const s = String(it?.status ?? 'hoy');

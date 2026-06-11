@@ -21,12 +21,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import WhatsNewModal from '../components/WhatsNewModal';
 import { useTheme } from '../theme/ThemeContext';
 import { ThemeTokens } from '../theme/tokens';
+import { useLoopStats } from '../hooks/useLoopStats';
 
 const DashboardScreen = () => {
     const { tokens } = useTheme();
     const styles = useMemo(() => makeStyles(tokens), [tokens]);
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const { user, profile } = useAuth();
+    const { stats: loopStats, refresh: refreshLoopStats } = useLoopStats(user?.id);
     const isFocused = useIsFocused();
     
     const [loading, setLoading] = useState(true);
@@ -60,6 +62,16 @@ const DashboardScreen = () => {
         }
     }, [isFocused, user, onboardingChecked]);
 
+    // Sincroniza activeLoops y stalledLoopsPct con el hook compartido cada
+    // vez que sus stats cambian (mount inicial, refresh manual, focus).
+    // Aísla la ventana en la que `loopStats` aún es null para que la UI
+    // no quede pegada con el valor de fetchStats() inicial.
+    useEffect(() => {
+        if (!loopStats) return;
+        setStats(prev => ({ ...prev, activeLoops: loopStats.open }));
+        setStalledLoopsPct(loopStats.open > 0 ? Math.round((loopStats.stalled / loopStats.open) * 100) : 0);
+    }, [loopStats]);
+
     const checkOnboarding = async () => {
         try {
             const hasHidden = await AsyncStorage.getItem('HIDE_GUIDE');
@@ -90,25 +102,19 @@ const DashboardScreen = () => {
             // ── 3. Fetch entries for Interventions list ────────────────────────
             const entries = await SupabaseService.getEntries(user.id);
             
-            setStats({
+            // activeLoops y stalledLoopsPct los maneja el useEffect[loopStats]
+            // — misma fuente que home y LoopsScreen (hook compartido). Aquí
+            // solo disparamos el refresh para pull-to-refresh; el set lo hace
+            // el efecto en cuanto loopStats actualiza.
+            refreshLoopStats();
+            setStats(prev => ({
+                ...prev,
                 totalMemories: history.totalEntries,
-                activeLoops: history.openLoopsCount,
                 completedGoals: completedGoals,
                 totalGoals: totalGoals,
                 goalPercentage: goalPercent,
                 latestEntry: entries && entries.length > 0 ? entries[0] : null
-            });
-
-            // ── 4. Calculate stalled loops percentage (open >14 days) ──────────
-            const openItems = await SupabaseService.getOpenActionItems(user.id);
-            const now = new Date().getTime();
-            const totalOpen = openItems.length;
-            const stalledCount = openItems.filter(item => {
-                const itemDate = new Date(item.created_at).getTime();
-                const diffDays = (now - itemDate) / (1000 * 60 * 60 * 24);
-                return diffDays > 14;
-            }).length;
-            setStalledLoopsPct(totalOpen > 0 ? Math.round((stalledCount / totalOpen) * 100) : 0);
+            }));
 
             // ── 5. Fetch recent threads ────────────────────────────────────────
             const threads = await SupabaseService.getChatThreads(user.id);

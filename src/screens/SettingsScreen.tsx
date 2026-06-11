@@ -5,7 +5,7 @@ import {
     Zap, Stethoscope, Calendar, Target, AlertTriangle, ArrowRight,
     LogOut, Trash2, MessageSquareText, Send, X, ChevronDown, ChevronUp, User,
     CheckCircle2, Sparkles, Plus, Paperclip, Camera, Trash2 as TrashIcon, Award,
-    BookOpen, MessageCircle, BarChart2, MapPin, Sun, Moon
+    BookOpen, MessageCircle, BarChart2, MapPin, Sun, Moon, Download
 } from 'lucide-react-native';
 import { generateAndSharePrivacyPact } from '../utils/generatePrivacyPact';
 import * as WebBrowser from 'expo-web-browser';
