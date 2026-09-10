@@ -113,6 +113,26 @@ async function getOpenLoops(userId: string): Promise<string> {
   }
 }
 
+async function getUserPatterns(userId: string): Promise<string> {
+  try {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const { data } = await supabase
+      .from('user_patterns')
+      .select('pattern_name, description, frequency, last_seen, confidence_score')
+      .eq('user_id', userId)
+      .order('confidence_score', { ascending: false })
+      .limit(8);
+
+    if (!data || data.length === 0) return 'Sin patrones detectados aún.';
+
+    return data.map((p: any) =>
+      `• ${p.pattern_name} (confianza: ${Math.round((p.confidence_score ?? 0) * 100)}%, visto ${p.frequency ?? '?'} veces, último: ${p.last_seen?.slice(0, 10) ?? 'N/A'}): ${p.description ?? ''}`
+    ).join('\n');
+  } catch {
+    return 'Patrones no disponibles.';
+  }
+}
+
 async function getStrategicProfile(userId: string): Promise<string> {
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -172,13 +192,17 @@ REGLAS NO NEGOCIABLES:
 
 // ─── Dynamic context blocks (user-specific — NOT cached) ─────────────────────
 
-function buildDynamicContext_Standard(userName: string, category: string, history: string, profile: string, loops: string): string {
+function buildDynamicContext_Standard(userName: string, category: string, history: string, profile: string, loops: string, patterns: string): string {
   return `
 USUARIO: ${userName}
 CATEGORÍA DE SESIÓN: ${category}
 
 ━━━ PERFIL ESTRATÉGICO LARGO PLAZO ━━━
 ${profile}
+
+━━━ PATRONES CONDUCTUALES DETECTADOS ━━━
+(Evidencia dura del sistema basada en todas las entradas. Úsalos para confrontar con datos.)
+${patterns}
 
 ━━━ LOOPS / TAREAS ABIERTAS DEL USUARIO ━━━
 ${loops}
@@ -193,7 +217,8 @@ function buildDynamicContext_Therapy(
   history: string,
   profile: string,
   loops: string,
-  entryContext: any
+  entryContext: any,
+  patterns: string
 ): string {
   const loopsText = entryContext?.actionItems?.length
     ? entryContext.actionItems.map((a: any) => `• [${a.priority ?? 'MEDIA'}] ${a.task}`).join('\n')
@@ -213,6 +238,10 @@ Tu diagnóstico previo:
 - Recomendación: ${entryContext?.wellnessRecommendation ?? ''}
 - Active Loops detectados:
 ${loopsText}
+
+━━━ PATRONES CONDUCTUALES DETECTADOS ━━━
+(Evidencia del sistema. En modo conversación profunda, úsalos como puntos de conexión: "noto que esto se repite".)
+${patterns}
 
 ━━━ PERFIL ESTRATÉGICO LARGO PLAZO ━━━
 ${profile}
@@ -283,14 +312,14 @@ serve(async (req) => {
     }
 
     // Fetch context in parallel
-    const [history, profile, loops] = userId
-      ? await Promise.all([getRecentInsights(userId), getStrategicProfile(userId), getOpenLoops(userId)])
-      : ['Sin historial previo.', 'Perfil no disponible.', 'Loops no disponibles.'];
+    const [history, profile, loops, patterns] = userId
+      ? await Promise.all([getRecentInsights(userId), getStrategicProfile(userId), getOpenLoops(userId), getUserPatterns(userId)])
+      : ['Sin historial previo.', 'Perfil no disponible.', 'Loops no disponibles.', 'Sin patrones detectados aún.'];
 
     const staticBlock = therapyMode ? STATIC_RULES_THERAPY : STATIC_RULES_STANDARD;
     const dynamicBlock = therapyMode && entryContext
-      ? buildDynamicContext_Therapy(userName, history, profile, loops, entryContext)
-      : buildDynamicContext_Standard(userName, category, history, profile, loops);
+      ? buildDynamicContext_Therapy(userName, history, profile, loops, entryContext, patterns)
+      : buildDynamicContext_Standard(userName, category, history, profile, loops, patterns);
 
     // Last user turn: plain text, or image + text when an image is attached
     // (Claude Sonnet has vision).

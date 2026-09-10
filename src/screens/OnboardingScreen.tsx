@@ -27,41 +27,41 @@ const { width, height } = Dimensions.get('window');
 const SLIDES = [
     {
         id: '1',
-        title: 'BIENVENIDO A BLACKBOX',
-        subtitle: 'Tu Coach de Alto Rendimiento',
-        description: 'BLACKBOX no es un diario; es un motor de ejecución clínica para mentes que no se detienen.',
+        title: 'BLACKBOXMIND',
+        subtitle: 'No es ChatGPT',
+        description: 'ChatGPT no te recuerda. BlackBoxMind sí. Todo lo que le cuentes queda guardado y conectado — y te lo devuelve cuando lo necesitas.',
         icon: <Brain size={120} color="#6366f1" />,
         color: '#6366f1'
     },
     {
         id: '2',
-        title: 'PASO 1: CAPTURA',
-        subtitle: 'Vacía tu mente al instante',
-        description: 'Usa el botón "QuickCapture" o el icono del Micrófono. Habla sin filtros. BLACKBOX extraerá lo esencial.',
+        title: 'CAPTURA',
+        subtitle: 'Saca lo que traes en la cabeza',
+        description: 'Escribe o usa el micrófono. Sin filtros, sin estructura. La IA entiende aunque sea un desahogo a las 2am.',
         icon: <Zap size={120} color="#c084fc" />,
         color: '#c084fc'
     },
     {
         id: '3',
-        title: 'PASO 2: ANÁLISIS',
-        subtitle: 'Auditoría Cognitiva',
-        description: 'La IA analizará tus sesgos, generará un plan de ataque y extraerá "Active Loops" para que nada se pierda.',
+        title: 'PATRONES',
+        subtitle: 'Ve lo que tú no puedes ver',
+        description: 'Detecta qué situaciones se repiten, qué te frena y qué patrones llevas meses sin resolver. Con tu propia historia, no suposiciones.',
         icon: <Shield size={120} color="#38bdf8" />,
         color: '#38bdf8'
     },
     {
         id: '4',
-        title: 'PASO 3: LOOPS',
-        subtitle: 'Cierra el Ciclo Ejecutivo',
-        description: 'Gestiona tus tareas en el Centro Estratégico. Lo que no marcas como verde, BLACKBOX lo perseguirá con alertas de 72h.',
+        title: 'PENDIENTES',
+        subtitle: 'Nada se pierde',
+        description: 'Lo que capturas genera pendientes automáticamente. BlackBoxMind te recuerda lo que prometiste hacerle al de siempre: a ti.',
         icon: <TrendingUp size={120} color="#22c55e" />,
         color: '#22c55e'
     },
     {
         id: '5',
-        title: 'PASO 4: CONSULTA',
-        subtitle: 'Profundiza en el Chat',
-        description: 'Entra al Chat Hub para debatir estrategias, debugear ideas o pedir planes de wellness con tu coach de IA.',
+        title: 'CHAT',
+        subtitle: 'Habla con alguien que te conoce',
+        description: 'El chat tiene acceso a todo lo que has capturado. Puedes preguntarle "¿qué patrón me está frenando?" y te responde con evidencia tuya.',
         icon: <LayoutDashboard size={120} color="#facc15" />,
         color: '#facc15'
     },
