@@ -1,26 +1,23 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import { Platform, LogBox } from 'react-native';
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
-// Expo Go (SDK 53+) removed remote push on Android and emits a red LogBox
-// error on import/use. Our notifications are LOCAL and unaffected — silence
-// only this known message so it stops alarming the user.
-LogBox.ignoreLogs([
-    'expo-notifications: Android Push notifications',
-    'Android Push notifications (remote notifications)',
-    '`expo-notifications` functionality is not fully supported in Expo Go',
-]);
+// SDK 53+: Expo Go lanza error (no solo warning) al usar push remotas.
+// Detectamos Expo Go y saltamos TODO el setup de notificaciones.
+const IS_EXPO_GO = Constants.executionEnvironment === 'storeClient';
 
-// Configure how notifications are handled when the app is foregrounded
-Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-        shouldShowBanner: true,
-        shouldShowList: true,
-    }),
-});
+if (!IS_EXPO_GO) {
+    Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: true,
+            shouldShowBanner: true,
+            shouldShowList: true,
+        }),
+    });
+}
 
 export const NotificationService = {
     /**
@@ -28,15 +25,10 @@ export const NotificationService = {
      */
     async registerForPushNotificationsAsync() {
         try {
-            if (!Device.isDevice) {
-                console.log('Must use physical device for Push Notifications');
+            if (IS_EXPO_GO || !Device.isDevice) {
                 return null;
             }
 
-            // In Expo Go (SDK 54+), remote push notifications are not supported
-            // and can trigger errors just by asking for permissions in some cases.
-            // We'll proceed but carefully.
-            
             const { status: existingStatus } = await Notifications.getPermissionsAsync();
             let finalStatus = existingStatus;
 
@@ -70,6 +62,8 @@ export const NotificationService = {
      * Schedule a daily reminder for 9:00 PM
      */
     async scheduleDailyReminder() {
+        if (IS_EXPO_GO) return;
+
         const title = "Momento de reflexión 🌙";
         const body = "Ingresa tus pensamientos y que acciones realizaste hoy. Recuerda escribir porque estas agradecidx. \n\nRecuerda que esta practica puede mejorar mucho tu salud mental! puedes grabar solo te lleva 1 min!";
 
